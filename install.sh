@@ -10,6 +10,20 @@ say() { printf '%s\n' "$*"; }
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 require() { command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"; }
 
+cleanup() {
+    local result=$?
+    trap - EXIT
+    # Go module-cache directories are read-only. Change only directories inside
+    # our private build workspace; find does not follow symlinks by default.
+    if ! find "$work_dir" -type d -exec chmod u+w {} + || ! rm -rf -- "$work_dir"; then
+        printf 'Warning: could not fully remove temporary build directory: %s\n' "$work_dir" >&2
+    fi
+    if [[ -n ${install_tmp:-} ]] && ! rm -f -- "$install_tmp"; then
+        printf 'Warning: could not remove temporary binary: %s\n' "$install_tmp" >&2
+    fi
+    exit "$result"
+}
+
 usage() {
     cat <<'EOF'
 Usage: bash install.sh [--no-start] [--help]
@@ -193,7 +207,7 @@ main() {
     # The temporary directory is removed even when verification or installation fails.
     work_dir=$(mktemp -d "${TMPDIR:-/tmp}/zelport-install.XXXXXX")
     install_tmp=''
-    trap 'rm -rf -- "$work_dir"; if [[ -n ${install_tmp:-} ]]; then rm -f -- "$install_tmp"; fi' EXIT
+    trap cleanup EXIT
     if [[ $use_systemd == yes ]]; then
         if [[ $method == binary ]]; then
             unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"

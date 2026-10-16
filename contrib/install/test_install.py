@@ -3,6 +3,7 @@ import hashlib
 import io
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -41,7 +42,7 @@ class InstallTests(unittest.TestCase):
 
     def run_installer(self, args=(), os_name='Linux', distro='debian', arch='x86_64',
                       session=True, active=False, collision=False, uid=1000, start_ok=True,
-                      other_install=False):
+                      other_install=False, readonly_cache=False):
         self.log = self.home / 'operations'
         program = r'''
 source "$INSTALLER"
@@ -61,7 +62,17 @@ systemctl() {
 }
 ss() { if [[ $TEST_COLLISION == yes ]]; then echo 'LISTEN 127.0.0.1:8080'; fi; }
 pacman() { return 1; }
-makepkg() { printf 'makepkg %s\n' "$*" >> "$TEST_LOG"; }
+makepkg() {
+    printf 'makepkg %s\n' "$*" >> "$TEST_LOG"
+    if [[ $TEST_READONLY_CACHE == yes ]]; then
+        printf 'build-dir %s\n' "$PWD" >> "$TEST_LOG"
+        mkdir -p src/go/pkg/mod/example.test/dependency
+        printf 'module source\n' > src/go/pkg/mod/example.test/dependency/source.go
+        chmod 444 src/go/pkg/mod/example.test/dependency/source.go
+        chmod 555 src/go/pkg/mod/example.test/dependency
+        ln -s "$TEST_ASSETS" outside-link
+    fi
+}
 sleep() { :; }
 main "$@"
 '''
@@ -72,7 +83,8 @@ main "$@"
                'TEST_LOG': str(self.log), 'TEST_ARCH': arch, 'TEST_OS': os_name,
                'TEST_DISTRO': distro, 'TEST_UID': str(uid),
                'TEST_SESSION': 'yes' if session else 'no', 'TEST_ACTIVE': 'yes' if active else 'no',
-               'TEST_COLLISION': 'yes' if collision else 'no', 'TEST_START_OK': 'yes' if start_ok else 'no'}
+               'TEST_COLLISION': 'yes' if collision else 'no', 'TEST_START_OK': 'yes' if start_ok else 'no',
+               'TEST_READONLY_CACHE': 'yes' if readonly_cache else 'no'}
         if other_install:
             other = self.home / 'other/bin'
             other.mkdir(parents=True)
@@ -186,6 +198,37 @@ main "$@"
         result = self.run_installer(distro='arch', args=['--no-start'])
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('makepkg ', self.ops())
+
+    def test_arch_cleanup_removes_readonly_go_cache_without_following_symlinks(self):
+        self.assets.chmod(0o555)
+        try:
+            result = self.run_installer(distro='arch', args=['--no-start'], readonly_cache=True)
+            build_dir = Path(next(line.removeprefix('build-dir ') for line in self.ops().splitlines()
+                                  if line.startswith('build-dir ')))
+            # Ensure a failing regression run does not leave its own fixture behind.
+            self.addCleanup(shutil.rmtree, build_dir, ignore_errors=True)
+            self.addCleanup(subprocess.run, ['chmod', '-R', 'u+w', str(build_dir)], capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn('Permission denied', result.stderr)
+            self.assertFalse(build_dir.exists())
+            self.assertEqual(self.assets.stat().st_mode & 0o777, 0o555)
+            self.assertTrue(self.archive.is_file())
+        finally:
+            self.assets.chmod(0o755)
+
+    def test_cleanup_preserves_original_failure_status(self):
+        build_dir = self.home / 'failed-build'
+        build_dir.mkdir()
+        result = subprocess.run(['bash', '-c', '''
+source "$1"
+set -euo pipefail
+work_dir=$2
+install_tmp=''
+trap cleanup EXIT
+exit 23
+''', 'cleanup-test', str(ROOT / 'install.sh'), str(build_dir)], text=True, capture_output=True)
+        self.assertEqual(result.returncode, 23, result.stderr)
+        self.assertFalse(build_dir.exists())
 
     def test_missing_binary_member_is_rejected(self):
         with tarfile.open(self.archive, 'w:gz') as tar:
