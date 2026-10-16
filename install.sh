@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
+# Canonical source: https://github.com/zelport/zelport/blob/main/install.sh
+# The website copy is synchronized by GitHub Actions.
 # Install Zelport without changing gateway configuration or installing desktop plugins.
 # Keep the release and reviewed Arch recipe pins together when publishing updates.
 
-ZELPORT_INSTALLER_VERSION=0.1.0
+ZELPORT_INSTALLER_VERSION=0.1.1
 ZELPORT_RELEASE=0.1.0-preview.5
 ZELPORT_ARCH_REF=aad47ca9b7bf83921391ae447d31f9aa2514d4ef
 ZELPORT_ARCH_SHA256=d77696a6ee42497165d56e13bde768c3f00f8ee70d1955adeffa2afcba403525

@@ -341,7 +341,7 @@ exit 23
         ]:
             with self.subTest(options=options):
                 result = self.run_installer(**options)
-                self.assertEqual(result.stdout.splitlines()[0], 'Zelport installer 0.1.0')
+                self.assertEqual(result.stdout.splitlines()[0], 'Zelport installer 0.1.1')
 
     def test_direct_and_pipe_help(self):
         direct = subprocess.run(['bash', str(ROOT / 'install.sh'), '--help'], text=True, capture_output=True)
@@ -349,7 +349,7 @@ exit 23
         self.assertEqual(direct.returncode, 0, direct.stderr)
         self.assertEqual(piped.returncode, 0, piped.stderr)
         self.assertIn('Usage:', piped.stdout)
-        self.assertEqual(piped.stdout.splitlines()[0], 'Zelport installer 0.1.0')
+        self.assertEqual(piped.stdout.splitlines()[0], 'Zelport installer 0.1.1')
         self.assertEqual(direct.stdout, piped.stdout)
 
 
