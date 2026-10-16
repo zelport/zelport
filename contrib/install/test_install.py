@@ -333,12 +333,23 @@ exit 23
         self.assertNotIn('fetch', self.ops())
         self.assertFalse((self.home / '.local/bin/zelport').exists())
 
+    def test_installer_version_is_printed_before_every_execution_path(self):
+        for options in [
+            {'args': ['--help']}, {'args': ['--unknown']},
+            {'os_name': 'Darwin'}, {'os_name': 'MINGW64_NT'},
+            {'args': ['--no-start']}, {'uid': 0},
+        ]:
+            with self.subTest(options=options):
+                result = self.run_installer(**options)
+                self.assertEqual(result.stdout.splitlines()[0], 'Zelport installer 0.1.0')
+
     def test_direct_and_pipe_help(self):
         direct = subprocess.run(['bash', str(ROOT / 'install.sh'), '--help'], text=True, capture_output=True)
         piped = subprocess.run(['bash', '-s', '--', '--help'], input=(ROOT / 'install.sh').read_text(), text=True, capture_output=True)
         self.assertEqual(direct.returncode, 0, direct.stderr)
         self.assertEqual(piped.returncode, 0, piped.stderr)
         self.assertIn('Usage:', piped.stdout)
+        self.assertEqual(piped.stdout.splitlines()[0], 'Zelport installer 0.1.0')
         self.assertEqual(direct.stdout, piped.stdout)
 
 

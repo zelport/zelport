@@ -98,6 +98,15 @@ The Omarchy plugin is deliberately separate:
 omarchy plugin add https://github.com/zelport/zelport-omarchy.git --enable
 ```
 
+## Installer version
+
+Every execution prints `Zelport installer <version>` before argument and platform
+handling, including help and failed invocations. The installer version is
+independent of the application version it installs. Increase
+`ZELPORT_INSTALLER_VERSION` for every published script change, including release
+pins. Use patch increments for fixes and pin updates, minor increments for
+compatible features, and major increments for breaking behavior.
+
 ## Maintenance and verification
 
 Update `ZELPORT_RELEASE`, `ZELPORT_ARCH_REF` and `ZELPORT_ARCH_SHA256` together

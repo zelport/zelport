@@ -202,3 +202,9 @@ in the same update. The website serves it at https://zelport.com/install.sh.
 Run the gateway installer tests before publication and compare SHA-256 hashes
 across both repositories. After deployment, verify that the public URL serves
 the same bytes. Do not maintain a separate website-specific installer.
+
+Increment `ZELPORT_INSTALLER_VERSION` for every published change to `install.sh`,
+including release-pin changes. Use semantic versioning independently of the
+application release: patch for fixes and pin updates, minor for compatible
+features, major for breaking installer behavior. Keep the startup banner and
+its test expectations current.
