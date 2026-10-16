@@ -197,8 +197,10 @@ a personal identity from global Git configuration.
 ## Installer synchronization
 
 The canonical installer is `install.sh` in `zelport/zelport`.
-Whenever it changes, publish the identical file to `zelport/zelport-web`
-in the same update. The website serves it at https://zelport.com/install.sh.
+The GitHub Actions workflow `.github/workflows/sync-installer.yml` publishes
+the identical file to `zelport/zelport-web` after installer tests pass.
+Edit only the canonical file and verify the synchronization run after pushing.
+Do not manually publish a second copy while the automation is operational. The website serves it at https://zelport.com/install.sh.
 Run the gateway installer tests before publication and compare SHA-256 hashes
 across both repositories. After deployment, verify that the public URL serves
 the same bytes. Do not maintain a separate website-specific installer.

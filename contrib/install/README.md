@@ -125,3 +125,24 @@ network, package-manager and service commands. They exercise failure and update
 paths without installing packages or changing a running gateway. They do not
 establish native compatibility with every distribution. Native Arch compilation
 and real systemd startup require separate disposable-host verification.
+
+## Website synchronization
+
+The `Sync installer to website` GitHub Actions workflow tests the installer and
+copies it from the current gateway `main` branch to `zelport/zelport-web`.
+It runs on installer, installer-test and workflow changes, and supports manual
+dispatch. Identical content produces no commit. Runs are serialized and check
+out current `main` so rerunning an old job does not restore an old script.
+A concurrent website push causes a visible push failure rather than a force push.
+Rerun the workflow to retry.
+
+Authentication uses the Zelport Automation GitHub App, installed only on
+`zelport-web` with Contents read/write permission. The source repository stores
+`INSTALLER_SYNC_APP_ID` as an Actions variable and
+`INSTALLER_SYNC_PRIVATE_KEY` as an Actions secret. The workflow restricts the
+installation token to that destination repository. The ordinary workflow token
+has read-only Contents permission. Never commit or log the private key or tokens.
+
+Cloudflare Pages deploys the resulting website commit. Check the Actions run,
+then compare https://zelport.com/install.sh with the canonical file after
+deployment. Installer versions remain independent of application releases.
