@@ -46,6 +46,18 @@ Keep `zelport` as the documented general installation path. A binary package
 does not automatically fall back to source compilation when no compatible
 binary exists. Clearly document supported architectures and the source option.
 
+## Non-systemd installer service integration
+
+Recorded: 2026-10-16. Status: deferred.
+
+The shell installer installs the Linux release binary without a reachable
+systemd user manager and prints manual startup instructions. Add explicit
+service adapters for systems such as Alpine with OpenRC after validating their
+user-service and privilege requirements. Preserve the regular-user gateway
+model. Do not infer a working user manager merely from the presence of a CLI.
+Test native Alpine operation, login startup and upgrades before advertising
+automatic service support. The Omarchy plugin remains independently installed.
+
 ## Windows compatibility
 
 Recorded: 2026-10-16. Status: planned, not advertised as supported.

@@ -5,6 +5,24 @@ Remote HTTP, Ports over SSH and Ports over Relay modules, plus optional relay
 hosting. Give each service a .localhost domain on one Localhost port, normally
 8080. Administration is http://localhost:8080.
 
+## Platform-aware installer
+
+From a checkout, run `bash install.sh` as your regular user. The script displays
+Homebrew instructions on macOS and an upcoming-support notice in Windows shells.
+On Arch and Omarchy it builds the verified pacman package with `makepkg`. On
+other Linux distributions it installs a verified release binary into
+`~/.local/bin`. The Omarchy plugin is installed separately.
+
+When a systemd user manager is reachable, the installer starts and enables the
+user service, or restarts an already active service. Use `bash install.sh
+--no-start` to install without managing services. Without a user manager, it
+installs the binary and prints manual startup instructions. Existing gateway
+configuration is preserved.
+
+The installer pins a specific release, including previews; it does not query
+GitHub's latest stable release. See [installer behavior and verification](contrib/install/README.md)
+for requirements, upgrades and limitations.
+
 ## Homebrew installation and services
 
 Release packaging generates a Homebrew formula for macOS and Linux on ARM64 and
