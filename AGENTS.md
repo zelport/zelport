@@ -194,19 +194,24 @@ author and committer name, and `79550344+zdeneksvarc@users.noreply.github.com`
 as the email address. Verify both identities before committing. Do not inherit
 a personal identity from global Git configuration.
 
-## Installer synchronization
+## Installer single source of truth
 
-The canonical installer is `install.sh` in `zelport/zelport`.
-The GitHub Actions workflow `.github/workflows/sync-installer.yml` publishes
-the identical file to `zelport/zelport-web` after installer tests pass.
-Edit only the canonical file and verify the synchronization run after pushing.
-Do not manually publish a second copy while the automation is operational. The website serves it at https://zelport.com/install.sh.
-Run the gateway installer tests before publication and compare SHA-256 hashes
-across both repositories. After deployment, verify that the public URL serves
-the same bytes. Do not maintain a separate website-specific installer.
+The only source of truth for the installer is `zelport/zelport/install.sh`.
+Make all installer edits, version changes and test updates in that repository.
+Publish installer changes only to `zelport/zelport`.
 
-Increment `ZELPORT_INSTALLER_VERSION` for every published change to `install.sh`,
-including release-pin changes. Use semantic versioning independently of the
-application release: patch for fixes and pin updates, minor for compatible
-features, major for breaking installer behavior. Keep the startup banner and
-its test expectations current.
+The source repository's `.github/workflows/sync-installer.yml` workflow runs
+the installer tests and automatically updates `zelport/zelport-web/install.sh`.
+The website copy is a generated distribution copy. Do not edit, manually copy,
+or independently publish it. This replaces the previous instruction to publish
+installer changes to both repositories in parallel. If synchronization fails,
+fix or rerun the workflow instead of manually updating the destination.
+
+After publication, verify the synchronization run and matching SHA-256 hashes
+in the source repository, destination repository and https://zelport.com/install.sh.
+
+Increment `ZELPORT_INSTALLER_VERSION` in the canonical source for every published
+script change, including release-pin changes. Use semantic versioning independently
+of the application release: patch for fixes and pin updates, minor for compatible
+features, major for breaking installer behavior. Update the startup-banner test
+expectations in the source repository.
