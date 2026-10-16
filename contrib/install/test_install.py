@@ -19,7 +19,7 @@ class InstallTests(unittest.TestCase):
         self.home = Path(self.tmp.name)
         self.assets = self.home / 'assets'
         self.assets.mkdir()
-        self.payload = b'#!/bin/sh\necho "zelport fixture"\n'
+        self.payload = b'#!/bin/sh\necho "zelport 0.1.0-preview.5 (built fixture)"\n'
         self.archive = self.assets / 'zelport_0.1.0-preview.5_linux_amd64.tar.gz'
         with tarfile.open(self.archive, 'w:gz') as tar:
             member = tarfile.TarInfo('zelport')
@@ -42,7 +42,7 @@ class InstallTests(unittest.TestCase):
 
     def run_installer(self, args=(), os_name='Linux', distro='debian', arch='x86_64',
                       session=True, active=False, collision=False, uid=1000, start_ok=True,
-                      other_install=False, readonly_cache=False):
+                      other_install=False, readonly_cache=False, package_version="", enabled=False, package_complete=True):
         self.log = self.home / 'operations'
         program = r'''
 source "$INSTALLER"
@@ -56,12 +56,17 @@ systemctl() {
         *show-environment*) [[ $TEST_SESSION == yes ]] ;;
         *FragmentPath*) return 0 ;;
         *is-active*) [[ $TEST_ACTIVE == yes ]] ;;
+        *is-enabled*) [[ $TEST_ENABLED == yes ]] ;;
         *start*|*restart*) [[ $TEST_START_OK == yes ]] || return 1; TEST_ACTIVE=yes ;;
         *) return 0 ;;
     esac
 }
 ss() { if [[ $TEST_COLLISION == yes ]]; then echo 'LISTEN 127.0.0.1:8080'; fi; }
-pacman() { return 1; }
+pacman() {
+    [[ -n $TEST_PACKAGE_VERSION ]] || return 1
+    if [[ ${1:-} == -Qk ]]; then [[ $TEST_PACKAGE_COMPLETE == yes ]]; return; fi
+    printf 'zelport %s\n' "$TEST_PACKAGE_VERSION"
+}
 makepkg() {
     printf 'makepkg %s\n' "$*" >> "$TEST_LOG"
     if [[ $TEST_READONLY_CACHE == yes ]]; then
@@ -84,7 +89,10 @@ main "$@"
                'TEST_DISTRO': distro, 'TEST_UID': str(uid),
                'TEST_SESSION': 'yes' if session else 'no', 'TEST_ACTIVE': 'yes' if active else 'no',
                'TEST_COLLISION': 'yes' if collision else 'no', 'TEST_START_OK': 'yes' if start_ok else 'no',
-               'TEST_READONLY_CACHE': 'yes' if readonly_cache else 'no'}
+               'TEST_READONLY_CACHE': 'yes' if readonly_cache else 'no',
+               'TEST_PACKAGE_VERSION': package_version,
+               'TEST_ENABLED': 'yes' if enabled else 'no',
+               'TEST_PACKAGE_COMPLETE': 'yes' if package_complete else 'no'}
         if other_install:
             other = self.home / 'other/bin'
             other.mkdir(parents=True)
@@ -259,6 +267,57 @@ exit 23
         second = self.run_installer(active=True)
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertEqual(unit.read_bytes(), original)
+
+    def test_repeat_binary_skips_download_replacement_and_restart(self):
+        self.assertEqual(self.run_installer().returncode, 0)
+        binary = self.home / '.local/bin/zelport'
+        unit = self.home / '.config/systemd/user/zelport.service'
+        before = (binary.stat().st_mtime_ns, unit.stat().st_mtime_ns)
+        self.log.unlink()
+        result = self.run_installer(active=True, enabled=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('systemctl --user enable ', self.ops())
+        self.assertNotIn('fetch ', self.ops())
+        self.assertNotIn('restart ', self.ops())
+        self.assertNotIn('daemon-reload', self.ops())
+        self.assertEqual(before, (binary.stat().st_mtime_ns, unit.stat().st_mtime_ns))
+
+    def test_current_binary_can_start_missing_service(self):
+        self.assertEqual(self.run_installer(args=['--no-start']).returncode, 0)
+        self.log.unlink()
+        result = self.run_installer()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('fetch ', self.ops())
+        self.assertIn('systemctl --user start zelport.service', self.ops())
+        self.assertTrue((self.home / '.config/systemd/user/zelport.service').exists())
+
+    def test_current_arch_package_skips_build_and_restart(self):
+        result = self.run_installer(distro='arch', package_version='0.1.0preview.5-1', active=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('makepkg ', self.ops())
+        self.assertNotIn('restart ', self.ops())
+
+    def test_incomplete_arch_package_is_reinstalled(self):
+        result = self.run_installer(distro='arch', package_version='0.1.0preview.5-1',
+                                    package_complete=False, args=['--no-start'])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('makepkg ', self.ops())
+
+    def test_old_binary_is_replaced_and_service_restarted(self):
+        binary = self.home / '.local/bin/zelport'
+        binary.parent.mkdir(parents=True)
+        binary.write_text('#!/bin/sh\necho "zelport 0.1.0-preview.4 (built fixture)"\n')
+        binary.chmod(0o755)
+        result = self.run_installer(active=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(binary.read_bytes(), self.payload)
+        self.assertIn('systemctl --user restart zelport.service', self.ops())
+
+    def test_older_arch_package_is_upgraded(self):
+        result = self.run_installer(distro='arch', package_version='0.1.0preview.4-1', active=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('makepkg ', self.ops())
+        self.assertIn('restart ', self.ops())
 
     def test_arm64_uses_arm64_asset(self):
         self.archive = self.archive.rename(self.assets / 'zelport_0.1.0-preview.5_linux_arm64.tar.gz')

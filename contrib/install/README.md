@@ -67,7 +67,8 @@ Existing custom units and service symlinks are not overwritten. Use `--no-start`
 when maintaining a custom service. Arch uses the package-provided user unit.
 
 Installation preserves gateway configuration, endpoint hints and runtime
-identities. An active managed user service is restarted after installation.
+identities. An active managed user service is restarted only when the binary,
+package or managed service unit changes.
 If ss is available, an occupied default port prevents startup before installation.
 When ss is unavailable, a failed new service is stopped to avoid a restart loop
 and the installer reports the journal command. No unrelated process is killed.
@@ -79,9 +80,17 @@ Use the original package manager for Homebrew or other managed installations.
 `--no-start` leaves service state untouched, even when a service is already active.
 The Arch package still includes its standard unit file, but it is not enabled
 or started by this option.
-It still replaces the on-disk binary; a running process uses the new binary only
-when restarted. The pinned version is installed on each invocation, so inspect
-its version before using an older installer against a newer installation.
+Repeated runs skip installation when the user-local executable reports the pinned
+release via `--version`. On Arch, the verified recipe's package version and
+revision are compared with pacman's installed package, and `pacman -Qk` checks
+for missing package files before skipping the build. Arch still downloads the
+small pinned recipe, but does not rebuild or reinstall a matching complete package.
+An unchanged active service is left running. Missing managed units, stopped
+services and disabled startup are configured as needed unless `--no-start` is set.
+
+A different installed version is replaced with the pinned version. Inspect the
+pin before using an older installer against a newer installation. With
+`--no-start`, an updated binary takes effect only when the process is restarted.
 
 The Omarchy plugin is deliberately separate:
 

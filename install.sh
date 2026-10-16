@@ -34,7 +34,7 @@ Arch / Omarchy: build and install the verified pacman package with makepkg.
 Other Linux: install the verified release binary into ~/.local/bin.
 
 By default, enable and start the user service when a systemd user manager is
-available. Restart an already active Zelport user service after installation.
+available. Restart an active service only when its installation changes.
 --no-start installs only; it does not configure, enable, start or restart services.
 Without a systemd user manager, install only and print manual instructions.
 Run as your regular user, never with sudo. Only makepkg's package installation
@@ -118,6 +118,17 @@ install_binary() {
 install_arch() {
     fetch "https://raw.githubusercontent.com/zelport/zelport/${ZELPORT_ARCH_REF}/contrib/archlinux/PKGBUILD" "$work_dir/PKGBUILD"
     verify "$work_dir/PKGBUILD" "$ZELPORT_ARCH_SHA256"
+    local pkgver pkgrel installed
+    pkgver=$(sed -n 's/^pkgver=//p' "$work_dir/PKGBUILD")
+    pkgrel=$(sed -n 's/^pkgrel=//p' "$work_dir/PKGBUILD")
+    [[ $pkgver =~ ^[a-zA-Z0-9.+_]+$ && $pkgrel =~ ^[0-9]+$ ]] || die 'Invalid pinned Arch package version.'
+    installed=$(pacman -Q zelport 2>/dev/null || true)
+    if [[ $installed == "zelport $pkgver-$pkgrel" ]] && pacman -Qk zelport >/dev/null 2>&1; then
+        say "Zelport $pkgver-$pkgrel is already installed."
+        return
+    fi
+    command -v makepkg >/dev/null 2>&1 || die 'Install Arch build tools first: sudo pacman -S --needed base-devel git'
+    changed=yes
     say 'Building the Arch package. Package installation may request your sudo password.'
     # A pipe-fed installer must leave package-manager prompts on the terminal.
     if [[ ! -t 0 ]] && ( : < /dev/tty ) 2>/dev/null; then
@@ -128,10 +139,10 @@ install_arch() {
 }
 
 start_service() {
-    systemctl --user daemon-reload
-    if [[ $was_active == yes ]]; then
+    if [[ $changed == yes || $unit_changed == yes ]]; then systemctl --user daemon-reload; fi
+    if [[ $was_active == yes && ( $changed == yes || $unit_changed == yes ) ]]; then
         systemctl --user restart zelport.service || die 'Installed, but the existing service could not restart. Inspect journalctl --user -u zelport.service.'
-    else
+    elif [[ $was_active == no ]]; then
         if ! systemctl --user start zelport.service; then
             systemctl --user stop zelport.service || true
             die 'Installed, but startup failed. Inspect journalctl --user -u zelport.service. No other process was stopped.'
@@ -142,14 +153,16 @@ start_service() {
         if [[ $was_active == no ]]; then systemctl --user stop zelport.service || true; fi
         die 'Installed, but the service is not running. Check for a port conflict with journalctl --user -u zelport.service.'
     fi
-    systemctl --user enable zelport.service
+    if ! systemctl --user is-enabled --quiet zelport.service; then
+        systemctl --user enable zelport.service
+    fi
     say 'Zelport is running and enabled for your user session. Dashboard: http://localhost:8080'
 }
 
 main() {
     set -euo pipefail
     local start=yes platform distro method existing unit_dir unit fragment
-    local cpu binary data_dir was_active=no use_systemd=no
+    local cpu binary data_dir was_active=no use_systemd=no changed=no unit_changed=no installed_version
     for arg in "$@"; do
         case "$arg" in
             --help|-h) usage; return 0 ;;
@@ -188,7 +201,6 @@ main() {
     existing=$(command -v zelport || true)
     [[ -z $existing || $existing == "$binary" ]] || die "Zelport already exists at $existing. Update it with its original installer; refusing a second installation."
     if [[ $method == arch ]]; then
-        command -v makepkg >/dev/null 2>&1 || die 'Install Arch build tools first: sudo pacman -S --needed base-devel git'
         require pacman
         [[ ! -e $HOME/.local/bin/zelport && ! -L $HOME/.local/bin/zelport ]] || die 'A user-local Zelport exists. Remove that installation before switching to pacman.'
         if [[ -e $binary ]]; then
@@ -227,12 +239,26 @@ main() {
             fi
         fi
     fi
-    say "Installing Zelport $ZELPORT_RELEASE ($method, $cpu)."
-    if [[ $method == arch ]]; then install_arch; else install_binary; fi
+    say "Checking Zelport $ZELPORT_RELEASE ($method, $cpu)."
+    if [[ $method == arch ]]; then
+        install_arch
+    else
+        installed_version=''
+        if [[ -x $binary ]]; then installed_version=$("$binary" --version 2>/dev/null || true); fi
+        if [[ $installed_version == "zelport $ZELPORT_RELEASE (built "*")" ]]; then
+            say "Zelport $ZELPORT_RELEASE is already installed."
+        else
+            install_binary
+            changed=yes
+        fi
+    fi
     if [[ $use_systemd == yes ]]; then
         if [[ $method == binary ]]; then
             mkdir -p "$unit_dir"
-            install -m 644 "$work_dir/zelport.service" "$unit"
+            if [[ ! -f $unit ]]; then
+                install -m 644 "$work_dir/zelport.service" "$unit"
+                unit_changed=yes
+            fi
         fi
         start_service
     else
