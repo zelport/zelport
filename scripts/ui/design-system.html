@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zelport component gallery</title>
+<link rel="stylesheet" href="../../internal/web/assets/app.css">
+<link rel="stylesheet" href="../../internal/modules/built_in_relay/assets/style.css">
+<link rel="stylesheet" href="../../internal/modules/ports_over_relay/assets/style.css">
+<style>.gallery{max-width:1100px;margin:auto;padding:24px 16px}.gallery>section{margin:24px 0}.gallery h2{margin-bottom:16px}.gallery-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}</style>
+<main class="gallery"><h1>Component gallery</h1><p>Isolated sample data. No application API calls.</p>
+<div class="gallery-controls"><button id="light" class="secondary">Light</button><button id="dark" class="secondary">Dark</button><button id="dialog" class="secondary">Open editor</button></div>
+<section><h2>Service table</h2><div class="dashboard-table-wrap"><table class="data-table"><thead><tr><th scope="col">Domain</th><th scope="col">Target</th><th scope="col">State</th><th scope="col">Actions</th></tr></thead><tbody id="table-body"></tbody></table></div></section>
+<section><h2>Module service list</h2><div class="local-service-list" id="services"></div></section>
+<section><details class="resource"><summary><strong>Resource accordion</strong><span class="badge status-badge" data-tone="ok">running</span></summary><div class="services" id="nested"></div></details></section>
+<section><details class="settings-accordion"><summary><span class="settings-accordion-title">Settings accordion</span></summary><div class="settings-accordion-content" id="settings"></div></details></section>
+<section><h2>Empty state</h2><div class="empty">No services configured yet.</div></section>
+<section><h2>Diagnostics</h2><div class="discovery-error"><details><summary>Docker discovery failed</summary><pre>Permission denied while connecting to the runtime socket.
+Raw CLI output stays selectable.</pre></details></div><div class="discovery-error"><details><summary>Podman discovery failed</summary><pre>Invalid inventory JSON.</pre></details></div></section>
+<section data-module="ports_over_relay"><h2>Catalog table</h2><div class="cloud-provider"><table class="data-table cloud-services-table"><thead><tr><th scope="col">Domain</th><th scope="col">Localhost port</th><th scope="col">Actions</th></tr></thead><tbody><tr><td data-label="Domain">long-catalog-service.example.localhost</td><td data-label="Localhost port">8080</td><td data-label="Actions"><button class="secondary" disabled>Import</button></td></tr></tbody></table></div></section>
+</main><script type="module">
+import * as ui from '../../internal/web/assets/ui.js';
+const {$}= { $:id=>document.getElementById(id) };
+const examples=[['app.localhost','http://127.0.0.1:3000/','ready'],['long-service-name.with-multiple-labels.localhost','https://long-target.example.test:8443/application/path','stale'],['offline.localhost','Sandbox port 8080 → Not mapped','unavailable']];
+const edit=()=>{const d=ui.el('dialog'),form=ui.el('form');form.append(ui.dialogHeader('Edit service',d));const domain=ui.adornedField('Domain name','long-service-name','text',{prefix:'http://',suffix:'.localhost:8080'}),target=ui.field('Target URL','https://example.test');form.append(domain.wrap,target.wrap,ui.switchField('Verify TLS certificate',true).wrap);const actions=ui.el('div','dialog-actions');actions.append(ui.button('Cancel',()=>d.close()),ui.button('Save preview',()=>d.close(),''));form.append(actions);d.append(form);d.addEventListener('close',()=>d.remove());document.body.append(d);d.showModal();};
+for(const [domain,target,state] of examples){const row=ui.el('tr');for(const [label,value] of [['Domain',domain],['Target',target],['State',state]]){const td=ui.el('td');td.dataset.label=label;td.append(label==='State'?ui.statusBadge(value):ui.el(label==='Domain'?'strong':'span',null,value));row.append(td);}const action=ui.el('td');action.dataset.label='Actions';action.append(ui.button('Edit',edit));row.append(action);$('table-body').append(row);}
+function service(parent,example){const row=ui.el('div','service'),[domain,target]=example,name=ui.el('div'),actions=ui.el('div','service-actions');name.append(ui.el('span',null,domain));actions.append(ui.button('Edit',edit),ui.button('Remove',()=>{},'text-button'));row.append(name,ui.el('div','target-address',target),actions);parent.append(row);}
+examples.forEach(e=>service($('services'),e));service($('nested'),examples[0]);for(const id of ['services','nested'])$(id).append(ui.button('+ Add service',edit));
+$('settings').append(ui.switchField('Enable feature',true).wrap,ui.field('Port','8090','number').wrap);$('dialog').onclick=edit;
+// Preview actual dark-mode rules without changing OS preferences.
+const darkStyle=document.createElement('style');document.head.append(darkStyle);
+const theme=dark=>{darkStyle.textContent=dark?[...document.styleSheets].filter(s=>s!==darkStyle.sheet).flatMap(s=>[...s.cssRules].filter(r=>/prefers-color-scheme\s*:\s*dark/.test(r.conditionText||'')).map(r=>[...r.cssRules].map(x=>x.cssText).join('\n'))).join('\n'):'';document.documentElement.style.colorScheme=dark?'dark':'light';};
+$('dark').onclick=()=>theme(true);$('light').onclick=()=>theme(false);
+</script></html>

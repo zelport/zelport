@@ -1,0 +1,129 @@
+import {setText,renderChanged} from '../internal/web/assets/ui.js';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+// Exercise the production shell with only its DOM and network boundaries stubbed.
+function shell(){
+ const elements=new Map(),dialogs=[];
+ const element=id=>{if(!elements.has(id))elements.set(id,{hidden:false,textContent:'',setAttribute(){},removeAttribute(){},querySelector(){return element('fallback')},querySelectorAll(){return []}});return elements.get(id)};
+ const context={document:{getElementById:element,body:element('body'),hidden:false,addEventListener(){},querySelectorAll(){return dialogs}},window:{addEventListener(){}},location:{hash:''},history:{pushState(){},replaceState(){}},clearTimeout(){},setTimeout(){},ui:{setText,renderChanged,el(){return {append(){}}}}};
+ const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace("import * as ui from './ui.js';",'').replace('init().catch(e=>message(e.message));','');
+ runInNewContext(source+'\nglobalThis.shell={setRefreshControls(toolbar,button){fallbackToolbar=toolbar;fallbackRefresh=button},navigate,message,mutate,refreshVisible,setRefresh(fn){refresh=fn},renderAvailability,renderHeaderStatus,addModule(m){modules.set(m.descriptor.id,m)},setState(s){state=s},active(){return active}};',context);
+ context.shell.setRefresh(async()=>{});
+ return {...context.shell,dialogs,error:element('error'),settings:element('panel-settings')};
+}
+
+test('errors remain on their originating tab and return when it is selected again',()=>{
+ const s=shell();s.navigate('settings');s.message('Port is occupied');
+ assert.equal(s.error.textContent,'Port is occupied');
+ s.navigate('dashboard');assert.equal(s.error.hidden,true);
+ s.navigate('settings');assert.equal(s.error.textContent,'Port is occupied');assert.equal(s.error.hidden,false);
+ s.message('');s.navigate('dashboard');s.navigate('settings');assert.equal(s.error.hidden,true);
+});
+
+test('a rejected save after navigation belongs to the tab that started it',async()=>{
+ const s=shell();s.navigate('settings');let reject;
+ const pending=s.mutate(()=>new Promise((_,r)=>{reject=r}));
+ s.navigate('dashboard');reject(Error('Port is occupied'));
+ await assert.rejects(pending,/Port is occupied/);assert.equal(s.error.hidden,true);
+ s.navigate('settings');assert.equal(s.error.textContent,'Port is occupied');
+});
+
+test('a delayed refresh failure does not leak onto the next tab',async()=>{
+ const s=shell();s.navigate('settings');let reject;s.setRefresh(()=>new Promise((_,r)=>{reject=r}));
+ const pending=s.refreshVisible();s.navigate('dashboard');reject(Error('Connection lost'));await pending;
+ assert.equal(s.error.hidden,true);s.navigate('settings');assert.equal(s.error.textContent,'Connection lost');
+});
+
+test('dialog-owned errors propagate without a duplicate tab banner',async()=>{
+ const s=shell();s.navigate('settings');let refreshed=false;s.setRefresh(async()=>{refreshed=true;});
+ await assert.rejects(s.mutate(async()=>{throw Error('Invalid token')},{reportError:false}),/Invalid token/);
+ assert.equal(s.error.hidden,true);assert.equal(refreshed,true);
+});
+
+test('unavailable deep links redirect to Settings and deactivate the module',()=>{
+ const s=shell();let deactivated=0;
+ const m={descriptor:{id:'test',tab_id:'test'},panel:{},tab:{setAttribute(){}},instance:{deactivate(){deactivated++}}};
+ s.addModule(m);s.setState({modules:[m.descriptor],module_availability:{test:{enabled:false}}});s.navigate('test');
+ assert.equal(s.active(),'settings');assert.equal(m.tab.hidden,true);assert.equal(m.panel.hidden,true);assert.equal(deactivated,1);
+});
+test('polling can hide the current tab and return it when enabled again',()=>{
+ const s=shell();const m={descriptor:{id:'test',tab_id:'test'},panel:{},tab:{setAttribute(){}},instance:{activate(){},deactivate(){}}};
+ s.addModule(m);s.setState({modules:[m.descriptor],module_availability:{test:{enabled:true}}});s.navigate('test');
+ s.setState({modules:[m.descriptor],module_availability:{test:{enabled:false}}});s.renderAvailability();assert.equal(s.active(),'settings');assert.equal(m.tab.hidden,true);
+ s.setState({modules:[m.descriptor],module_availability:{test:{enabled:true}}});s.renderAvailability();s.navigate('test');assert.equal(s.active(),'test');assert.equal(m.panel.hidden,false);
+});
+
+test('hiding a module closes its header popover; re-enabling restores disconnected status',()=>{
+ const s=shell();let open=true;
+ const indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return open},hidePopover(){open=false}},status:{dataset:{}},settings:{},details:{replaceChildren(){}}};
+ s.addModule({descriptor:{id:'client',name:'Client'},headerStatus(){return {status:'Disconnected',tone:'neutral',rows:[]}},indicator});
+ s.setState({states:{client:{}},module_availability:{client:{enabled:false}}});s.renderHeaderStatus();
+ assert.equal(indicator.wrap.hidden,true);assert.equal(open,false);
+ s.setState({states:{client:{}},module_availability:{client:{enabled:true}}});s.renderHeaderStatus();
+ assert.equal(indicator.wrap.hidden,false);assert.equal(indicator.status.textContent,'Disconnected');assert.equal(indicator.trigger.dataset.tone,'neutral');
+});
+
+
+test('entering Settings closes accordions before activating sections; staying preserves them',()=>{
+ const s=shell(),outer={open:true},advanced={open:true};
+ s.settings.querySelectorAll=()=>[outer,advanced];
+ let activated=0;
+ const m={descriptor:{id:'relay',ui_placement:'settings'},panel:{},accordion:outer,instance:{activate(){activated++},deactivate(){}}};
+ s.addModule(m);
+ s.navigate('settings');
+ assert.equal(outer.open,false);assert.equal(advanced.open,false);assert.equal(m.panel.hidden,true);assert.equal(activated,0);
+ outer.open=true;s.navigate('settings');assert.equal(outer.open,true);assert.equal(m.panel.hidden,false);
+ s.navigate('dashboard');s.navigate('settings',false);
+ assert.equal(outer.open,false);assert.equal(m.panel.hidden,true);
+});
+
+test('header popover content is retained until its displayed lines change',()=>{
+ const s=shell();let draws=0,rows=[{label:'Relay',value:'localhost:8090'}];
+ const indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return false}},status:{dataset:{}},settings:{},details:{replaceChildren(){draws++}}};
+ s.addModule({descriptor:{id:'client',name:'Client'},headerStatus(){return {status:'Connected',tone:'ok',rows}},indicator});
+ s.setState({states:{client:{}}});s.renderHeaderStatus();s.renderHeaderStatus();assert.equal(draws,1);
+ rows=[{label:'Relay',value:'localhost:8091'}];s.renderHeaderStatus();assert.equal(draws,2);
+});
+
+test('successful refresh clears a restart error on every tab',async()=>{
+ const s=shell();s.navigate('settings');s.setRefresh(async()=>{throw Error('Failed to fetch')});
+ await s.refreshVisible();assert.equal(s.error.hidden,false);
+ s.navigate('dashboard');s.setRefresh(async()=>{});await s.refreshVisible();
+ s.navigate('settings');assert.equal(s.error.hidden,true);
+});
+test('recovery preserves a form error even when it matches the refresh error',async()=>{
+ const s=shell();s.navigate('settings');s.message('Failed to fetch');
+ s.setRefresh(async()=>{throw Error('Failed to fetch')});await s.refreshVisible();
+ s.setRefresh(async()=>{});await s.refreshVisible();
+ assert.equal(s.error.hidden,false);assert.equal(s.error.textContent,'Failed to fetch');
+});
+
+
+test('navigation keeps one refresh control and disables the fallback outside Dashboard',()=>{
+ const s=shell(),toolbar={hidden:false},button={setAttribute(){}};
+ s.setRefreshControls(toolbar,button);
+ s.navigate('dashboard');assert.equal(toolbar.hidden,false);assert.equal(button.disabled,false);
+ s.navigate('settings');assert.equal(toolbar.hidden,false);assert.equal(button.disabled,true);
+ assert.match(toolbar.title,/settings/);
+ const moduleToolbar={hidden:true,querySelector(){return {}}};
+ s.addModule({descriptor:{id:'discovery',tab_id:'discovery'},panel:{},toolbar:moduleToolbar});
+ s.navigate('discovery');assert.equal(toolbar.hidden,true);assert.equal(moduleToolbar.hidden,false);
+ s.addModule({descriptor:{id:'static',tab_id:'static'},panel:{},toolbar:{querySelector(){return null}}});
+ s.navigate('static');assert.equal(toolbar.hidden,false);assert.equal(button.disabled,true);
+ assert.equal(toolbar.title,'Nothing to refresh');
+});
+
+test('changing views closes open dialogs, but polling the same view preserves them',()=>{
+ const s=shell();let closed=0;s.dialogs.push({close(){closed++}});
+ s.navigate('dashboard',false);assert.equal(closed,0);
+ s.navigate('settings',false);assert.equal(closed,1);
+});
+test('enabling a module refreshes the header action label without a reload',()=>{
+ const s=shell(),indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return false}},status:{dataset:{}},settings:{textContent:'Open settings'},details:{replaceChildren(){}}};
+ s.addModule({descriptor:{id:'containers'},headerStatus(){return {status:'Available',tone:'ok',action:'Open module',rows:[]}},indicator});
+ s.setState({states:{containers:{}},module_availability:{containers:{enabled:true}}});s.renderHeaderStatus();
+ assert.equal(indicator.settings.textContent,'Open module');
+});

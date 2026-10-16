@@ -1,0 +1,50 @@
+# Maintainer: Zelport project (https://github.com/zelport)
+# Generate with contrib/distribution/prepare.py.
+pkgname=zelport
+pkgver=@PKGVER@
+_upstream_version=@VERSION@
+pkgrel=1
+pkgdesc='Local HTTP gateway with named localhost addresses and encrypted relay connections'
+arch=('x86_64' 'aarch64')
+url='https://github.com/zelport/zelport'
+license=('MIT' 'BSD-3-Clause' 'ISC' 'MPL-2.0')
+depends=('ca-certificates')
+makedepends=('go>=1.27' 'make')
+optdepends=('systemd: user service management'
+            'openssh: Ports over SSH'
+            'docker: Docker container discovery'
+            'podman: Podman container discovery'
+            'nerdctl: containerd discovery')
+options=('!debug' '!strip')
+source=("zelport-${_upstream_version}.tar.gz::https://github.com/zelport/zelport/archive/refs/tags/v${_upstream_version}.tar.gz")
+sha256sums=('@SHA256@')
+
+prepare() {
+  cd "$srcdir/zelport-$_upstream_version"
+  export GOTOOLCHAIN=local GOWORK=off
+  export GOPATH="$srcdir/go" GOCACHE="$srcdir/go-build"
+  go mod download
+}
+
+build() {
+  cd "$srcdir/zelport-$_upstream_version"
+  export GOTOOLCHAIN=local GOWORK=off CGO_ENABLED=0
+  export GOPATH="$srcdir/go" GOCACHE="$srcdir/go-build"
+  export GOFLAGS='-mod=readonly -trimpath -buildmode=pie'
+  make build-full VERSION="$_upstream_version" EXTRA_LDFLAGS="-s -w"
+}
+
+check() {
+  cd "$srcdir/zelport-$_upstream_version"
+  ./bin/zelport --version
+  ./bin/zelport --help
+}
+
+package() {
+  cd "$srcdir/zelport-$_upstream_version"
+  install -Dm755 bin/zelport "$pkgdir/usr/bin/zelport"
+  install -Dm644 contrib/systemd/zelport.service "$pkgdir/usr/lib/systemd/user/zelport.service"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 licenses/*.txt -t "$pkgdir/usr/share/licenses/$pkgname/"
+  install -Dm644 THIRD_PARTY_NOTICES.txt "$pkgdir/usr/share/licenses/$pkgname/THIRD_PARTY_NOTICES.txt"
+}

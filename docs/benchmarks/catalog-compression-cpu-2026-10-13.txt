@@ -1,0 +1,14 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/wearetelag/snitzel/internal/cloud/secure
+cpu: Apple M4 Pro
+BenchmarkCatalogCompression/services1/seal-14         	    3330	     61047 ns/op	  834720 B/op	     157 allocs/op
+BenchmarkCatalogCompression/services1/open-14         	    7800	     26711 ns/op	   80810 B/op	     434 allocs/op
+BenchmarkCatalogCompression/services25/seal-14        	    2884	     84429 ns/op	  845266 B/op	     170 allocs/op
+BenchmarkCatalogCompression/services25/open-14        	    2434	     94257 ns/op	  150126 B/op	     895 allocs/op
+BenchmarkCatalogCompression/services100/seal-14       	    1462	    160815 ns/op	  894029 B/op	     182 allocs/op
+BenchmarkCatalogCompression/services100/open-14       	     858	    280421 ns/op	  330099 B/op	    2165 allocs/op
+BenchmarkCatalogCompression/services256/seal-14       	     744	    315033 ns/op	  998610 B/op	     191 allocs/op
+BenchmarkCatalogCompression/services256/open-14       	     342	    700961 ns/op	  835045 B/op	    4840 allocs/op
+PASS
+ok  	github.com/wearetelag/snitzel/internal/cloud/secure	1.965s

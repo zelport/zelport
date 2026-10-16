@@ -1,0 +1,26 @@
+[data-module="relay"] .relay-settings{padding:var(--panel-padding);margin:var(--space-4) 0;border:1px solid var(--line);border-radius:var(--radius-panel);background:var(--surface)}
+.relay-header p{margin:0 0 var(--space-6);font-size:var(--text-help)}
+.relay-connection{margin-bottom:var(--space-6)}
+.relay-connection .switch-field{margin:0 0 var(--space-3)}
+.relay-runtime{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px}
+.relay-runtime p{margin:0;overflow-wrap:anywhere}
+.relay-status-badges{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.relay-network{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:var(--space-3) var(--space-4);padding-top:var(--space-4);border-top:1px solid var(--line)}
+.relay-network .form-field{margin:0}
+.relay-network>p{grid-column:1/-1;margin:0}
+.relay-credentials{border-top:1px solid var(--line);margin-top:var(--space-6);padding-top:var(--space-4)}
+.relay-credentials>.switch-field{margin:0 0 var(--space-4)}
+.relay-credentials .form-field{margin:0 0 var(--space-2)}
+.relay-credentials input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--text-body)}
+.relay-credentials [role=status]:empty{display:none}
+.relay-open-access{color:var(--danger);background:var(--bg);border:1px solid var(--danger)}
+.relay-access-warning{padding:12px 14px;border-left:3px solid var(--danger);color:var(--danger);background:var(--bg)}
+.relay-actions{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap;padding-top:var(--space-4);border-top:1px solid var(--line)}
+.relay-actions .draft-notice{margin-left:auto;margin-right:0}
+.relay-settings>.route-error:empty{display:none}
+.relay-token-dialog{width:min(520px,calc(100vw - 32px))}
+.relay-token-dialog h2{margin-bottom:12px}
+.relay-token-dialog p{font-size:var(--text-help)}
+.relay-token-dialog .route-error{margin-top:12px}
+.relay-token-dialog .route-error:empty{display:none}
+@media(max-width:480px){.relay-network{grid-template-columns:minmax(0,1fr)}.relay-network .form-field:nth-child(2){max-width:120px}.relay-actions .draft-notice{flex-basis:100%;margin:0}}

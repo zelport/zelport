@@ -1,0 +1,14 @@
+# Copy only after adapting the binary, port and existing configuration paths.
+[Unit]
+Description=Zelport local service gateway
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/zelport --port 8080 --config %h/.config/zelport/config.json
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Zelport local service gateway
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/zelport
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target

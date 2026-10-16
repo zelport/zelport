@@ -1,0 +1,15 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/wearetelag/snitzel/internal/cloud/client
+cpu: Apple M4 Pro
+BenchmarkCatalogIdle/devices2/services1-14         	       1	22000549625 ns/op	         2.000 publications	         0.004664 relay-CPU-s/min	    246932 relay-alloc-B/min	      2618 relay-allocs/min	         0.7456 relay-heap-MiB	      5111 relay-in-B/min	     17896 relay-out-B/min
+BenchmarkCatalogIdle/devices2/services25-14        	       1	22001126458 ns/op	         2.000 publications	         0.004205 relay-CPU-s/min	    762092 relay-alloc-B/min	      2798 relay-allocs/min	         1.093 relay-heap-MiB	     18659 relay-in-B/min	     72089 relay-out-B/min
+BenchmarkCatalogIdle/devices2/services100-14       	       1	22001062083 ns/op	         2.000 publications	         0.01072 relay-CPU-s/min	   2189022 relay-alloc-B/min	      2744 relay-allocs/min	         2.232 relay-heap-MiB	     61203 relay-in-B/min	    242263 relay-out-B/min
+BenchmarkCatalogIdle/devices5/services1-14         	       1	22001057792 ns/op	         5.000 publications	         0.01284 relay-CPU-s/min	    716715 relay-alloc-B/min	      7851 relay-allocs/min	         1.243 relay-heap-MiB	     12777 relay-in-B/min	    103972 relay-out-B/min
+BenchmarkCatalogIdle/devices5/services25-14        	       1	22001107000 ns/op	         5.000 publications	         0.01766 relay-CPU-s/min	   2040857 relay-alloc-B/min	      8059 relay-allocs/min	         2.221 relay-heap-MiB	     46648 relay-in-B/min	    442682 relay-out-B/min
+BenchmarkCatalogIdle/devices5/services100-14       	       1	22001038542 ns/op	         5.000 publications	         0.03103 relay-CPU-s/min	   9685834 relay-alloc-B/min	     13919 relay-allocs/min	         1.783 relay-heap-MiB	    157833 relay-in-B/min	   3755509 relay-out-B/min
+BenchmarkCatalogIdle/devices20/services1-14        	       1	22000663792 ns/op	        20.00 publications	         0.2391 relay-CPU-s/min	  19338311 relay-alloc-B/min	    213719 relay-allocs/min	         2.410 relay-heap-MiB	    101631 relay-in-B/min	   7564553 relay-out-B/min
+BenchmarkCatalogIdle/devices20/services25-14       	       1	22000812291 ns/op	        20.00 publications	         0.2673 relay-CPU-s/min	  37448109 relay-alloc-B/min	    159531 relay-allocs/min	         2.150 relay-heap-MiB	    218130 relay-in-B/min	  24020338 relay-out-B/min
+BenchmarkCatalogIdle/devices20/services100-14      	       1	22001102125 ns/op	        20.00 publications	         0.4507 relay-CPU-s/min	 113325075 relay-alloc-B/min	    150306 relay-allocs/min	         2.548 relay-heap-MiB	    639699 relay-in-B/min	  75542965 relay-out-B/min
+PASS
+ok  	github.com/wearetelag/snitzel/internal/cloud/client	205.673s

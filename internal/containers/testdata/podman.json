@@ -1,0 +1,117 @@
+[
+  {
+    "Id": "0000000000000000000000000000000000000000000000000000000000000001",
+    "Names": [
+      "example-1"
+    ],
+    "State": "running",
+    "Ports": [
+      {
+        "host_ip": "",
+        "container_port": 4321,
+        "host_port": 4321,
+        "range": 1,
+        "protocol": "tcp"
+      },
+      {
+        "host_ip": "",
+        "container_port": 5173,
+        "host_port": 5173,
+        "range": 1,
+        "protocol": "tcp"
+      },
+      {
+        "host_ip": "",
+        "container_port": 8000,
+        "host_port": 8000,
+        "range": 1,
+        "protocol": "tcp"
+      },
+      {
+        "host_ip": "",
+        "container_port": 4321,
+        "host_port": 4321,
+        "range": 1,
+        "protocol": "udp"
+      },
+      {
+        "host_ip": "",
+        "container_port": 5173,
+        "host_port": 5173,
+        "range": 1,
+        "protocol": "udp"
+      },
+      {
+        "host_ip": "",
+        "container_port": 8000,
+        "host_port": 8000,
+        "range": 1,
+        "protocol": "udp"
+      }
+    ]
+  },
+  {
+    "Id": "0000000000000000000000000000000000000000000000000000000000000002",
+    "Names": [
+      "example-2"
+    ],
+    "State": "exited",
+    "Ports": null
+  },
+  {
+    "Id": "0000000000000000000000000000000000000000000000000000000000000003",
+    "Names": [
+      "example-3"
+    ],
+    "State": "exited",
+    "Ports": [
+      {
+        "host_ip": "127.0.0.1",
+        "container_port": 6443,
+        "host_port": 59618,
+        "range": 1,
+        "protocol": "tcp"
+      }
+    ]
+  },
+  {
+    "Id": "0000000000000000000000000000000000000000000000000000000000000004",
+    "Names": [
+      "example-4"
+    ],
+    "State": "exited",
+    "Ports": null
+  },
+  {
+    "Id": "0000000000000000000000000000000000000000000000000000000000000005",
+    "Names": [
+      "example-5"
+    ],
+    "State": "exited",
+    "Ports": null
+  },
+  {
+    "Id": "0000000000000000000000000000000000000000000000000000000000000006",
+    "Names": [
+      "example-6"
+    ],
+    "State": "exited",
+    "Ports": null
+  },
+  {
+    "Id": "0000000000000000000000000000000000000000000000000000000000000007",
+    "Names": [
+      "example-7"
+    ],
+    "State": "exited",
+    "Ports": [
+      {
+        "host_ip": "",
+        "container_port": 8080,
+        "host_port": 8080,
+        "range": 1,
+        "protocol": "tcp"
+      }
+    ]
+  }
+]
