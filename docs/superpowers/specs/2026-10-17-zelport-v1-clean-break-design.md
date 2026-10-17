@@ -29,22 +29,19 @@ existing package manifest requires one.
 External dependency versions, Go language versions and unrelated configuration
 schema versions do not change.
 
-The `zelport-cloud` and `zelport-cloud-sdk-go` directories are isolated,
-hypothetical project scaffolds. They are not part of this product, protocol,
-workspace build, release family or dependency graph. No gateway, SDK, relay,
-desktop integration or workspace code may import, consume or anticipate their
-APIs. Their possible future implementation requires a separate design. Mentions
-of these exact repository names describe only that isolation.
+The two unused hypothetical top-level project scaffolds are removed from the
+workspace. No surviving source, documentation, build configuration or project
+index may name them, reference them or anticipate their APIs. A future hosted
+product would require a new design and repository decision from first
+principles; this codebase reserves no boundary for it.
 
 ## Domain terminology
 
 Every implemented capability related to `ports_over_relay`, relay admission,
 relay transport, encrypted relay catalogs, peer traversal or relay-based remote
-administration uses the term **relay** exclusively. The term reserved for the
-hypothetical projects must not name an implemented relay concern. This applies to
-source paths, Go package names and aliases, functions, tests, errors, HTTP
-headers, scripts, documentation, CSS classes, JavaScript identifiers, tab IDs
-and URL fragments.
+administration uses the term **relay** exclusively. This applies to source paths,
+Go package names and aliases, functions, tests, errors, HTTP headers, scripts,
+documentation, CSS classes, JavaScript identifiers, tab IDs and URL fragments.
 
 The resulting relay-domain names include:
 
@@ -56,9 +53,8 @@ The resulting relay-domain names include:
 - the `#relay` module tab and relay-named UI identifiers;
 - `X-Zelport-Relay-Trace`.
 
-There are no aliases or redirects for the retired names. External proper nouns
-such as Cloudflare retain their real names. The two hypothetical repository names
-also remain unchanged but have no domain or dependency relationship with relay.
+There are no aliases or redirects for the retired names. Unrelated external
+proper nouns retain their real names.
 
 ## Protocol identity
 
@@ -160,8 +156,8 @@ Implementation follows test-driven development:
 7. Run SDK, relay and gateway race tests and vet; run the relay integration
    harness, gateway feature-module matrix, JavaScript tests, packaging checks and
    supported builds.
-8. Scan the final working trees and rebuilt binaries for the retired identity and
-   for hypothetical-project terminology incorrectly used in the relay domain.
+8. Scan the final working trees and rebuilt binaries for the retired identity,
+   removed project references and incorrect terminology in the relay domain.
 
 The existing unrelated gateway working-tree changes must be preserved. No task
 may discard, reset or overwrite them.
@@ -175,8 +171,8 @@ The change is complete when:
 - protocol version 1 and the `zelport-relay/v1` namespace are used consistently;
 - version-3 protocol inputs are rejected and no compatibility code exists;
 - implemented relay functionality uses relay-domain names exclusively;
-- no implemented repository depends on or anticipates `zelport-cloud` or
-  `zelport-cloud-sdk-go`;
+- the unused hypothetical project scaffolds and every reference to them are
+  absent from the workspace;
 - active product metadata names v0.10.0 without preview qualifiers;
 - supported binaries have Zelport names and contain no retired product identity;
 - the full coordinated verification suite passes, or every pre-existing or
