@@ -44,7 +44,6 @@ class ReleaseVerificationWorkflowTest(unittest.TestCase):
         self.assertRegex(self.workflow, r'(?m)^permissions:\n  contents: read$')
         self.assertIn('name: zelport-release-${{ github.run_id }}', self.workflow)
         self.assertIn('retention-days: 1', self.workflow)
-        self.assertNotIn('contents: write', self.workflow)
 
     def test_official_actions_are_immutably_pinned(self):
         actions = {
@@ -69,6 +68,53 @@ class ReleaseVerificationWorkflowTest(unittest.TestCase):
             '            --version "${{ needs.build.outputs.version }}" \\\n'
             '            --platform "${{ matrix.platform }}"',
             self.workflow)
+
+
+class ReleasePublicationWorkflowTest(unittest.TestCase):
+    def setUp(self):
+        self.workflow = WORKFLOW.read_text(encoding='utf-8')
+
+    def test_publish_is_tag_only_and_waits_for_build_and_native_jobs(self):
+        self.assertRegex(
+            self.workflow,
+            r"(?m)^  publish:\n    if: github\.ref_type == 'tag'\n"
+            r"    needs: \[build, native\]$")
+
+    def test_write_permission_is_local_to_publish_job(self):
+        self.assertEqual(self.workflow.count('contents: write'), 1)
+        publish = self.workflow.split('\n  publish:', 1)[1]
+        self.assertRegex(publish, r'(?m)^    permissions:\n      contents: write$')
+
+    def test_existing_release_is_refused_before_draft_creation(self):
+        publish = self.workflow.split('\n  publish:', 1)[1]
+        preflight = publish.index('gh release view "$GITHUB_REF_NAME"')
+        create = publish.index('gh release create "$GITHUB_REF_NAME"')
+        self.assertLess(preflight, create)
+        self.assertIn('refusing to replace existing release', publish)
+        self.assertIn('--draft', publish)
+        self.assertIn('--verify-tag', publish)
+
+    def test_draft_is_downloaded_and_verified_before_becoming_public(self):
+        publish = self.workflow.split('\n  publish:', 1)[1]
+        download = publish.index('gh release download "$GITHUB_REF_NAME"')
+        checksum = publish.index('sha256sum --check SHA256SUMS')
+        compare = publish.index('cmp "$asset" "published/${asset##*/}"')
+        make_public = publish.index(
+            'gh release edit "$GITHUB_REF_NAME" --draft=false')
+        self.assertLess(download, checksum)
+        self.assertLess(checksum, compare)
+        self.assertLess(compare, make_public)
+
+    def test_failure_cleanup_deletes_only_the_draft_created_by_this_job(self):
+        publish = self.workflow.split('\n  publish:', 1)[1]
+        self.assertIn('created_draft=false', publish)
+        self.assertIn('if [[ "$created_draft" == true ]]; then', publish)
+        self.assertIn('gh release delete "$GITHUB_REF_NAME" --yes', publish)
+        self.assertIn('trap cleanup EXIT', publish)
+        self.assertIn('created_draft=true', publish)
+        self.assertLess(
+            publish.index('gh release create "$GITHUB_REF_NAME"'),
+            publish.index('created_draft=true'))
 
 
 if __name__ == '__main__':
