@@ -37,17 +37,6 @@ func New() feature.Module {
 func (m *Module) Start(parent context.Context, h feature.Host) error {
 	m.Base.Start(parent, h)
 	m.store = store{h}
-	initial, _ := m.store.snapshot()
-	if initial.DeviceID != "" && initial.AdminServiceID == "" {
-		if e := m.store.update(parent, feature.CommitOptions{}, func(s *Settings) error {
-			if s.AdminServiceID == "" {
-				s.AdminServiceID = protocol.ID()
-			}
-			return nil
-		}); e != nil {
-			return e
-		}
-	}
 	ctx, cancel := context.WithCancel(parent)
 	m.cancel = cancel
 	m.removeMiddleware = h.AddMiddleware(m.middleware)

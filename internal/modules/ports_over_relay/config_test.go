@@ -53,7 +53,7 @@ func TestCloudIdentityRecovery(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	for _, change := range []func(*Settings){func(v *Settings) { v.DeviceID = "" }, func(v *Settings) { v.PrivateKey = "invalid" }, func(v *Settings) { v.GroupToken = "short" }} {
+	for _, change := range []func(*Settings){func(v *Settings) { v.DeviceID = "" }, func(v *Settings) { v.PrivateKey = "invalid" }, func(v *Settings) { v.GroupToken = "short" }, func(v *Settings) { v.AdminServiceID = "" }} {
 		v := s
 		change(&v)
 		b, _ := json.Marshal(v)
@@ -63,6 +63,60 @@ func TestCloudIdentityRecovery(t *testing.T) {
 	}
 	if e = mod.ValidateSettings(json.RawMessage(`{}`)); e != nil {
 		t.Fatal(e)
+	}
+}
+
+func TestRelayProtocolVersionIsRequiredForEstablishedState(t *testing.T) {
+	mod, _ := testModule(t)
+	s, err := newIdentity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.ProtocolVersion != 1 {
+		t.Fatalf("protocol version = %d, want 1", s.ProtocolVersion)
+	}
+
+	encoded, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(encoded, &fields); err != nil {
+		t.Fatal(err)
+	}
+	delete(fields, "protocol_version")
+	missing, err := json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	invalid := []json.RawMessage{missing}
+	for _, version := range []int{0, 2, 3, 6} {
+		candidate := s
+		candidate.ProtocolVersion = version
+		body, err := json.Marshal(candidate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		invalid = append(invalid, body)
+	}
+	for _, body := range invalid {
+		if err := mod.ValidateSettings(body); err == nil || err.Error() != "relay protocol_version must be 1; create a fresh Ports over Relay configuration" {
+			t.Fatalf("unexpected validation result for %s: %v", body, err)
+		}
+	}
+}
+
+func TestRelayWatermarksRequireDigestVersionOne(t *testing.T) {
+	mod, _ := testModule(t)
+	s, _ := newIdentity()
+	key := strings.Repeat("a", 64) + "/" + protocol.ID()
+	for _, version := range []int{0, 2, 3, 6} {
+		s.Watermarks = map[string]Watermark{key: {DigestVersion: version, Sequence: 1, Digest: strings.Repeat("b", 64)}}
+		body, _ := json.Marshal(s)
+		if err := mod.ValidateSettings(body); err == nil {
+			t.Fatalf("accepted digest version %d", version)
+		}
 	}
 }
 func TestCloudSettingsWriteFailure(t *testing.T) {
@@ -110,13 +164,22 @@ func TestModuleAvailabilityRequiresConnectionDisabled(t *testing.T) {
 	}
 }
 
-func TestStoredRelayURLSurvivesWireUpgrade(t *testing.T) {
+func TestRelayURLAcceptsOnlyCurrentEndpoint(t *testing.T) {
 	mod, _ := testModule(t)
 	s, _ := newIdentity()
-	s.RelayURL = "wss://relay.example/v2/ws"
-	b, _ := json.Marshal(s)
-	if e := mod.ValidateSettings(b); e != nil {
-		t.Fatal("existing endpoint setting rejected", e)
+	for _, relayURL := range []string{"wss://relay.example", "wss://relay.example/", "wss://relay.example/v1/ws"} {
+		s.RelayURL = relayURL
+		body, _ := json.Marshal(s)
+		if err := mod.ValidateSettings(body); err != nil {
+			t.Fatalf("current endpoint %q rejected: %v", relayURL, err)
+		}
+	}
+	for _, relayURL := range []string{"wss://relay.example/v0/ws", "wss://relay.example/v2/ws", "wss://relay.example/v3/ws"} {
+		s.RelayURL = relayURL
+		body, _ := json.Marshal(s)
+		if err := mod.ValidateSettings(body); err == nil {
+			t.Fatalf("retired endpoint %q accepted", relayURL)
+		}
 	}
 }
 

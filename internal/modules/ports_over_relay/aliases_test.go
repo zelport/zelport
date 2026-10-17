@@ -7,6 +7,7 @@ import (
 	"github.com/zelport/zelport-sdk-go/client"
 	"github.com/zelport/zelport-sdk-go/protocol"
 	"github.com/zelport/zelport/internal/app"
+	"github.com/zelport/zelport/internal/feature"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,7 +96,11 @@ func TestAliasPersistenceAndUnavailable(t *testing.T) {
 
 func TestPeerChangesAreEffectiveCommits(t *testing.T) {
 	m, _ := testModule(t)
-	r := protocol.Record{Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), PublicKey: protocol.RandomNonce(), Hostname: "first", Sequence: 1}
+	identity, _ := newIdentity()
+	if err := m.store.update(context.Background(), feature.CommitOptions{}, func(settings *Settings) error { *settings = identity; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	r := protocol.Record{Version: 1, Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), PublicKey: protocol.RandomNonce(), Hostname: "first", Sequence: 1}
 	r.Services = []protocol.Service{{Kind: protocol.Administration, ID: protocol.ID(), Domain: r.DeviceID + ".zelport.localhost"}}
 	before := m.Host.Snapshot().EditRevision
 	if e := m.acceptRecord(r, []byte("first")); e != nil {
@@ -134,7 +139,11 @@ func TestPeerPersistenceFailureAndRestart(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer manager.Close()
-	r := protocol.Record{Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), PublicKey: protocol.RandomNonce(), Hostname: "original", Sequence: 1}
+	identity, _ := newIdentity()
+	if e = mod.store.update(context.Background(), feature.CommitOptions{}, func(settings *Settings) error { *settings = identity; return nil }); e != nil {
+		t.Fatal(e)
+	}
+	r := protocol.Record{Version: 1, Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), PublicKey: protocol.RandomNonce(), Hostname: "original", Sequence: 1}
 	r.Services = []protocol.Service{{Kind: protocol.Administration, ID: protocol.ID(), Domain: r.DeviceID + ".zelport.localhost"}}
 	if e = mod.acceptRecord(r, []byte("one")); e != nil {
 		t.Fatal(e)

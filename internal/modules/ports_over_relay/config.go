@@ -14,22 +14,23 @@ import (
 )
 
 type Watermark struct {
-	DigestVersion int    `json:"digest_version,omitempty"`
+	DigestVersion int    `json:"digest_version"`
 	Sequence      uint64 `json:"sequence"`
 	Digest        string `json:"digest"`
 }
 type Settings struct {
-	AdminServiceID string                  `json:"admin_service_id,omitempty"`
-	Peers          map[string]PeerIdentity `json:"peers,omitempty"`
-	Enabled        bool                    `json:"enabled"`
-	Publish        bool                    `json:"publish"`
-	RelayURL       string                  `json:"relay_url,omitempty"`
-	AccessToken    string                  `json:"access_token,omitempty"`
-	GroupToken     string                  `json:"group_token,omitempty"`
-	DeviceID       string                  `json:"device_id,omitempty"`
-	PrivateKey     string                  `json:"private_key,omitempty"`
-	Sequence       uint64                  `json:"sequence,omitempty"`
-	Watermarks     map[string]Watermark    `json:"watermarks,omitempty"`
+	ProtocolVersion int                     `json:"protocol_version"`
+	AdminServiceID  string                  `json:"admin_service_id,omitempty"`
+	Peers           map[string]PeerIdentity `json:"peers,omitempty"`
+	Enabled         bool                    `json:"enabled"`
+	Publish         bool                    `json:"publish"`
+	RelayURL        string                  `json:"relay_url,omitempty"`
+	AccessToken     string                  `json:"access_token,omitempty"`
+	GroupToken      string                  `json:"group_token,omitempty"`
+	DeviceID        string                  `json:"device_id,omitempty"`
+	PrivateKey      string                  `json:"private_key,omitempty"`
+	Sequence        uint64                  `json:"sequence,omitempty"`
+	Watermarks      map[string]Watermark    `json:"watermarks,omitempty"`
 }
 type ImportSettings struct {
 	protocol.Import
@@ -45,15 +46,18 @@ func newIdentity() (Settings, error) {
 	if e != nil {
 		return Settings{}, e
 	}
-	return Settings{AdminServiceID: protocol.ID(), DeviceID: protocol.ID(), PrivateKey: base64.RawURLEncoding.EncodeToString(key.Bytes()), GroupToken: token}, nil
+	return Settings{ProtocolVersion: protocol.Version, AdminServiceID: protocol.ID(), DeviceID: protocol.ID(), PrivateKey: base64.RawURLEncoding.EncodeToString(key.Bytes()), GroupToken: token}, nil
 }
 func (m *Module) ValidateSettings(b json.RawMessage) error {
 	var s Settings
 	if e := feature.Decode(b, &s); e != nil {
 		return e
 	}
-	established := s.DeviceID != "" || s.PrivateKey != "" || s.GroupToken != "" || s.Enabled || s.Sequence != 0
+	established := s.ProtocolVersion != 0 || s.AdminServiceID != "" || len(s.Peers) != 0 || s.Enabled || s.Publish || s.RelayURL != "" || s.AccessToken != "" || s.GroupToken != "" || s.DeviceID != "" || s.PrivateKey != "" || s.Sequence != 0 || len(s.Watermarks) != 0
 	if established {
+		if s.ProtocolVersion != protocol.Version {
+			return errors.New("relay protocol_version must be 1; create a fresh Ports over Relay configuration")
+		}
 		if !protocol.ValidID(s.DeviceID) {
 			return errors.New("relay identity is missing or invalid; restore the configuration backup")
 		}
@@ -62,6 +66,9 @@ func (m *Module) ValidateSettings(b json.RawMessage) error {
 		}
 		if _, e := protocol.DecodeKey(s.GroupToken); e != nil {
 			return errors.New("E2E secret must contain 32 random bytes")
+		}
+		if !protocol.ValidID(s.AdminServiceID) || s.AdminServiceID == s.DeviceID {
+			return errors.New("invalid administration service identity")
 		}
 	}
 	if s.AccessToken != "" && s.AccessToken == s.GroupToken {
@@ -74,15 +81,12 @@ func (m *Module) ValidateSettings(b json.RawMessage) error {
 	}
 	if s.RelayURL != "" {
 		u, e := url.Parse(s.RelayURL)
-		if e != nil || u.Host == "" || (u.Scheme != "ws" && u.Scheme != "wss") || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/" && u.Path != "/v3/ws" && u.Path != "/v2/ws") {
+		if e != nil || u.Host == "" || (u.Scheme != "ws" && u.Scheme != "wss") || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/" && u.Path != protocol.RelayEndpoint) {
 			return errors.New("relay URL must be ws://host or wss://host without credentials or query")
 		}
 	}
 	if s.Enabled && s.RelayURL == "" {
 		return errors.New("relay URL is required")
-	}
-	if s.AdminServiceID != "" && (!protocol.ValidID(s.AdminServiceID) || s.AdminServiceID == s.DeviceID) {
-		return errors.New("invalid administration service identity")
 	}
 	if len(s.Peers) > maxPeers {
 		return errors.New("administration peer history limit")
@@ -112,7 +116,7 @@ func (m *Module) ValidateSettings(b json.RawMessage) error {
 		return errors.New("administration alias history limit")
 	}
 	for k, w := range s.Watermarks {
-		if (w.DigestVersion != 0 && w.DigestVersion != 3) || len(k) > 256 || w.Sequence == 0 || len(w.Digest) != 64 {
+		if w.DigestVersion != protocol.Version || len(k) > 256 || w.Sequence == 0 || len(w.Digest) != 64 {
 			return errors.New("invalid catalog watermark")
 		}
 	}

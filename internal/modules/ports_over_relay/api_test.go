@@ -45,7 +45,7 @@ func TestCloudCatalogWatermarkRejectsRollback(t *testing.T) {
 	mod, _ := testModule(t)
 	s, _ := newIdentity()
 	mod.store.update(context.Background(), feature.CommitOptions{}, func(v *Settings) error { *v = s; return nil })
-	r := protocol.Record{Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), Sequence: 2}
+	r := protocol.Record{Version: 1, Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), Sequence: 2}
 	if e := mod.acceptRecord(r, []byte("record-two")); e != nil {
 		t.Fatal(e)
 	}
@@ -130,37 +130,41 @@ func TestEmptyAccessTokenAndExplicitClearing(t *testing.T) {
 	}
 }
 
-func TestLegacyWatermarkFloor(t *testing.T) {
+func TestCatalogPersistsDigestVersionOneAndRejectsVersionThree(t *testing.T) {
 	mod, _ := testModule(t)
 	s, _ := newIdentity()
-	r := protocol.Record{Version: 3, Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), Sequence: 2}
-	raw := []byte("canonical")
-	s.Watermarks = map[string]Watermark{r.Group + "/" + r.DeviceID: {Sequence: 2, Digest: protocol.Digest(raw)}}
 	if e := mod.store.update(context.Background(), feature.CommitOptions{}, func(v *Settings) error { *v = s; return nil }); e != nil {
 		t.Fatal(e)
 	}
-	if e := mod.acceptRecordVersion(r, raw, 3); e == nil {
-		t.Fatal("legacy equal floor accepted")
-	}
-	r.Sequence++
-	if e := mod.acceptRecordVersion(r, raw, 3); e != nil {
+	r := protocol.Record{Version: 1, Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), Sequence: 2}
+	raw := []byte("canonical")
+	if e := mod.acceptRecord(r, raw); e != nil {
 		t.Fatal(e)
 	}
-	saved, _ := mod.store.snapshot()
-	if saved.Watermarks[r.Group+"/"+r.DeviceID].DigestVersion != 3 {
+	saved, revision := mod.store.snapshot()
+	if saved.Watermarks[r.Group+"/"+r.DeviceID].DigestVersion != 1 {
 		t.Fatal("missing semantic version")
 	}
-	if e := mod.acceptRecordVersion(r, raw, 3); e != nil {
-		t.Fatal("idempotence", e)
+	r.Version = 3
+	r.Sequence++
+	if e := mod.acceptRecord(r, []byte("version-three")); e == nil {
+		t.Fatal("version-3 catalog accepted")
 	}
-	if e := mod.acceptRecordVersion(r, []byte("changed"), 3); e == nil {
-		t.Fatal("content substitution")
+	after, afterRevision := mod.store.snapshot()
+	beforeJSON, _ := json.Marshal(saved)
+	afterJSON, _ := json.Marshal(after)
+	if revision != afterRevision || string(beforeJSON) != string(afterJSON) {
+		t.Fatal("rejected catalog changed stored state")
 	}
 }
 
 func TestCatalogSemanticWatermarkIdempotentRevision(t *testing.T) {
 	mod, _ := testModule(t)
-	r := protocol.Record{Version: 3, Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), Sequence: 2}
+	identity, _ := newIdentity()
+	if err := mod.store.update(context.Background(), feature.CommitOptions{}, func(settings *Settings) error { *settings = identity; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	r := protocol.Record{Version: 1, Group: strings.Repeat("a", 64), DeviceID: protocol.ID(), Sequence: 2}
 	if e := mod.acceptRecord(r, []byte("same")); e != nil {
 		t.Fatal(e)
 	}

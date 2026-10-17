@@ -91,9 +91,9 @@ func (m *Module) Catalog(ctx context.Context) (protocol.Record, error) {
 	return record, e
 }
 func (m *Module) acceptRecord(r protocol.Record, raw []byte) error {
-	return m.acceptRecordVersion(r, raw, 3)
-}
-func (m *Module) acceptRecordVersion(r protocol.Record, raw []byte, version int) error {
+	if r.Version != protocol.Version {
+		return fmt.Errorf("unsupported relay catalog version %d; create a fresh Ports over Relay configuration", r.Version)
+	}
 	key := r.Group + "/" + r.DeviceID
 	digest := protocol.Digest(raw)
 	return m.store.updateClassified(context.Background(), feature.CommitOptions{}, true, func(s *Settings) error {
@@ -101,7 +101,7 @@ func (m *Module) acceptRecordVersion(r protocol.Record, raw []byte, version int)
 			s.Watermarks = map[string]Watermark{}
 		}
 		old, ok := s.Watermarks[key]
-		if ok && (r.Sequence < old.Sequence || r.Sequence == old.Sequence && (digest != old.Digest || old.DigestVersion != version)) {
+		if ok && (r.Sequence < old.Sequence || r.Sequence == old.Sequence && (digest != old.Digest || old.DigestVersion != protocol.Version)) {
 			return errors.New("catalog replay or rolled-back provider configuration")
 		}
 		for _, route := range m.Host.Snapshot().Routes {
@@ -117,7 +117,7 @@ func (m *Module) acceptRecordVersion(r protocol.Record, raw []byte, version int)
 		if e := rememberPeer(s, r); e != nil {
 			return e
 		}
-		s.Watermarks[key] = Watermark{Sequence: r.Sequence, Digest: digest, DigestVersion: version}
+		s.Watermarks[key] = Watermark{Sequence: r.Sequence, Digest: digest, DigestVersion: protocol.Version}
 		return nil
 	})
 }

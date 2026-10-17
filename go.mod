@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	github.com/zelport/zelport-relay v0.1.0-preview.2
-	github.com/zelport/zelport-sdk-go v0.1.0-preview.2
+	github.com/zelport/zelport-relay v0.10.0
+	github.com/zelport/zelport-sdk-go v0.10.0
 	golang.org/x/sys v0.49.0
 )
