@@ -19,9 +19,18 @@ Each archive contains executable `zelport`, `LICENSE` and
 uses release tag `v0.10.0`, records the measured archive hash for each platform
 and omits `revision` for the first package.
 
+The release workflow builds this bundle once and runs the executable from each
+archive on its matching native macOS or Linux, ARM64 or x86-64 GitHub-hosted
+runner. Only a bundle that passes all four native acceptance jobs can enter the
+draft publication step. The workflow downloads that draft again, verifies
+`SHA256SUMS` and compares every asset byte-for-byte before making it public.
+It never rebuilds an archive after native testing.
+
 Publish the tap formula only after every referenced release URL is immutable and
 its downloaded bytes match the candidate checksum. Run `brew style`, strict
 online audit, install and formula tests in a clean Homebrew environment.
+The tap and Zelport Installer consume the immutable App release assets; their
+automation must not compile replacement binaries.
 
 ## Install and service
 

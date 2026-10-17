@@ -49,6 +49,18 @@ make build
 App. `make build-core` produces the diagnostic `zelport-core` executable for
 module-boundary checks; it is not a separately distributed product.
 
+## Release verification
+
+The release workflow builds the macOS and Linux archives for ARM64 and x86-64
+once. It then executes each packaged binary on a matching standard
+GitHub-hosted runner and verifies startup, the standard module composition,
+Local Ports proxying, Local Integration, Built-in Relay, Ports over Relay and
+graceful shutdown. A stable tag is published only after all four native jobs
+pass, and publication uses the exact tested archives without rebuilding them.
+
+Homebrew and Zelport Installer automation consume these immutable App release
+assets. They verify their own installation paths but never rebuild Zelport App.
+
 Useful flags:
 
 - `--port`: Localhost port, default `8080`; listeners bind only to loopback.
