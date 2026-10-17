@@ -1,4 +1,4 @@
-//go:build containers
+//go:build !zelport_core || containers
 
 package main
 

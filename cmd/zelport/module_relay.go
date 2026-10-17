@@ -1,4 +1,4 @@
-//go:build built_in_relay
+//go:build !zelport_core || built_in_relay
 
 package main
 

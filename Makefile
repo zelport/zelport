@@ -5,9 +5,8 @@ GIT_DIRTY := $(shell git status --porcelain --untracked-files=normal 2>/dev/null
 VERSION ?= dev$(if $(GIT_REVISION),-$(GIT_REVISION)$(if $(GIT_DIRTY),-dirty))
 EXTRA_LDFLAGS ?=
 VERSION_LDFLAGS = $(EXTRA_LDFLAGS) -X main.version=$(VERSION) -X 'main.builtAt=$(BUILD_TIME)'
-FEATURE_TAGS := docker_sandboxes,containers,local_ports,remote_http,ports_over_ssh,ports_over_relay,built_in_relay
 
-.PHONY: check test vet build build-core build-full check-modules check-packaging release
+.PHONY: check test vet build build-core check-modules check-packaging release
 check: test vet check-packaging
 
 check-packaging:
@@ -18,23 +17,19 @@ check-packaging:
 
 # Supply an explicit release version, e.g. make release VERSION=0.1.0.
 release:
-	GO='$(GO)' python3 scripts/release.py --version '$(VERSION)' --tags '$(FEATURE_TAGS)' --output 'bin/homebrew/$(VERSION)'
+	GO='$(GO)' python3 scripts/release.py --version '$(VERSION)' --output 'bin/homebrew/$(VERSION)'
 
 test:
 	GOWORK=off $(GO) test -race ./...
-	GOWORK=off $(GO) test -race -tags '$(FEATURE_TAGS)' ./...
 
 vet:
 	GOWORK=off $(GO) vet ./...
-	GOWORK=off $(GO) vet -tags '$(FEATURE_TAGS)' ./...
 
-build: build-full
+build:
+	GOWORK=off $(GO) build -ldflags "$(VERSION_LDFLAGS)" -o bin/zelport ./cmd/zelport
 
 build-core:
-	GOWORK=off $(GO) build -ldflags "$(VERSION_LDFLAGS)" -o bin/zelport-core ./cmd/zelport
-
-build-full:
-	GOWORK=off $(GO) build -tags '$(FEATURE_TAGS)' -ldflags "$(VERSION_LDFLAGS)" -o bin/zelport ./cmd/zelport
+	GOWORK=off $(GO) build -tags zelport_core -ldflags "$(VERSION_LDFLAGS)" -o bin/zelport-core ./cmd/zelport
 
 check-modules:
-	GO='$(GO)' FULL_TAGS='$(FEATURE_TAGS)' sh scripts/check-module-builds.sh
+	GO='$(GO)' sh scripts/check-module-builds.sh

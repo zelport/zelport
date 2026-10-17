@@ -69,7 +69,6 @@ def package(version, binaries, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', required=True)
-    parser.add_argument('--tags', required=True, help='Full feature tags from the Makefile')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     validate_version(args.version)
@@ -82,7 +81,7 @@ def main():
             goos, goarch = platform.split('_')
             env = dict(os.environ, GOOS=goos, GOARCH=goarch, CGO_ENABLED='0', GOWORK='off')
             subprocess.run([
-                os.environ.get('GO', 'go'), 'build', '-trimpath', '-tags', args.tags,
+                os.environ.get('GO', 'go'), 'build', '-trimpath',
                 '-ldflags', f"-s -w -X main.version={args.version} -X 'main.builtAt={built_at}'",
                 '-o', str(binaries / platform), './cmd/zelport',
             ], cwd=ROOT, env=env, check=True)

@@ -1,4 +1,4 @@
-//go:build ports_over_ssh
+//go:build !zelport_core || ports_over_ssh
 
 package main
 

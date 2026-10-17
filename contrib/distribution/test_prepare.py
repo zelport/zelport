@@ -14,7 +14,7 @@ class PackagingTests(unittest.TestCase):
     def source(self, root, local=False):
         path = root / 'source.tar.gz'
         with tarfile.open(path, 'w:gz') as tar:
-            files = {'go.mod': 'module github.com/zelport/zelport\ngo 1.27.0\n' + ('require github.com/zelport/zelport-sdk-go v0.0.0-local.abc\n' if local else ''), 'Makefile': 'build-full:\n', 'LICENSE': 'MIT', 'THIRD_PARTY_NOTICES.txt': 'notices', 'contrib/systemd/zelport.service': '[Service]\n'}
+            files = {'go.mod': 'module github.com/zelport/zelport\ngo 1.27.0\n' + ('require github.com/zelport/zelport-sdk-go v0.0.0-local.abc\n' if local else ''), 'Makefile': 'build:\n', 'LICENSE': 'MIT', 'THIRD_PARTY_NOTICES.txt': 'notices', 'contrib/systemd/zelport.service': '[Service]\n'}
             for name, text in files.items():
                 data = text.encode()
                 info = tarfile.TarInfo('zelport-0.1.0-preview.3/' + name)
@@ -31,7 +31,8 @@ class PackagingTests(unittest.TestCase):
             self.assertIn(hashlib.sha256(source.read_bytes()).hexdigest(), recipe)
             self.assertIn('pkgname=zelport\n', recipe)
             self.assertIn('pkgver=0.1.0preview.3\n', recipe)
-            self.assertIn('make build-full', recipe)
+            self.assertIn('make build', recipe)
+            self.assertNotIn('make build-full', recipe)
             self.assertNotIn('@VERSION@', recipe)
             self.assertNotIn('source_x86_64', recipe)
             with self.assertRaises(FileExistsError):

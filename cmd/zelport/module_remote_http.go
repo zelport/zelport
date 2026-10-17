@@ -1,4 +1,4 @@
-//go:build remote_http
+//go:build !zelport_core || remote_http
 
 package main
 

@@ -1,4 +1,4 @@
-//go:build docker_sandboxes
+//go:build !zelport_core || docker_sandboxes
 
 package main
 

@@ -1,4 +1,4 @@
-//go:build ports_over_relay
+//go:build !zelport_core || ports_over_relay
 
 package main
 

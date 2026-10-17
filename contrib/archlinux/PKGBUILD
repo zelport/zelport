@@ -31,7 +31,7 @@ build() {
   export GOTOOLCHAIN=local GOWORK=off CGO_ENABLED=0
   export GOPATH="$srcdir/go" GOCACHE="$srcdir/go-build"
   export GOFLAGS='-mod=readonly -trimpath -buildmode=pie'
-  make build-full VERSION="$_upstream_version" EXTRA_LDFLAGS="-s -w"
+  make build VERSION="$_upstream_version" EXTRA_LDFLAGS="-s -w"
 }
 
 check() {

@@ -1,4 +1,4 @@
-//go:build local_ports
+//go:build !zelport_core || local_ports
 
 package main
 
