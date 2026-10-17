@@ -94,6 +94,10 @@ func (m *Module) view(r feature.Route) (feature.Summary, *engine.Port) {
 		if inv.Engine != c.Engine || inv.Connection != c.Connection {
 			continue
 		}
+		detail := inv.Error
+		if inv.RuntimeStatus == "permission_denied" {
+			detail = "Container engine access denied. Open Containers in the header for help."
+		}
 		for _, box := range inv.Containers {
 			if box.ID != c.ID {
 				continue
@@ -126,7 +130,7 @@ func (m *Module) view(r feature.Route) (feature.Summary, *engine.Port) {
 				v.Target = fmt.Sprintf("Container port %d → Aux port %d", c.Port, target.HostPort)
 				if inv.Stale {
 					v.State = "stale"
-					v.Detail = inv.Error
+					v.Detail = detail
 				}
 				return v, target
 			}
@@ -135,7 +139,7 @@ func (m *Module) view(r feature.Route) (feature.Summary, *engine.Port) {
 		}
 		if inv.Stale {
 			v.State = "stale"
-			v.Detail = inv.Error
+			v.Detail = detail
 		}
 	}
 	return v, nil

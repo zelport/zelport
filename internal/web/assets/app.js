@@ -101,12 +101,26 @@ function renderHeaderStatus(){
   const i=m.indicator;i.wrap.hidden=!value;
   if(!value){if(i.popover.matches(':popover-open'))i.popover.hidePopover();continue;}
   visible++;ui.setText(i.settings,value.action||'Open settings');i.trigger.dataset.tone=value.tone;i.trigger.title=`${m.descriptor.name}: ${value.status}`;i.trigger.setAttribute('aria-label',i.trigger.title);
-  ui.setText(i.status,value.status);i.status.dataset.tone=value.tone;ui.renderChanged(i.details,value.sections||value.rows,()=>i.details.replaceChildren(...(value.sections||[{rows:value.rows}]).map(section=>{
+  ui.setText(i.status,value.status);i.status.dataset.tone=value.tone;ui.renderChanged(i.details,value.sections||value.rows,()=>{
+   const expanded=new Set([...i.details.querySelectorAll('details[open]')].map(d=>d.dataset.key));
+   i.details.replaceChildren(...(value.sections||[{rows:value.rows}]).map(section=>{
    const group=ui.el('section','connection-section'),facts=ui.el('dl','connection-facts');
    if(section.title)group.append(ui.el('h3',null,section.title));
    for(const {label,value} of section.rows){const row=ui.el('div');row.append(ui.el('dt',null,label),ui.el('dd',null,value));facts.append(row);}
-   group.append(facts);return group;
-  })));
+   group.append(facts);
+   const disclosure=label=>{
+    const details=ui.el('details','connection-diagnostic');details.dataset.key=`${section.title||''}:${label}`;details.open=expanded.has(details.dataset.key);
+    details.append(ui.el('summary',null,label));details.addEventListener('toggle',positionHeaderPopovers);group.append(details);return details;
+   };
+   if(section.help){
+    const help=section.help,details=disclosure('How to fix');
+    details.append(ui.el('p',null,help.text),ui.el('pre',null,help.command),ui.el('p',null,help.after),ui.el('p',null,help.note));
+    const link=ui.el('a',null,help.linkLabel);link.href=help.url;link.target='_blank';link.rel='noopener noreferrer';details.append(link);
+   }
+   if(section.diagnostic)disclosure('Technical details').append(ui.el('pre',null,section.diagnostic));
+   return group;
+  }));
+  });
  }
  let fallback=host.querySelector('.local-label');if(!fallback){fallback=ui.el('span','local-label');host.prepend(fallback);}
  fallback.hidden=visible>0&&!state.remote_admin;ui.setText(fallback,state.remote_admin?'Remote · E2E':'Local');

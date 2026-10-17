@@ -4,7 +4,7 @@ export function engineStatuses(state){
   const e=(state.data?.engines||[]).find(e=>e.engine===id)||{};
   const used=(state.routes||[]).some(r=>r.editor?.container?.engine===id);
   const cli=e.cli_status==='found'?'Found':e.cli_status==='not_found'?'Not found':'Checking';
-  const runtime=({available:'Available',unavailable:'Unavailable'})[e.runtime_status]||'Not checked';
+  const runtime=({available:'Available',unavailable:'Unavailable',permission_denied:'Permission denied'})[e.runtime_status]||'Not checked';
   const problem=!!e.error||e.stale;
   const tone=problem?(used?'error':cli==='Not found'?'neutral':'pending'):runtime==='Available'?'ok':'neutral';
   return {id,name,cli,runtime,tone,path:e.cli_path||'',connection:e.label||'',endpoint:e.endpoint||'',namespace:e.namespace||'',error:e.error||'',experimental:id==='nerdctl'};
@@ -19,8 +19,16 @@ export function headerStatus(state){
    ...(e.path?[{label:'Path',value:e.path}]:[]),
    ...(e.connection?[{label:'Connection',value:e.connection}]:[]),
    ...(e.namespace?[{label:'Namespace',value:e.namespace}]:[]),
-   ...(e.cli==='Found'&&e.error?[{label:'Error',value:e.error}]:[])
-  ]}))};
+   ...(e.runtime==='Permission denied'?[{label:'Access',value:`The user running Zelport lacks permission to access ${e.name}. Check the selected connection and its permissions.`}]:[])
+  ],diagnostic:e.cli==='Found'?e.error:'',
+  help:e.id==='docker'&&e.runtime==='Permission denied'&&/^unix:\/\/\/(?:var\/)?run\/docker\.sock$/.test(e.endpoint)?{
+   text:'For rootful Docker on Linux, run this on the Docker host as the user running Zelport:',
+   command:'sudo usermod -aG docker "$USER"',
+   after:'Sign out completely, then sign in again and restart Zelport. Existing processes keep their previous group membership.',
+   note:'With rootful Docker, membership in the docker group grants root-level control of the host. Rootless Docker is an alternative.',
+   linkLabel:'Docker documentation',
+   url:'https://docs.docker.com/engine/install/linux-postinstall/'
+  }:undefined}))};
 }
 export function containerGroups(state){
  const result=[],seen=new Map();

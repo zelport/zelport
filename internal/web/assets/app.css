@@ -257,5 +257,8 @@ dialog .dialog-actions{position:static}
 .connection-section h3{font-size:var(--text-help);margin:0 0 8px}
 .connection-section+.connection-section{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
 .connection-section .connection-facts{margin:0}
+.connection-diagnostic{margin-top:12px;font-size:var(--text-help)}
+.connection-diagnostic summary{color:var(--accent);cursor:pointer}
+.connection-diagnostic pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:inherit;padding:10px;border-radius:var(--radius-control);background:var(--bg)}
 .connection-details{margin:16px 0}
 @media(max-width:720px){header{height:auto;min-height:80px;flex-wrap:wrap;gap:12px;padding:16px 0}.connection-status{flex-basis:100%;margin-left:0;justify-content:flex-start}}

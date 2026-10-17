@@ -58,7 +58,7 @@ test('polling can hide the current tab and return it when enabled again',()=>{
 
 test('hiding a module closes its header popover; re-enabling restores disconnected status',()=>{
  const s=shell();let open=true;
- const indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return open},hidePopover(){open=false}},status:{dataset:{}},settings:{},details:{replaceChildren(){}}};
+ const indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return open},hidePopover(){open=false}},status:{dataset:{}},settings:{},details:{querySelectorAll(){return []},replaceChildren(){}}};
  s.addModule({descriptor:{id:'client',name:'Client'},headerStatus(){return {status:'Disconnected',tone:'neutral',rows:[]}},indicator});
  s.setState({states:{client:{}},module_availability:{client:{enabled:false}}});s.renderHeaderStatus();
  assert.equal(indicator.wrap.hidden,true);assert.equal(open,false);
@@ -82,7 +82,7 @@ test('entering Settings closes accordions before activating sections; staying pr
 
 test('header popover content is retained until its displayed lines change',()=>{
  const s=shell();let draws=0,rows=[{label:'Relay',value:'localhost:8090'}];
- const indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return false}},status:{dataset:{}},settings:{},details:{replaceChildren(){draws++}}};
+ const indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return false}},status:{dataset:{}},settings:{},details:{querySelectorAll(){return []},replaceChildren(){draws++}}};
  s.addModule({descriptor:{id:'client',name:'Client'},headerStatus(){return {status:'Connected',tone:'ok',rows}},indicator});
  s.setState({states:{client:{}}});s.renderHeaderStatus();s.renderHeaderStatus();assert.equal(draws,1);
  rows=[{label:'Relay',value:'localhost:8091'}];s.renderHeaderStatus();assert.equal(draws,2);
@@ -122,7 +122,7 @@ test('changing views closes open dialogs, but polling the same view preserves th
  s.navigate('settings',false);assert.equal(closed,1);
 });
 test('enabling a module refreshes the header action label without a reload',()=>{
- const s=shell(),indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return false}},status:{dataset:{}},settings:{textContent:'Open settings'},details:{replaceChildren(){}}};
+ const s=shell(),indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return false}},status:{dataset:{}},settings:{textContent:'Open settings'},details:{querySelectorAll(){return []},replaceChildren(){}}};
  s.addModule({descriptor:{id:'containers'},headerStatus(){return {status:'Available',tone:'ok',action:'Open module',rows:[]}},indicator});
  s.setState({states:{containers:{}},module_availability:{containers:{enabled:true}}});s.renderHeaderStatus();
  assert.equal(indicator.settings.textContent,'Open module');

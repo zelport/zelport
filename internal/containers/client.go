@@ -103,6 +103,10 @@ func (c Client) Scan(parent context.Context) (inv Inventory) {
 		inv.Stale = true
 		inv.Containers = []Container{}
 		inv.Error = err.Error()
+		message := strings.ToLower(inv.Error)
+		if inv.RuntimeStatus == "unavailable" && (errors.Is(err, os.ErrPermission) || strings.Contains(message, "permission denied") || strings.Contains(message, "access denied") || strings.Contains(message, "access is denied")) {
+			inv.RuntimeStatus = "permission_denied"
+		}
 	} else {
 		inv.UpdatedAt = time.Now()
 	}

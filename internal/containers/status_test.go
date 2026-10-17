@@ -111,3 +111,30 @@ func TestMissingCLIRetainsLastKnownInventoryAndRecovers(t *testing.T) {
 		t.Fatal("reused old inventory after identity change")
 	}
 }
+
+func TestRuntimePermissionDenied(t *testing.T) {
+	for _, tc := range []struct {
+		name, message, want string
+	}{
+		{"docker socket", "docker: permission denied while trying to connect to the Docker API at unix:///var/run/docker.sock", "permission_denied"},
+		{"socket dial", "dial unix /run/user/1000/podman/podman.sock: connect: permission denied", "permission_denied"},
+		{"access denied", "Access is denied", "permission_denied"},
+		{"offline", "Cannot connect to the Docker daemon at unix:///var/run/docker.sock", "unavailable"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := Client{Engine: "docker", LookPath: func(string) (string, error) { return "/test/docker", nil },
+				Env: func(key string) string {
+					if key == "DOCKER_HOST" {
+						return "unix:///test/docker.sock"
+					}
+					return ""
+				},
+				Run: func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New(tc.message) },
+			}
+			inv := c.Scan(context.Background())
+			if inv.RuntimeStatus != tc.want || inv.CLIStatus != "found" || !inv.Stale || inv.Error != tc.message {
+				t.Fatalf("unexpected permission status: %+v", inv)
+			}
+		})
+	}
+}

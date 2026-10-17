@@ -7,10 +7,9 @@ or publish ports.
 
 ## CLI and runtime status
 
-The UI has one compact row per backend, with separate CLI and runtime results.
-Normal status rows are static, with no disclosure controls. Only failures with a
-detected CLI offer expandable diagnostics, in the document flow so multiple open
-details never overlap. Missing optional executables are neutral. Runtime failures
+The **Containers** header button opens an information panel with separate CLI and
+runtime results for each backend. Failures with a detected CLI offer expandable
+**Technical details**. Missing optional executables are neutral. Runtime failures
 are warnings, or errors when configured services depend on that engine.
 
 Executables are resolved from the Zelport process PATH on each scan. Each engine
@@ -23,6 +22,25 @@ Failed scans retain last-known containers only for the same connection identity.
 Docker uses the configured local Unix socket/context. Podman supports native Linux,
 local sockets and locally managed Podman machines. CLI commands use structured JSON.
 Remote container hosts are not automatically interpreted as localhost upstreams.
+
+### Docker socket permissions on Linux
+
+A rejected runtime probe reports **Permission denied**, preserving the original
+CLI output under **Technical details**. For the standard Docker socket, **How to
+fix** explains the Linux rootful Docker setup: add the account running Zelport to
+the existing `docker` group. Run this on the Docker host as that account:
+
+```sh
+sudo usermod -aG docker "$USER"
+```
+
+Sign out completely, sign in again and restart Zelport. Existing processes retain
+their previous group membership. Zelport does not change system permissions.
+With a rootful Docker daemon, the `docker` group grants root-level control of the
+host; this statement does not apply to rootless Docker. See the
+[Docker post-installation guide](https://docs.docker.com/engine/install/linux-postinstall/).
+The group-specific hint is not shown for other engines or nonstandard/rootless
+socket paths; check that connection's access policy instead.
 
 ## Experimental nerdctl
 

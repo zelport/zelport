@@ -115,7 +115,7 @@ test('container diagnostics move to header sections without adding inventory row
  view.render(state);assert.equal(ctx.panel.children.length,1);
  const info=headerStatus(state);assert.equal(info.sections.length,3);
  assert.ok(!info.sections[0].rows.some(r=>r.label==='Error'));
- assert.ok(info.sections[2].rows.some(r=>r.value==='permission denied'));
+ assert.equal(info.sections[2].diagnostic,'permission denied');
 });
 
 test('sandbox diagnostics move to the header while inventory nodes survive polls',async()=>{
