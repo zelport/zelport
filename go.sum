@@ -9,9 +9,9 @@ github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfn
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/zelport/zelport-relay v0.10.0 h1:9aHXW2dg3YsKQf/tFX7YNnIa+hOyslKZ4geDry+Jj4w=
+github.com/zelport/zelport-relay v0.10.0 h1:+C91tPn/r6EMxJgGRX5r1SEA5bgaJQeVQHmMlGGyxSY=
 github.com/zelport/zelport-relay v0.10.0/go.mod h1:5qoDeo0jkA7glfHbnT+Qn/N7MFvDAmD3naU1rFieAAw=
-github.com/zelport/zelport-sdk-go v0.10.0 h1:IMklOam6JHIfLR/djNHdpH0XWVDEwMo5/C8pYj/Dp5M=
+github.com/zelport/zelport-sdk-go v0.10.0 h1:GHekzG+Oish/9b4qna+GwCJ8t2FQ5YCsFI01cBWHGDg=
 github.com/zelport/zelport-sdk-go v0.10.0/go.mod h1:ho+2UGFfblbKLKZdsIntXKocPOT4qvqxdkhSGGXY8QI=
 golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2/go.mod h1:T9bdIzuCu7OtxOm1hfPfRQxPLYneinmdGuTeoZ9dtd4=
 golang.org/x/crypto v0.58.0 h1:COkYLr4k7nDI4r6QtMML2AfzeIswWHAJthLS6K/M/54=
