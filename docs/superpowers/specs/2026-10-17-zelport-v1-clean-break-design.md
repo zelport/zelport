@@ -144,8 +144,11 @@ Specifically:
 - human-facing version label: `Zelport v0.10.0`
 
 Product and API documentation must no longer describe the release as preview.
-Publishing is not part of this implementation. Remote tags, releases, visibility
-changes and uploads require a separate explicit release operation.
+This implementation includes coordinated publication after every local change,
+test, artifact and checksum has passed final verification. It may push prepared
+commits, tags and release artifacts to the existing Zelport repositories. It
+does not authorize force pushes, tag replacement, repository deletion or
+visibility changes.
 
 Before remote tags exist, the exact SDK and relay module sources are staged in a
 local file-based Go proxy. Consumers are verified with workspace resolution
@@ -155,10 +158,44 @@ without publishing it.
 Release publication must follow dependency order: SDK, relay, Zelport App,
 Omarchy integration, then installer, Homebrew and website distribution
 references. Distribution files prepared by this change are release-candidate
-metadata: they are internally self-consistent, but their public URLs are not
-expected to resolve before the separately authorized release operation. A
-checksum is recorded only from the exact local artifact intended for later
-publication; neither URLs nor checksum values are fabricated.
+metadata until their publication step: they are internally self-consistent, but
+their public URLs are not expected to resolve beforehand. A checksum is recorded
+only from the exact local artifact that will be uploaded; neither URLs nor
+checksum values are fabricated.
+
+## Publication sequence and safety
+
+Publication begins only after an all-repository preflight confirms:
+
+- every intended source change is committed with the required identity and all
+  unrelated working-tree changes remain preserved;
+- the complete local verification and cleanliness suite passes;
+- every release artifact and checksum exists and matches its metadata;
+- authenticated push and release access exists for every target repository;
+- the intended remote branches have not diverged; and
+- no target `v0.10.0` tag or release already exists.
+
+The publication sequence is:
+
+1. Push the SDK commit and `v0.10.0` tag, then verify that a clean
+   `GOWORK=off` consumer can resolve the public module.
+2. Push the relay commit and `v0.10.0` tag, then verify its SDK dependency and
+   public module resolution.
+3. Push the Zelport App `v0.10.0` tag, create its GitHub release and upload the
+   exact verified platform archives and checksum manifest. Verify the assets
+   before pushing the main branch that triggers installer synchronization, so
+   the synchronized installer never points at an absent release.
+4. Push the Omarchy integration commit and `v0.10.0` tag, create its GitHub
+   release and upload the exact verified integration bundle and checksum.
+5. Push the Homebrew formula only after every referenced Zelport App release
+   asset is publicly downloadable and checksum-valid.
+6. Allow the canonical installer workflow to update the website copy, then
+   verify the workflow result and matching canonical, repository and public
+   installer SHA-256 values.
+
+Each dependency publication is verified before its consumer is published. A
+failure stops the sequence without rewriting or deleting already published
+history; the exact completed and pending stages are reported before resuming.
 
 ## Documentation and artifact cleanup
 
@@ -230,6 +267,8 @@ Implementation follows test-driven development:
    distributed builds and the development boundary build.
 8. Scan the final working trees and rebuilt binaries for the retired identity,
    removed project references and incorrect terminology in the relay domain.
+9. Run the complete publication preflight, publish in dependency order and verify
+   every public module, release asset, formula reference and installer copy.
 
 The existing unrelated Zelport App working-tree changes must be preserved. No task
 may discard, reset or overwrite them.
@@ -256,4 +295,12 @@ The change is complete when:
 - distributed binaries have Zelport names and contain no retired product identity;
 - the full coordinated verification suite passes, or every pre-existing or
   environment-specific failure is reported precisely;
-- no remote tag, release or artifact has been published by this work.
+- SDK and relay `v0.10.0` modules resolve publicly without a workspace or local
+  proxy;
+- Zelport App and Omarchy `v0.10.0` releases contain exactly the locally verified
+  artifacts and checksum manifests;
+- the Homebrew formula resolves only published checksum-valid assets;
+- the canonical, repository and public installer copies have matching SHA-256
+  values; and
+- all intended commits and `v0.10.0` tags are published without force pushes,
+  tag replacement or repository visibility changes.
