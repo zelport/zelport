@@ -64,9 +64,9 @@ test('Dashboard retains rows and runtime nodes across polling and uptime changes
  context.update(state);const rows=tree(get('dashboard-services')),runtime=tree(get('runtime-info'));
  assert.equal(rows.filter(n=>n.tag==='thead').length,1);assert.equal(rows.filter(n=>n.tag==='tbody').length,1);
  assert.ok(rows.find(n=>n.tag==='table').className.includes('data-table'));
- context.update({...state,revision:2,runtime:{...state.runtime,uptime_seconds:2}});sameNodes(tree(get('dashboard-services')),rows);sameNodes(tree(get('runtime-info')),runtime);
- context.update({...state,runtime:{...state.runtime,uptime_seconds:61}});sameNodes(tree(get('dashboard-services')),rows);sameNodes(tree(get('runtime-info')),runtime);
- assert.equal(get('runtime-info').children.find(c=>c.dataset.label==='Uptime').lastElementChild.textContent,'1 min');
+ assert.deepEqual(get('runtime-info').children.map(c=>c.dataset.label),['Version','Configuration','Listeners','Modules']);
+ assert.ok(get('runtime-info').children.at(-1).className.includes('runtime-modules'));
+ context.update({...state,revision:2,runtime:{...state.runtime,built_at:'2099-01-01 00:00:00 UTC',uptime_seconds:61}});sameNodes(tree(get('dashboard-services')),rows);sameNodes(tree(get('runtime-info')),runtime);
  const stableDomain=tree(get('dashboard-services')).find(n=>n.tag==='a');
  const changed={...state,states:{test:{routes:[{...state.states.test.routes[0],summary:{state:'unavailable',target:'localhost'}}]}}};context.update(changed);
  assert.equal(tree(get('dashboard-services')).find(n=>n.tag==='a'),stableDomain,'a status update must retain the selected domain node');
@@ -77,6 +77,13 @@ test('Dashboard retains rows and runtime nodes across polling and uptime changes
   const retained=tree(get('dashboard-services'));context.update({...next,states:{test:{routes:[{...route,summary:{...route.summary,detail:'Updated diagnostic'}}]}}});sameNodes(tree(get('dashboard-services')),retained);
  }
 
+});
+
+test('Dashboard shell omits the retired marketing and endpoint introduction',()=>{
+ const html=readFileSync(new URL('../internal/web/assets/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8');
+ for(const token of ['class="intro"','id="endpoint"','MADE FOR LOCALHOST','MAGIC FUNNEL ADDRESS','Unified entry point'])assert.ok(!html.includes(token),token);
+ assert.doesNotMatch(css,/\.intro\b|\.endpoint\b|\.hero-mesh\b/);
 });
 
 for(const lifecycle of ['deactivate','dispose'])test(`relay client discards a late secret response after ${lifecycle}`,async()=>{

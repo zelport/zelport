@@ -1,14 +1,5 @@
 import * as ui from './ui.js';
 const $=id=>document.getElementById(id);
-function formatBuildTime(value){
- const match=/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) UTC$/.exec(value||'');
- if(!match)return value||'unknown';
- const date=new Date(`${match[1]}T${match[2]}Z`);
- if(Number.isNaN(date.getTime()))return value;
- const zone=new Intl.DateTimeFormat('en-GB',{timeZoneName:'short'}).formatToParts(date).find(part=>part.type==='timeZoneName').value;
- const pad=value=>String(value).padStart(2,'0');
- return `${pad(date.getDate())}-${pad(date.getMonth()+1)}-${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${zone}`;
-}
 
 let state, active='dashboard', pending, timer, busy=false;
 const modules=new Map(),messages=new Map(),refreshErrors=new Map(),availabilityControls=new Map();
@@ -159,9 +150,10 @@ function renderDashboardServices(){
  }
  // Preserve existing row order across snapshots; newly discovered services append.
 }
-function render(){if(!state)return;const missing=state.unsupported_modules||[];const notice=$('unsupported-modules');notice.hidden=!missing.length;ui.setText(notice,missing.length?`Modules not included in this build: ${missing.join(', ')}. Their configuration is preserved; services are inactive.`:'');renderAvailability();ui.setText($('endpoint'),state.remote_admin?state.remote_admin.authority:`localhost:${state.port}`);renderHeaderStatus();const remote=$('remote-administration');remote.hidden=!state.remote_admin;if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
+function render(){if(!state)return;const missing=state.unsupported_modules||[];const notice=$('unsupported-modules');notice.hidden=!missing.length;ui.setText(notice,missing.length?`Modules not included in this build: ${missing.join(', ')}. Their configuration is preserved; services are inactive.`:'');renderAvailability();renderHeaderStatus();const remote=$('remote-administration');remote.hidden=!state.remote_admin;if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
  renderDashboardServices();
- const rt=state.runtime;for(const [label,value]of Object.entries({Version:rt.version,'Build time':formatBuildTime(rt.built_at),Uptime:`${Math.floor(rt.uptime_seconds/60)} min`,Listeners:rt.listeners?.join(', '),Modules:state.modules.map(m=>m.name).join(', ')||'Core only',Configuration:rt.config_display_path||rt.config_path})){let cell=[...$('runtime-info').children].find(c=>c.dataset.label===label);if(!cell){cell=ui.el('div');cell.dataset.label=label;cell.append(ui.el('dt',null,label),ui.el('dd'));$('runtime-info').append(cell);}ui.setText(cell.lastElementChild,value);if(label==='Configuration')cell.lastElementChild.title=rt.config_path||'';}}
+ const rt=state.runtime,fields=[['Version',rt.version],['Configuration',rt.config_display_path||rt.config_path],['Listeners',rt.listeners?.join(', ')],['Modules',state.modules.map(m=>m.name).join(', ')||'Core only']];
+ for(const [label,value]of fields){let cell=[...$('runtime-info').children].find(c=>c.dataset.label===label);if(!cell){cell=ui.el('div',label==='Modules'?'runtime-modules':null);cell.dataset.label=label;cell.append(ui.el('dt',null,label),ui.el('dd'));$('runtime-info').append(cell);}ui.setText(cell.lastElementChild,value);if(label==='Configuration')cell.lastElementChild.title=rt.config_path||'';}}
 function renderAvailability(){
  for(const [id,row]of availabilityControls){
   const a=state.module_availability?.[id];if(!a)continue;
