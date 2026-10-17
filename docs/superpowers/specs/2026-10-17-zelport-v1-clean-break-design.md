@@ -35,6 +35,46 @@ index may name them, reference them or anticipate their APIs. A future hosted
 product would require a new design and repository decision from first
 principles; this codebase reserves no boundary for it.
 
+## Product terminology and composition
+
+**Zelport** is the product family. **Zelport App** is the main locally running
+application distributed as the `zelport` executable and package. Zelport App is
+a local HTTP reverse proxy application with integrated service sources, Ports
+over Relay and Built-in Relay capabilities.
+
+**Zelport Relay** is the standalone relay server distributed as the
+`zelport-relay` executable. **Ports over Relay** is the relay client capability
+inside Zelport App. **Built-in Relay** is the relay server capability inside
+Zelport App. The two relay capabilities are independent and share protocol and
+server implementations with Zelport Relay where appropriate.
+
+Zelport App's modules are internal architectural boundaries for source
+ownership, dependency isolation, lifecycle management and verification. They are
+not product editions and are not presented as a user-selectable build system.
+The standard distributed Zelport App contains every implemented feature module:
+
+- Docker Sandboxes;
+- Containers;
+- Local Ports;
+- Remote HTTP;
+- Ports over SSH;
+- Ports over Relay;
+- Built-in Relay.
+
+Build tags and the `zelport-core` executable exist only for development,
+dependency-boundary checks, tests and diagnostics. They are not separately
+marketed or distributed user products. User-facing build and installation paths
+produce the complete Zelport App.
+
+The retired architectural term for the whole application or listener is removed
+from source, documentation, UI, tests and identifiers. Public text uses
+**Zelport App**, **Zelport instance**, **Zelport service**, **reverse proxy**,
+**listener**, **Localhost port** or **endpoint**, according to meaning. Internal
+APIs use precise resulting names including `ListenerAuthority`,
+`ProxyOptions.ListenerAuthority` and `SelfTarget` listener parameters. The UI
+endpoint element uses `endpoint`, and the Omarchy setup document is named
+`ZELPORT_SETUP.md`.
+
 ## Domain terminology
 
 Every implemented capability related to `ports_over_relay`, relay admission,
@@ -89,7 +129,7 @@ All released Zelport components move to the stable `v0.10.0` family:
 
 - SDK tag: `v0.10.0`
 - relay tag: `v0.10.0`
-- gateway tag: `v0.10.0`
+- Zelport App tag: `v0.10.0`
 - Omarchy integration tag and manifest: `v0.10.0`
 - installer version: `0.10.0`
 - Homebrew and installation release references: `0.10.0`
@@ -98,7 +138,7 @@ Product and API documentation must no longer describe the release as preview.
 Publishing is not part of this implementation. Remote tags, releases, visibility
 changes and uploads require a separate explicit release operation.
 
-Release publication must follow dependency order: SDK, relay, gateway, Omarchy
+Release publication must follow dependency order: SDK, relay, Zelport App, Omarchy
 integration, then installer, Homebrew and website distribution references.
 Generated release URLs and checksums must not be fabricated before their exact
 artifacts exist. Source preparation may record the target version, but active
@@ -145,7 +185,7 @@ Implementation follows test-driven development:
    implementation.
 2. Centralize and update the protocol identity with the minimum code needed to
    pass those tests.
-3. Update relay and gateway tests to encode, accept and persist version 1, while
+3. Update relay and Zelport App tests to encode, accept and persist version 1, while
    proving that version 3 is rejected without migration.
 4. Rename every implemented relay-domain path and identifier to relay
    terminology, and verify that routing, UI navigation and trace validation use
@@ -153,13 +193,13 @@ Implementation follows test-driven development:
 5. Add and exercise the workspace brand-and-domain-cleanliness guard.
 6. Remove historical material and generated artifacts, then rebuild only the
    supported binaries.
-7. Run SDK, relay and gateway race tests and vet; run the relay integration
-   harness, gateway feature-module matrix, JavaScript tests, packaging checks and
+7. Run SDK, relay and Zelport App race tests and vet; run the relay integration
+   harness, feature-module boundary matrix, JavaScript tests, packaging checks and
    supported builds.
 8. Scan the final working trees and rebuilt binaries for the retired identity,
    removed project references and incorrect terminology in the relay domain.
 
-The existing unrelated gateway working-tree changes must be preserved. No task
+The existing unrelated Zelport App working-tree changes must be preserved. No task
 may discard, reset or overwrite them.
 
 ## Completion criteria
@@ -171,6 +211,12 @@ The change is complete when:
 - protocol version 1 and the `zelport-relay/v1` namespace are used consistently;
 - version-3 protocol inputs are rejected and no compatibility code exists;
 - implemented relay functionality uses relay-domain names exclusively;
+- product text and identifiers consistently distinguish Zelport App, its reverse
+  proxy role, Ports over Relay, Built-in Relay and standalone Zelport Relay;
+- the retired whole-application architectural term is absent from current paths
+  and file bytes;
+- standard user builds contain every implemented module, while partial builds
+  remain development and verification tools only;
 - the unused hypothetical project scaffolds and every reference to them are
   absent from the workspace;
 - active product metadata names v0.10.0 without preview qualifiers;
