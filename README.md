@@ -1,5 +1,7 @@
 # Zelport
 
+[![Verify release binaries](https://github.com/zelport/zelport/actions/workflows/release.yml/badge.svg?branch=main&event=push)](https://github.com/zelport/zelport/actions/workflows/release.yml?query=branch%3Amain)
+
 Zelport App is a local HTTP reverse proxy with browser-based administration.
 It gives local services stable `*.localhost` names through one loopback
 listener, normally `http://localhost:8080`.
