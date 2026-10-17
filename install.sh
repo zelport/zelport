@@ -4,10 +4,10 @@
 # Install Zelport without changing its configuration or installing desktop plugins.
 # Keep the release and reviewed Arch recipe pins together when publishing updates.
 
-ZELPORT_INSTALLER_VERSION=0.1.1
+ZELPORT_INSTALLER_VERSION=0.1.2
 ZELPORT_RELEASE=0.1.0-preview.5
-ZELPORT_ARCH_REF=aad47ca9b7bf83921391ae447d31f9aa2514d4ef
-ZELPORT_ARCH_SHA256=d77696a6ee42497165d56e13bde768c3f00f8ee70d1955adeffa2afcba403525
+ZELPORT_ARCH_REF=56128665770b6399ed5896272732ab7fd2b7e923
+ZELPORT_ARCH_SHA256=4f48486805a10b1293c3574611fba3117b67bcf8b2e70c719745fc8b18fd5bfa
 
 say() { printf '%s\n' "$*"; }
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
