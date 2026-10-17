@@ -39,14 +39,15 @@ principles; this codebase reserves no boundary for it.
 
 **Zelport** is the product family. **Zelport App** is the main locally running
 application distributed as the `zelport` executable and package. Zelport App is
-a local HTTP reverse proxy application with integrated service sources, Ports
-over Relay and Built-in Relay capabilities.
+a local HTTP reverse proxy application with integrated service-source modules
+and Built-in Relay.
 
 **Zelport Relay** is the standalone relay server distributed as the
-`zelport-relay` executable. **Ports over Relay** is the relay client capability
-inside Zelport App. **Built-in Relay** is the relay server capability inside
-Zelport App. The two relay capabilities are independent and share protocol and
-server implementations with Zelport Relay where appropriate.
+`zelport-relay` executable. **Ports over Relay** is one of Zelport App's
+service-source modules and acts as a relay client. **Built-in Relay** is the
+relay server capability inside Zelport App. The two relay capabilities are
+independent and share protocol and server implementations with Zelport Relay
+where appropriate.
 
 Zelport App's modules are internal architectural boundaries for source
 ownership, dependency isolation, lifecycle management and verification. They are
