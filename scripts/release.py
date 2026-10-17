@@ -12,11 +12,21 @@ import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORMS = ('darwin_arm64', 'darwin_amd64', 'linux_arm64', 'linux_amd64')
+STABLE_SEMVER = re.compile(r'(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)')
 
 
 def validate_version(version):
-    if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', version):
-        raise ValueError('Use a release version such as 0.1.0 or 0.1.0-rc.1, without v')
+    if not STABLE_SEMVER.fullmatch(version):
+        raise ValueError('Use a stable numeric release version such as 0.10.0, without v')
+
+
+def build_command(version, built_at, output):
+    validate_version(version)
+    return [
+        os.environ.get('GO', 'go'), 'build', '-trimpath',
+        '-ldflags', f"-s -w -X main.version={version} -X 'main.builtAt={built_at}'",
+        '-o', str(output), './cmd/zelport',
+    ]
 
 
 def package(version, binaries, output):
@@ -80,11 +90,8 @@ def main():
         for platform in PLATFORMS:
             goos, goarch = platform.split('_')
             env = dict(os.environ, GOOS=goos, GOARCH=goarch, CGO_ENABLED='0', GOWORK='off')
-            subprocess.run([
-                os.environ.get('GO', 'go'), 'build', '-trimpath',
-                '-ldflags', f"-s -w -X main.version={args.version} -X 'main.builtAt={built_at}'",
-                '-o', str(binaries / platform), './cmd/zelport',
-            ], cwd=ROOT, env=env, check=True)
+            subprocess.run(build_command(args.version, built_at, binaries / platform),
+                           cwd=ROOT, env=env, check=True)
         package(args.version, binaries, args.output.resolve())
     print(f'Release artifacts and Homebrew formula written to {args.output}')
 

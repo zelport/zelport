@@ -15,7 +15,7 @@ check-packaging:
 	bash -n install.sh
 	python3 -m unittest discover -s contrib/install -p test_install.py
 
-# Supply an explicit release version, e.g. make release VERSION=0.1.0.
+# Supply the stable release version, e.g. make release VERSION=0.10.0.
 release:
 	GO='$(GO)' python3 scripts/release.py --version '$(VERSION)' --output 'bin/homebrew/$(VERSION)'
 
