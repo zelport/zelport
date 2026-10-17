@@ -8,30 +8,61 @@ documentation, product metadata and supported binaries must contain only Zelport
 names. Git history is explicitly outside this change and will be handled before
 the v1 product release.
 
-The product release family is `v0.10.0`. The cloud wire protocol starts at
-version `1` and uses the `zelport-cloud/v1` cryptographic namespace.
+The product release family is `v0.10.0`. The relay wire protocol starts at
+version `1` and uses the `zelport-relay/v1` cryptographic namespace.
 
 ## Scope
 
 This change coordinates the sibling repositories in the local Zelport workspace:
 
-- `zelport-sdk-go` owns the wire version and cryptographic contexts.
+- `zelport-sdk-go` owns the relay wire version and cryptographic contexts.
 - `zelport-relay` consumes SDK v0.10.0 and accepts only wire version 1.
-- `zelport` consumes SDK and relay v0.10.0 and persists only version-1 cloud
+- `zelport` consumes SDK and relay v0.10.0 and persists only version-1 relay
   records and digest watermarks.
 - `workspace` coordinates verification and prevents the retired brand from being
   reintroduced.
 - `zelport-omarchy`, the installer, distribution metadata and active
   documentation use product version 0.10.0 without preview labels.
 
-The identity kit, website, cloud service scaffold and cloud SDK scaffold have no
-independent runtime version unless an existing package manifest requires one.
+The identity kit and website have no independent runtime version unless an
+existing package manifest requires one.
 External dependency versions, Go language versions and unrelated configuration
 schema versions do not change.
 
+The `zelport-cloud` and `zelport-cloud-sdk-go` directories are isolated,
+hypothetical project scaffolds. They are not part of this product, protocol,
+workspace build, release family or dependency graph. No gateway, SDK, relay,
+desktop integration or workspace code may import, consume or anticipate their
+APIs. Their possible future implementation requires a separate design. Mentions
+of these exact repository names describe only that isolation.
+
+## Domain terminology
+
+Every implemented capability related to `ports_over_relay`, relay admission,
+relay transport, encrypted relay catalogs, peer traversal or relay-based remote
+administration uses the term **relay** exclusively. The term reserved for the
+hypothetical projects must not name an implemented relay concern. This applies to
+source paths, Go package names and aliases, functions, tests, errors, HTTP
+headers, scripts, documentation, CSS classes, JavaScript identifiers, tab IDs
+and URL fragments.
+
+The resulting relay-domain names include:
+
+- `PORTS_OVER_RELAY.md`;
+- `docs/ports-over-relay-v1.md`;
+- `docs/ports-over-relay-verification.md`;
+- `internal/relay/integration`;
+- `scripts/relay-demo.py`;
+- the `#relay` module tab and relay-named UI identifiers;
+- `X-Zelport-Relay-Trace`.
+
+There are no aliases or redirects for the retired names. External proper nouns
+such as Cloudflare retain their real names. The two hypothetical repository names
+also remain unchanged but have no domain or dependency relationship with relay.
+
 ## Protocol identity
 
-`protocol.Version` becomes `1`. Every encoded or persisted cloud protocol value
+`protocol.Version` becomes `1`. Every encoded or persisted relay protocol value
 that currently identifies wire version 3 becomes version 1, including:
 
 - relay routes;
@@ -44,16 +75,16 @@ that currently identifies wire version 3 becomes version 1, including:
 The SDK centralizes the protocol identity so that the wire version and
 cryptographic contexts cannot drift. The exact contexts are:
 
-- `zelport-cloud/v1`
-- `zelport-cloud/v1/catalog`
-- `zelport-cloud/v1/client-relay/`
-- `zelport-cloud/v1/client-relay/open/`
-- `zelport-cloud/v1/consumer-provider/`
-- `zelport-cloud/v1/renewal/`
+- `zelport-relay/v1`
+- `zelport-relay/v1/catalog`
+- `zelport-relay/v1/client-relay/`
+- `zelport-relay/v1/client-relay/open/`
+- `zelport-relay/v1/consumer-provider/`
+- `zelport-relay/v1/renewal/`
 
 There is no fallback, negotiation, alias, migration or diagnostic branch for the
 retired protocol. Version-3 inputs fail ordinary version validation. Existing
-cloud credentials, encrypted catalogs, sessions and persisted watermarks are not
+relay credentials, encrypted catalogs, sessions and persisted watermarks are not
 compatible with the new protocol and must be recreated.
 
 ## Product versions
@@ -113,19 +144,24 @@ rewriting is deferred to the separate pre-v1-release operation.
 
 Implementation follows test-driven development:
 
-1. Change focused protocol tests to require version 1 and the new cryptographic
-   contexts, and confirm that they fail against the current implementation.
+1. Change focused relay protocol tests to require version 1 and the new
+   cryptographic contexts, and confirm that they fail against the current
+   implementation.
 2. Centralize and update the protocol identity with the minimum code needed to
    pass those tests.
 3. Update relay and gateway tests to encode, accept and persist version 1, while
    proving that version 3 is rejected without migration.
-4. Add and exercise the workspace brand-cleanliness guard.
-5. Remove historical material and generated artifacts, then rebuild only the
+4. Rename every implemented relay-domain path and identifier to relay
+   terminology, and verify that routing, UI navigation and trace validation use
+   only relay terminology.
+5. Add and exercise the workspace brand-and-domain-cleanliness guard.
+6. Remove historical material and generated artifacts, then rebuild only the
    supported binaries.
-6. Run SDK, relay and gateway race tests and vet; run the relay integration
+7. Run SDK, relay and gateway race tests and vet; run the relay integration
    harness, gateway feature-module matrix, JavaScript tests, packaging checks and
    supported builds.
-7. Scan the final working trees and rebuilt binaries for the retired identity.
+8. Scan the final working trees and rebuilt binaries for the retired identity and
+   for hypothetical-project terminology incorrectly used in the relay domain.
 
 The existing unrelated gateway working-tree changes must be preserved. No task
 may discard, reset or overwrite them.
@@ -136,8 +172,11 @@ The change is complete when:
 
 - current working trees outside `.git` contain no retired product token in paths
   or bytes;
-- protocol version 1 and the `zelport-cloud/v1` namespace are used consistently;
+- protocol version 1 and the `zelport-relay/v1` namespace are used consistently;
 - version-3 protocol inputs are rejected and no compatibility code exists;
+- implemented relay functionality uses relay-domain names exclusively;
+- no implemented repository depends on or anticipates `zelport-cloud` or
+  `zelport-cloud-sdk-go`;
 - active product metadata names v0.10.0 without preview qualifiers;
 - supported binaries have Zelport names and contain no retired product identity;
 - the full coordinated verification suite passes, or every pre-existing or
