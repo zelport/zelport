@@ -2,27 +2,25 @@
 
 Verified on 2026-10-17 for Zelport App `0.10.0`.
 
-- Source snapshot: App commit `ee8556c` with archive prefix
+- Source snapshot: tag `v0.10.0`, App commit `040a82b`, with archive prefix
   `zelport-0.10.0/`.
 - Source asset: `zelport_0.10.0_source.tar.gz`.
 - Source SHA-256:
-  `16f3bfb12fb41c56fc1e6090133d9da27bf63b15a40fd100d5e1884fef9cd420`.
+  `4d72e6e1e668dde3d08f64193b11a085a44a12b8aad43e7a81ec4a3087533484`.
 - `prepare.py` unit tests: passed.
-- `makepkg --printsrcinfo`: passed in `archlinux:latest`.
-- `makepkg --verifysource`: passed against the exact local source asset.
-- `makepkg --cleanbuild --nodeps`: passed in a disposable x86_64 Arch container
-  emulated on an arm64 macOS host.
-- Build toolchain: Arch Go 1.27.2 and GNU Make 4.4.1.
-- Unpublished SDK and Relay `v0.10.0` dependencies were supplied through the
-  read-only local Go proxy with the checksums recorded by the runtime plan.
+- Native target: Omarchy `4.0.4-1`, Linux x86_64.
+- Build toolchain: Omarchy Go `1.27.0-X:nodwarf5` and makepkg/pacman `7.1.0`.
+- `makepkg --verifysource`: passed against the exact source asset.
+- `makepkg --cleanbuild --nodeps --noconfirm`: passed in an isolated temporary
+  directory without installing the package.
+- Public SDK and Relay dependencies resolved at `v0.10.0` with the checksums in
+  `go.sum`.
 - Package check: `zelport --version` reported `0.10.0`; `zelport --help` passed.
-- Package contents: executable, systemd user unit, license, third-party notices
+- Package contents: executable, systemd user unit, license, third-party notices,
   and dependency license files only.
 
 Not yet verified:
 
-- a native x86_64 Arch host;
-- an aarch64 Arch build or runtime;
-- dependency resolution from public `v0.10.0` module tags;
+- a native aarch64 Arch build or runtime;
 - installation into a persistent Arch host; and
 - external package-catalog submission.

@@ -20,6 +20,6 @@ pkgbase = zelport
 	options = !debug
 	options = !strip
 	source = zelport-0.10.0.tar.gz::https://github.com/zelport/zelport/releases/download/v0.10.0/zelport_0.10.0_source.tar.gz
-	sha256sums = 16f3bfb12fb41c56fc1e6090133d9da27bf63b15a40fd100d5e1884fef9cd420
+	sha256sums = 4d72e6e1e668dde3d08f64193b11a085a44a12b8aad43e7a81ec4a3087533484
 
 pkgname = zelport
