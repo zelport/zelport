@@ -236,7 +236,7 @@ func TestIntegrationPathBelongsToApplicationOnServiceHost(t *testing.T) {
 
 func TestUnsupportedConfigurationProjection(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "c.json")
-	raw := `{"version":6,"modules":{"missing":{"secret":"opaque-secret"}},"routes":[{"id":"b60d7e28-d39e-4ad4-9a36-50f9158f35cb","module":"missing","domain":"saved.localhost","settings":{"secret":"opaque-secret"}}]}`
+	raw := `{"version":1,"modules":{"missing":{"secret":"opaque-secret"}},"routes":[{"id":"b60d7e28-d39e-4ad4-9a36-50f9158f35cb","module":"missing","domain":"saved.localhost","settings":{"secret":"opaque-secret"}}]}`
 	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
 		t.Fatal(err)
 	}

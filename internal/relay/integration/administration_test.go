@@ -3,11 +3,11 @@ package integration
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/zelport/zelport-relay/relay"
+	relayserver "github.com/zelport/zelport-relay/relay"
 	"github.com/zelport/zelport-sdk-go/client"
 	"github.com/zelport/zelport-sdk-go/protocol"
 	"github.com/zelport/zelport/internal/feature"
-	cloud "github.com/zelport/zelport/internal/modules/ports_over_relay"
+	relaymodule "github.com/zelport/zelport/internal/modules/ports_over_relay"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -100,7 +100,7 @@ func testRemoteAdministrationWithPublishingDisabled(t *testing.T, url, access st
 
 	provider.settings(t, url, access, group, true)
 	offer := waitOffer(t, consumer, pr[0].ID)
-	ref, _ := json.Marshal(cloud.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ProviderKey: offer.PublicKey, ServiceID: pr[0].ID}})
+	ref, _ := json.Marshal(relaymodule.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ProviderKey: offer.PublicKey, ServiceID: pr[0].ID}})
 	save(t, consumer, feature.Route{Module: "ports_over_relay", Domain: "receiver-name.localhost", Settings: ref})
 	response := httptest.NewRecorder()
 	consumer.web.ServeHTTP(response, httptest.NewRequest("GET", "http://"+host+"/api/state", nil))
@@ -122,7 +122,7 @@ func TestRemoteAdministrationAliasesAndRevocation(t *testing.T) {
 	access, _ := protocol.Token()
 	token, _ := protocol.DecodeKey(access)
 	group, _ := protocol.Token()
-	relayServer, _ := relay.New(relay.Options{AccessToken: token})
+	relayServer, _ := relayserver.New(relayserver.Options{AccessToken: token})
 	rs := httptest.NewServer(relayServer)
 	defer rs.Close()
 	defer relayServer.Close()
@@ -149,7 +149,7 @@ func TestRemoteAdministrationAliasesAndRevocation(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	hostname, _ := os.Hostname()
-	alias := cloud.HostnameLabel(hostname) + ".zelport.localhost:18191"
+	alias := relaymodule.HostnameLabel(hostname) + ".zelport.localhost:18191"
 	for _, path := range []string{"/", "/app.js", "/api/state", "/assets/modules/ports_over_relay/module.js"} {
 		if w := get(alias, path); w.Code != 200 {
 			t.Fatal(path, w.Code, w.Body)
@@ -189,13 +189,13 @@ func TestRemoteAdministrationAliasesAndRevocation(t *testing.T) {
 	if err = json.Unmarshal(raw, &saved); err != nil {
 		t.Fatal(err)
 	}
-	var settings cloud.Settings
+	var settings relaymodule.Settings
 	json.Unmarshal(saved.Modules["ports_over_relay"], &settings)
 	if settings.Enabled {
 		t.Fatalf("remote disable was not durable: %d %s", response.Code, response.Body.String())
 	}
 
 	if get(host, "/api/state").Code != 503 {
-		t.Fatal("disabled cloud administration reachable")
+		t.Fatal("disabled relay administration reachable")
 	}
 }

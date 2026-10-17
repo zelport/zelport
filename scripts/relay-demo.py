@@ -79,7 +79,7 @@ class Backend(http.server.BaseHTTPRequestHandler):
 
 def main():
     processes = []
-    with tempfile.TemporaryDirectory(prefix="zelport-cloud-demo-") as directory:
+    with tempfile.TemporaryDirectory(prefix="zelport-relay-demo-") as directory:
         work = Path(directory)
         binary = work / "zelport"
         subprocess.run(["go", "build", "-tags", "local_ports,ports_over_relay", "-o", str(binary), "./cmd/zelport"], cwd=ROOT, check=True)

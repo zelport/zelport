@@ -161,7 +161,7 @@ func TestStreamingAndWebSocketRevocation(t *testing.T) {
 		})
 	}
 }
-func TestRejectOwnGatewayTargets(t *testing.T) {
+func TestRejectOwnListenerTargets(t *testing.T) {
 	for _, spec := range []struct {
 		mod      feature.Module
 		id       string
@@ -175,7 +175,7 @@ func TestRejectOwnGatewayTargets(t *testing.T) {
 		_, e = m.Save(context.Background(), 0, feature.Route{Module: spec.id, Domain: "loop.localhost", Settings: json.RawMessage(spec.settings)})
 		m.Close()
 		if e == nil {
-			t.Errorf("%s accepted gateway target", spec.id)
+			t.Errorf("%s accepted listener target", spec.id)
 		}
 	}
 }

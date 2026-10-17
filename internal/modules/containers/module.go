@@ -40,7 +40,7 @@ func (m *Module) ValidateRoute(r feature.Route) error {
 	if c == nil || (c.Engine != "docker" && c.Engine != "podman" && c.Engine != "nerdctl") || c.Connection == "" || c.ID == "" || c.Port < 1 || c.Port > 65535 || !c.Selected.Usable() || c.Selected.ContainerPort != c.Port {
 		return fmt.Errorf("select an existing published loopback TCP port")
 	}
-	if m.Host != nil && modulekit.SelfTarget(&url.URL{Scheme: "http", Host: c.Selected.Address()}, m.Host.GatewayAuthority("localhost")) {
+	if m.Host != nil && modulekit.SelfTarget(&url.URL{Scheme: "http", Host: c.Selected.Address()}, m.Host.ListenerAuthority("localhost")) {
 		return fmt.Errorf("Aux port cannot be the Zelport Localhost port")
 	}
 	if m.Host != nil {
@@ -156,11 +156,11 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 		feature.Status(w, r, 503, "Container service unavailable", s.Detail)
 		return
 	}
-	if modulekit.SelfTarget(&url.URL{Scheme: "http", Host: p.Address()}, m.Host.GatewayAuthority("localhost")) {
+	if modulekit.SelfTarget(&url.URL{Scheme: "http", Host: p.Address()}, m.Host.ListenerAuthority("localhost")) {
 		feature.Status(w, r, 503, "Invalid Aux port", "The Aux port cannot be the Zelport Localhost port.")
 		return
 	}
-	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: p.Address()}, modulekit.ProxyOptions{PreserveHost: true, GatewayAuthority: m.Host.GatewayAuthority("localhost")})
+	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: p.Address()}, modulekit.ProxyOptions{PreserveHost: true, ListenerAuthority: m.Host.ListenerAuthority("localhost")})
 }
 func (m *Module) Admin() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

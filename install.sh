@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Canonical source: https://github.com/zelport/zelport/blob/main/install.sh
 # The website copy is synchronized by GitHub Actions.
-# Install Zelport without changing gateway configuration or installing desktop plugins.
+# Install Zelport without changing its configuration or installing desktop plugins.
 # Keep the release and reviewed Arch recipe pins together when publishing updates.
 
 ZELPORT_INSTALLER_VERSION=0.1.1
@@ -74,7 +74,7 @@ user_unit() {
     cat <<'EOF'
 # Managed by the Zelport installer.
 [Unit]
-Description=Zelport local service gateway
+Description=Zelport local HTTP reverse proxy
 After=network.target
 
 [Service]

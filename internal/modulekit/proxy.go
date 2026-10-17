@@ -16,7 +16,7 @@ import (
 
 type ProxyOptions struct {
 	PreserveHost, RewriteOrigin, SkipTLSVerify bool
-	GatewayAuthority                           string
+	ListenerAuthority                          string
 	Dial                                       func(context.Context, string, string) (net.Conn, error)
 	Error                                      func(http.ResponseWriter, *http.Request, error)
 }
@@ -30,13 +30,13 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: o.SkipTLSVerify}
 	dial := o.Dial
 	if dial == nil {
-		_, gatewayPort, _ := net.SplitHostPort(o.GatewayAuthority)
-		if gatewayPort == "" {
-			gatewayPort = "80"
+		_, listenerPort, _ := net.SplitHostPort(o.ListenerAuthority)
+		if listenerPort == "" {
+			listenerPort = "80"
 		}
 		dialer := net.Dialer{Timeout: 5 * time.Second, Control: func(network, address string, _ syscall.RawConn) error {
 			h, p, e := net.SplitHostPort(address)
-			if e == nil && p == gatewayPort && net.ParseIP(h).IsLoopback() {
+			if e == nil && p == listenerPort && net.ParseIP(h).IsLoopback() {
 				return errors.New("target resolves to Zelport's own Localhost port")
 			}
 			return nil
@@ -88,9 +88,9 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 	proxy.ServeHTTP(w, r)
 }
 
-// SelfTarget catches literal gateway addresses; DialContext also checks resolved IPs.
-func SelfTarget(target *url.URL, gateway string) bool {
-	_, port, err := net.SplitHostPort(gateway)
+// SelfTarget catches literal listener addresses; DialContext also checks resolved IPs.
+func SelfTarget(target *url.URL, listener string) bool {
+	_, port, err := net.SplitHostPort(listener)
 	if err != nil {
 		port = "80"
 	}

@@ -52,7 +52,7 @@ func (m *Module) ValidateRoute(r feature.Route) error {
 	if s.SkipTLSVerify && u.Scheme != "https" {
 		return fmt.Errorf("TLS settings require an HTTPS target")
 	}
-	if m.Host != nil && modulekit.SelfTarget(u, m.Host.GatewayAuthority("localhost")) {
+	if m.Host != nil && modulekit.SelfTarget(u, m.Host.ListenerAuthority("localhost")) {
 		return fmt.Errorf("target cannot point to the Zelport Localhost port")
 	}
 	return nil
@@ -65,11 +65,11 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 		feature.Status(w, r, 503, "Invalid remote target", e.Error())
 		return
 	}
-	if modulekit.SelfTarget(u, m.Host.GatewayAuthority("localhost")) {
+	if modulekit.SelfTarget(u, m.Host.ListenerAuthority("localhost")) {
 		feature.Status(w, r, 503, "Invalid remote target", "The target cannot point to the Zelport Localhost port.")
 		return
 	}
-	modulekit.Proxy(w, r, u, modulekit.ProxyOptions{GatewayAuthority: m.Host.GatewayAuthority("localhost"), SkipTLSVerify: s.SkipTLSVerify, RewriteOrigin: s.RewriteOrigin, Error: func(w http.ResponseWriter, r *http.Request, e error) {
+	modulekit.Proxy(w, r, u, modulekit.ProxyOptions{ListenerAuthority: m.Host.ListenerAuthority("localhost"), SkipTLSVerify: s.SkipTLSVerify, RewriteOrigin: s.RewriteOrigin, Error: func(w http.ResponseWriter, r *http.Request, e error) {
 		title := "Remote service unavailable"
 		var cert *tls.CertificateVerificationError
 		if errors.As(e, &cert) {

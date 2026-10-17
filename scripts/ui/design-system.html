@@ -14,7 +14,7 @@
 <section><h2>Empty state</h2><div class="empty">No services configured yet.</div></section>
 <section><h2>Diagnostics</h2><div class="discovery-error"><details><summary>Docker discovery failed</summary><pre>Permission denied while connecting to the runtime socket.
 Raw CLI output stays selectable.</pre></details></div><div class="discovery-error"><details><summary>Podman discovery failed</summary><pre>Invalid inventory JSON.</pre></details></div></section>
-<section data-module="ports_over_relay"><h2>Catalog table</h2><div class="cloud-provider"><table class="data-table cloud-services-table"><thead><tr><th scope="col">Domain</th><th scope="col">Localhost port</th><th scope="col">Actions</th></tr></thead><tbody><tr><td data-label="Domain">long-catalog-service.example.localhost</td><td data-label="Localhost port">8080</td><td data-label="Actions"><button class="secondary" disabled>Import</button></td></tr></tbody></table></div></section>
+<section data-module="ports_over_relay"><h2>Catalog table</h2><div class="relay-provider"><table class="data-table relay-services-table"><thead><tr><th scope="col">Domain</th><th scope="col">Localhost port</th><th scope="col">Actions</th></tr></thead><tbody><tr><td data-label="Domain">long-catalog-service.example.localhost</td><td data-label="Localhost port">8080</td><td data-label="Actions"><button class="secondary" disabled>Import</button></td></tr></tbody></table></div></section>
 </main><script type="module">
 import * as ui from '../../internal/web/assets/ui.js';
 const {$}= { $:id=>document.getElementById(id) };

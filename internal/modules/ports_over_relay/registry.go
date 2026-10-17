@@ -61,12 +61,12 @@ func (m *Module) Catalog(ctx context.Context) (protocol.Record, error) {
 		if host == "" {
 			host = "device"
 		}
-		_, port, _ := net.SplitHostPort(m.Host.GatewayAuthority("localhost"))
-		gateway := 80
+		_, port, _ := net.SplitHostPort(m.Host.ListenerAuthority("localhost"))
+		listenerPort := 80
 		if port != "" {
-			fmt.Sscan(port, &gateway)
+			fmt.Sscan(port, &listenerPort)
 		}
-		record = protocol.Record{Version: protocol.Version, DeviceID: s.DeviceID, Hostname: host, PublicKey: base64.RawURLEncoding.EncodeToString(pub), Sequence: s.Sequence, IssuedAt: time.Now().Unix(), Port: gateway, Publish: s.Publish, Services: []protocol.Service{}}
+		record = protocol.Record{Version: protocol.Version, DeviceID: s.DeviceID, Hostname: host, PublicKey: base64.RawURLEncoding.EncodeToString(pub), Sequence: s.Sequence, IssuedAt: time.Now().Unix(), Port: listenerPort, Publish: s.Publish, Services: []protocol.Service{}}
 		record.ExpiresAt = record.IssuedAt + 60
 		group, _ := protocol.DecodeKey(s.GroupToken)
 		locator, _ := secure.Derive(group, "group-locator")
@@ -168,7 +168,7 @@ func (m *Module) Open(ctx context.Context, peer protocol.PeerContext, o protocol
 		return nil, e
 	}
 	route := l.Route()
-	if m.Host.GatewayAuthority(route.Domain) != o.Authority {
+	if m.Host.ListenerAuthority(route.Domain) != o.Authority {
 		l.Close()
 		return nil, errors.New("service authority changed; refresh catalog")
 	}

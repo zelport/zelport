@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-// Path is independent of any explicit gateway configuration path.
+// Path is independent of any explicit reverse-proxy configuration path.
 func Path() (string, error) { return userpaths.Endpoint() }
 
 // Publish atomically replaces a port hint. It is not a process liveness record.

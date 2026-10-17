@@ -420,7 +420,7 @@ func (h *host) OwnServices() []feature.Route {
 	}
 	return v
 }
-func (h *host) GatewayAuthority(domain string) string {
+func (h *host) ListenerAuthority(domain string) string {
 	if h.m.port == 80 {
 		return domain
 	}

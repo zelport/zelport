@@ -81,7 +81,7 @@ type Draft struct {
 type Host interface {
 	Snapshot() Snapshot
 	OwnServices() []Route
-	GatewayAuthority(string) string
+	ListenerAuthority(string) string
 	Watch() (<-chan struct{}, func())
 	Commit(context.Context, uint64, CommitOptions, func(*Draft) error) (CommitResult, error)
 	Scope(string) Scope

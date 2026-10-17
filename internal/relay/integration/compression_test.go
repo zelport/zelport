@@ -13,12 +13,12 @@ import (
 
 	"github.com/zelport/zelport-sdk-go/protocol"
 	"github.com/zelport/zelport/internal/feature"
-	cloud "github.com/zelport/zelport/internal/modules/ports_over_relay"
+	relay "github.com/zelport/zelport/internal/modules/ports_over_relay"
 )
 
-// Compression belongs to the application. Neither cloud gateway may silently
+// Compression belongs to the application. Neither Zelport App instance may silently
 // decode/re-encode an explicitly negotiated representation, including streaming.
-func TestCloudPreservesGzipRepresentation(t *testing.T) {
+func TestRelayPreservesGzipRepresentation(t *testing.T) {
 	url, access, _ := hostedRelay(t, "standalone-runtime")
 	group, _ := protocol.Token()
 	provider, src := newInstance(t, 18490)
@@ -55,16 +55,16 @@ func TestCloudPreservesGzipRepresentation(t *testing.T) {
 	consumer.settings(t, url, access, group, false)
 	waitPeerCatalogs(t, provider, consumer)
 	offer := waitOffer(t, consumer, source.ID)
-	settings, _ := json.Marshal(cloud.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ServiceID: source.ID, ProviderKey: offer.PublicKey}})
+	settings, _ := json.Marshal(relay.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ServiceID: source.ID, ProviderKey: offer.PublicKey}})
 	save(t, consumer, feature.Route{Module: "ports_over_relay", Domain: "gzip.localhost", Settings: settings})
-	gateway := httptest.NewServer(consumer.web)
-	defer gateway.Close()
+	appServer := httptest.NewServer(consumer.web)
+	defer appServer.Close()
 	transport := &http.Transport{DisableCompression: true}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, Timeout: 5 * time.Second}
 	for _, path := range []string{"/fixed", "/stream"} {
 		t.Run(path, func(t *testing.T) {
-			request, _ := http.NewRequest("GET", gateway.URL+path, nil)
+			request, _ := http.NewRequest("GET", appServer.URL+path, nil)
 			request.Host = "gzip.localhost:18491"
 			request.Header.Set("Accept-Encoding", "gzip")
 			response, err := client.Do(request)

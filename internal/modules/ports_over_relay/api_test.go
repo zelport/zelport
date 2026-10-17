@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestCloudCredentialsExplicitAndRedacted(t *testing.T) {
+func TestRelayCredentialsExplicitAndRedacted(t *testing.T) {
 	mod, _ := testModule(t)
 	request := func(body string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
@@ -41,7 +41,7 @@ func TestCloudCredentialsExplicitAndRedacted(t *testing.T) {
 		t.Fatal("setup enabled sharing")
 	}
 }
-func TestCloudCatalogWatermarkRejectsRollback(t *testing.T) {
+func TestRelayCatalogWatermarkRejectsRollback(t *testing.T) {
 	mod, _ := testModule(t)
 	s, _ := newIdentity()
 	mod.store.update(context.Background(), feature.CommitOptions{}, func(v *Settings) error { *v = s; return nil })
@@ -62,7 +62,7 @@ func TestCloudCatalogWatermarkRejectsRollback(t *testing.T) {
 	}
 }
 
-func TestCloudSettingsSaveAcrossMetadataUpdates(t *testing.T) {
+func TestRelaySettingsSaveAcrossMetadataUpdates(t *testing.T) {
 	mod, _ := testModule(t)
 	identity, _ := newIdentity()
 	if e := mod.store.update(context.Background(), feature.CommitOptions{}, func(s *Settings) error { *s = identity; return nil }); e != nil {

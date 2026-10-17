@@ -35,7 +35,7 @@ func main() {
 }
 func run() error {
 	started := time.Now()
-	port := flag.Int("port", 8080, "HTTP gateway and administration port")
+	port := flag.Int("port", 8080, "HTTP reverse proxy and administration port")
 	config := flag.String("config", "", "configuration file (default: XDG config on macOS/Linux, native user config directory elsewhere)")
 	allowRoot := flag.Bool("allow-root", os.Getenv(allowRootEnv) == "1", "allow running as root (env: ZELPORT_ALLOW_ROOT=1; warns on startup)")
 	showVersion := flag.Bool("version", false, "print version and exit")

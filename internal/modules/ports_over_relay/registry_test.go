@@ -19,7 +19,7 @@ func (s *source) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 	w.WriteHeader(403)
 	io.WriteString(w, r.Host+r.URL.RequestURI())
 }
-func TestCloudDispatchAndRevocation(t *testing.T) {
+func TestRelayDispatchAndRevocation(t *testing.T) {
 	mod := New().(*Module)
 	src := &source{modulekit.Base{Desc: feature.Descriptor{Maturity: feature.Stable, ID: "source", TabID: "source", Name: "Source", Exportable: true}}}
 	m, e := app.New("", 8080, src, mod)

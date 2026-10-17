@@ -128,7 +128,7 @@ func aliasOwners(s Settings, group, label string) []PeerIdentity {
 	}
 	return result
 }
-func (m *Module) cloudStatus() client.Status {
+func (m *Module) relayStatus() client.Status {
 	m.mu.Lock()
 	c := m.client
 	m.mu.Unlock()
@@ -172,7 +172,7 @@ func resolveAdmin(s Settings, status client.Status, label string) (AdminTarget, 
 }
 func (m *Module) resolveAdministration(host string) (AdminTarget, error) {
 	s, _ := m.store.snapshot()
-	return resolveAdmin(s, m.cloudStatus(), strings.TrimSuffix(host, ".zelport.localhost"))
+	return resolveAdmin(s, m.relayStatus(), strings.TrimSuffix(host, ".zelport.localhost"))
 }
 func (m *Module) adminPeers(s Settings, status client.Status) []AdminPeerView {
 	out := []AdminPeerView{}
@@ -182,10 +182,10 @@ func (m *Module) adminPeers(s Settings, status client.Status) []AdminPeerView {
 			continue
 		}
 		t, _ := resolveAdmin(s, status, p.DeviceID)
-		v := AdminPeerView{DeviceID: p.DeviceID, Hostname: p.Hostname, UUIDURL: "http://" + m.Host.GatewayAuthority(p.DeviceID+".zelport.localhost"), Available: t.Available}
+		v := AdminPeerView{DeviceID: p.DeviceID, Hostname: p.Hostname, UUIDURL: "http://" + m.Host.ListenerAuthority(p.DeviceID+".zelport.localhost"), Available: t.Available}
 		if label := HostnameLabel(p.Hostname); label != "" {
 			if len(aliasOwners(s, group, label)) == 1 {
-				v.HostnameURL = "http://" + m.Host.GatewayAuthority(label+".zelport.localhost")
+				v.HostnameURL = "http://" + m.Host.ListenerAuthority(label+".zelport.localhost")
 			} else {
 				v.Conflict = true
 			}

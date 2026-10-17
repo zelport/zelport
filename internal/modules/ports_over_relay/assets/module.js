@@ -10,7 +10,7 @@ export function headerStatus(state) {
 export function mount(ctx) {
  const {el,button,field,serviceModule,renderChanged,adornedField,adornmentButton,dialogHeader,showDialog,formActions,statusBadge,refreshButton}=ctx.ui;
  let current,dialog,secretInput,secretReveal,secretFeedback,secretRevision,active=false,generation=0,refreshing=false;
- const routePanel=el('section'),setup=el('section','cloud-setup'),catalog=el('section','cloud-catalog'),administration=el('section','cloud-administration');
+ const routePanel=el('section'),setup=el('section','relay-setup'),catalog=el('section','relay-catalog'),administration=el('section','relay-administration');
  ctx.panel.append(setup,el('h2',null,'Imported services'),routePanel,administration,catalog);
  const api=path=>`/api/modules/${ctx.moduleId}/${path}`;
  const routes=serviceModule({...ctx,panel:routePanel},{add:false,empty:'No imported services yet. Available shared services can be imported below.',fields(settings){
@@ -19,7 +19,7 @@ export function mount(ctx) {
   return {element,read:()=>({...settings,rewrite_origin:origin.input.checked})};
  }});
  function configure(){
-  dialog?.close();const d=el('dialog','cloud-settings-dialog'),form=el('form');dialog=d;
+  dialog?.close();const d=el('dialog','relay-settings-dialog'),form=el('form');dialog=d;
   const data=current.data,revision=ctx.ui.state().revision;
   const enabled=field('Connect to relay',data.enabled,'checkbox'),publish=field('Share all own services',data.publish,'checkbox'),url=field('Relay URL',data.relay_url),access=field('Relay access token','','password'),group=field('E2E secret','','password'),useAccess=field('Use access token',data.has_access_token,'checkbox');
   url.input.placeholder='wss://relay.example.com';access.input.autocomplete='off';group.input.autocomplete='off';
@@ -45,7 +45,7 @@ export function mount(ctx) {
  async function refreshCatalog(){if(refreshing)return;refreshing=true;refresh.disabled=true;try{await ctx.mutate(()=>ctx.api(api('refresh'),{method:'POST',body:'{}'}));}finally{refreshing=false;refresh.disabled=false;}}
  const refresh=refreshButton('Refresh catalog',refreshCatalog);ctx.toolbar?.append(refresh);
  function render(state){current=state;if(secretInput?.value&&secretRevision!==ctx.ui.state().revision)clearSecret();routes.render(state);const d=state.data||{},status=d.status||{records:[]};renderChanged(setup,{identity:d.has_identity,enabled:d.enabled,publish:d.publish,connected:status.connected,error:status.error},()=>{
-  if(secretInput?.value)clearSecret();setup.replaceChildren();const actions=el('div','cloud-actions'),header=el('div','cloud-section-header');
+  if(secretInput?.value)clearSecret();setup.replaceChildren();const actions=el('div','relay-actions'),header=el('div','relay-section-header');
   const label=status.connected?'Connected':d.enabled?(status.error?'Error':'Connecting'):'Disconnected';
   header.append(el('h2',null,'Relay connection'),statusBadge(label));
   actions.append(button('Settings',configure));
@@ -59,8 +59,8 @@ export function mount(ctx) {
    const peers=d.administration_peers||[];
    if(!peers.length)administration.append(el('p','muted','No other Zelport instances discovered yet.'));
    for(const peer of peers){
-    const card=el('div','cloud-admin-peer');card.append(el('strong',null,peer.hostname),statusBadge(peer.available?'Available':'Unavailable'));
-    for(const address of [peer.hostname_url,peer.uuid_url].filter(Boolean)){const link=el(peer.available?'a':'span','cloud-admin-address',address.replace('http://',''));if(peer.available){link.href=address;link.target='_blank';link.rel='noopener';}card.append(link);}
+    const card=el('div','relay-admin-peer');card.append(el('strong',null,peer.hostname),statusBadge(peer.available?'Available':'Unavailable'));
+    for(const address of [peer.hostname_url,peer.uuid_url].filter(Boolean)){const link=el(peer.available?'a':'span','relay-admin-address',address.replace('http://',''));if(peer.available){link.href=address;link.target='_blank';link.rel='noopener';}card.append(link);}
     if(peer.conflict)card.append(el('p','route-error small','Hostname conflict. Use the UUID address.'));
     administration.append(card);
    }
@@ -70,10 +70,10 @@ export function mount(ctx) {
   renderChanged(catalog,{providers:providers.map(p=>({group:p.group,device_id:p.device_id,hostname:p.hostname,port:p.port,public_key:p.public_key,services:p.services,expired:p.expires_at*1000<=Date.now()})),connected:status.connected,imports:(state.routes||[]).map(r=>r.editor)},()=>{catalog.replaceChildren(el('h2',null,'Shared services'));
   if(!providers.length)catalog.append(el('p','muted','No shared services available.'));
   for(const provider of providers){
-   const section=el('section','cloud-provider'),heading=el('h3',null,`${provider.hostname} · ${provider.device_id.slice(0,8)}`);
-   heading.id=`cloud-provider-${provider.device_id}`;
+   const section=el('section','relay-provider'),heading=el('h3',null,`${provider.hostname} · ${provider.device_id.slice(0,8)}`);
+   heading.id=`relay-provider-${provider.device_id}`;
    const unavailable=!status.connected?'Connect to the relay to import services.':provider.expires_at*1000<=Date.now()?'Provider unavailable. Imports resume when it reconnects.':'';
-   const wrap=el('div','cloud-services-wrap'),table=el('table','cloud-services-table data-table'),head=el('thead'),labels=el('tr'),body=el('tbody');
+   const wrap=el('div','relay-services-wrap'),table=el('table','relay-services-table data-table'),head=el('thead'),labels=el('tr'),body=el('tbody');
    table.setAttribute('aria-labelledby',heading.id);
    for(const title of ['Domain','Localhost port','Action']){const cell=el('th',null,title);cell.scope='col';labels.append(cell);}
    head.append(labels);table.append(head,body);

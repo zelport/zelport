@@ -3,7 +3,7 @@ import {runInNewContext} from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as ui from '../internal/web/assets/ui.js';
-import {mount as cloudMount} from '../internal/modules/ports_over_relay/assets/module.js';
+import {mount as relayMount} from '../internal/modules/ports_over_relay/assets/module.js';
 class Node {
  constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={};this.textContent='';this.className='';this.events={};}
  get lastElementChild(){return this.children.at(-1);}
@@ -45,7 +45,7 @@ for(const id of ['docker_sandboxes','containers','local_ports','remote_http','po
 
 test('relay client preserves separate sections and updates expiration without new data',t=>{
  let now=1000;t.mock.method(Date,'now',()=>now);
- const ctx=context(),view=cloudMount(ctx),provider={group:'group',device_id:'other',hostname:'peer',port:8080,public_key:'key',publish:true,expires_at:2,services:[{id:'service',kind:'application',domain:'app.localhost'}]};
+ const ctx=context(),view=relayMount(ctx),provider={group:'group',device_id:'other',hostname:'peer',port:8080,public_key:'key',publish:true,expires_at:2,services:[{id:'service',kind:'application',domain:'app.localhost'}]};
  const state={revision:1,routes:[],data:{device_id:'self',has_identity:true,enabled:true,publish:false,administration_peers:[],status:{connected:true,records:[provider]}}};
  view.render(state);const [setup,,routes,admin,catalog]=ctx.panel.children;const original=tree(ctx.panel);
  view.render({...state,revision:2,data:{...state.data,status:{...state.data.status,metadata_counter:7}}});sameNodes(tree(ctx.panel),original);
@@ -82,7 +82,7 @@ test('Dashboard retains rows and runtime nodes across polling and uptime changes
 for(const lifecycle of ['deactivate','dispose'])test(`relay client discards a late secret response after ${lifecycle}`,async()=>{
  const ctx=context();ctx.signal=new AbortController().signal;let finish;
  ctx.api=()=>new Promise(resolve=>finish=resolve);ctx.mutate=work=>work();
- const view=cloudMount(ctx);
+ const view=relayMount(ctx);
  view.render({routes:[],data:{has_identity:true,enabled:false,status:{records:[]}}});view.activate();
  const reveal=tree(ctx.panel).find(n=>n['aria-label']==='Reveal E2E secret');
  const request=reveal.events.click({preventDefault(){}});view[lifecycle]();finish({group_token:'test-only'});await request;await Promise.resolve();

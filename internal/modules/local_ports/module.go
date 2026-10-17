@@ -38,7 +38,7 @@ func (m *Module) ValidateRoute(r feature.Route) error {
 	if s.AuxPort < 1 || s.AuxPort > 65535 {
 		return fmt.Errorf("Aux port must be between 1 and 65535")
 	}
-	if m.Host != nil && m.Host.GatewayAuthority("localhost") == "localhost:"+strconv.Itoa(s.AuxPort) || m.Host != nil && s.AuxPort == 80 && m.Host.GatewayAuthority("localhost") == "localhost" {
+	if m.Host != nil && m.Host.ListenerAuthority("localhost") == "localhost:"+strconv.Itoa(s.AuxPort) || m.Host != nil && s.AuxPort == 80 && m.Host.ListenerAuthority("localhost") == "localhost" {
 		return fmt.Errorf("Aux port cannot be the Zelport Localhost port")
 	}
 	return nil
@@ -47,9 +47,9 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 	var s Settings
 	feature.Decode(v.Settings, &s)
 	target := &url.URL{Scheme: "http", Host: "localhost:" + strconv.Itoa(s.AuxPort)}
-	if modulekit.SelfTarget(target, m.Host.GatewayAuthority("localhost")) {
+	if modulekit.SelfTarget(target, m.Host.ListenerAuthority("localhost")) {
 		feature.Status(w, r, 503, "Invalid Aux port", "The Aux port cannot be the Zelport Localhost port.")
 		return
 	}
-	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: "localhost:" + strconv.Itoa(s.AuxPort)}, modulekit.ProxyOptions{PreserveHost: true, GatewayAuthority: m.Host.GatewayAuthority("localhost")})
+	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: "localhost:" + strconv.Itoa(s.AuxPort)}, modulekit.ProxyOptions{PreserveHost: true, ListenerAuthority: m.Host.ListenerAuthority("localhost")})
 }

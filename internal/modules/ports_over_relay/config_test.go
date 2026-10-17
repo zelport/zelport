@@ -26,7 +26,7 @@ func testModule(t *testing.T) (*Module, *app.Manager) {
 	t.Cleanup(func() { m.Close() })
 	return mod, m
 }
-func TestCloudSecretState(t *testing.T) {
+func TestRelaySecretState(t *testing.T) {
 	mod, _ := testModule(t)
 	s, e := newIdentity()
 	if e != nil {
@@ -44,10 +44,10 @@ func TestCloudSecretState(t *testing.T) {
 		}
 	}
 	if mod.Descriptor().Exportable {
-		t.Fatal("cloud imports are exportable")
+		t.Fatal("relay imports are exportable")
 	}
 }
-func TestCloudIdentityRecovery(t *testing.T) {
+func TestRelayIdentityRecovery(t *testing.T) {
 	mod, _ := testModule(t)
 	s, e := newIdentity()
 	if e != nil {
@@ -119,7 +119,7 @@ func TestRelayWatermarksRequireDigestVersionOne(t *testing.T) {
 		}
 	}
 }
-func TestCloudSettingsWriteFailure(t *testing.T) {
+func TestRelaySettingsWriteFailure(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.json")
 	mod := New().(*Module)

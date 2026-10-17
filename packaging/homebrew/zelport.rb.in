@@ -1,5 +1,5 @@
 class Zelport < Formula
-  desc "Local HTTP gateway for named localhost services"
+  desc "Local HTTP reverse proxy for named localhost services"
   homepage "https://github.com/zelport/zelport"
   version "@VERSION@"
   license "MIT"
@@ -37,6 +37,6 @@ class Zelport < Formula
 
   test do
     assert_match "zelport #{version}", shell_output("#{bin}/zelport --version")
-    assert_match "HTTP gateway", shell_output("#{bin}/zelport --help 2>&1")
+    assert_match "HTTP reverse proxy", shell_output("#{bin}/zelport --help 2>&1")
   end
 end

@@ -31,7 +31,7 @@ type Module struct {
 func New() feature.Module {
 	files, _ := fs.Sub(assets, "assets")
 	m := &Module{}
-	m.Desc = feature.Descriptor{Maturity: feature.Experimental, ID: "ports_over_relay", Name: "Ports over Relay", TabID: "cloud", Order: 60, PollInterval: 15 * time.Second, Assets: files}
+	m.Desc = feature.Descriptor{Maturity: feature.Experimental, ID: "ports_over_relay", Name: "Ports over Relay", TabID: "relay", Order: 60, PollInterval: 15 * time.Second, Assets: files}
 	return m
 }
 func (m *Module) Start(parent context.Context, h feature.Host) error {

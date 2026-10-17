@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/zelport/zelport-sdk-go/protocol"
 	"github.com/zelport/zelport/internal/feature"
-	cloud "github.com/zelport/zelport/internal/modules/ports_over_relay"
+	relay "github.com/zelport/zelport/internal/modules/ports_over_relay"
 	"io"
 	"net"
 	"net/http"
@@ -66,11 +66,11 @@ func TestSessionRenewalPreservesStreams(t *testing.T) {
 			consumer.settings(t, url, access, group, false)
 			waitPeerCatalogs(t, provider, consumer)
 			offer := waitOffer(t, consumer, source.ID)
-			ref, _ := json.Marshal(cloud.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ServiceID: source.ID, ProviderKey: offer.PublicKey}})
+			ref, _ := json.Marshal(relay.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ServiceID: source.ID, ProviderKey: offer.PublicKey}})
 			save(t, consumer, feature.Route{Module: "ports_over_relay", Domain: "import.localhost", Settings: ref})
-			gateway := httptest.NewServer(consumer.web)
-			defer gateway.Close()
-			conn, e := net.Dial("tcp", strings.TrimPrefix(gateway.URL, "http://"))
+			appServer := httptest.NewServer(consumer.web)
+			defer appServer.Close()
+			conn, e := net.Dial("tcp", strings.TrimPrefix(appServer.URL, "http://"))
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -97,10 +97,10 @@ func TestSessionRenewalPreservesStreams(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 			defer cancel()
-			req, _ := http.NewRequestWithContext(ctx, "GET", gateway.URL+"/bulk", nil)
+			req, _ := http.NewRequestWithContext(ctx, "GET", appServer.URL+"/bulk", nil)
 			req.Host = "import.localhost:18391"
 			started := time.Now()
-			response, e = gateway.Client().Do(req)
+			response, e = appServer.Client().Do(req)
 			if e != nil {
 				t.Fatal(e)
 			}

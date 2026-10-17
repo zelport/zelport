@@ -20,7 +20,7 @@ for tags in '' docker_sandboxes containers local_ports remote_http ports_over_ss
   done
   case ",$tags," in
     *",ports_over_relay,"*|*",built_in_relay,"*) ;;
-    *) if rg -q 'github.com/zelport/zelport-(sdk-go|relay)|github.com/(coder/websocket|flynn/noise|hashicorp/yamux)' "$work/deps"; then echo 'Excluded cloud dependency was linked'; exit 1; fi ;;
+    *) if rg -q 'github.com/zelport/zelport-(sdk-go|relay)|github.com/(coder/websocket|flynn/noise|hashicorp/yamux)' "$work/deps"; then echo 'Excluded relay dependency was linked'; exit 1; fi ;;
   esac
   case ",$tags," in
     *",built_in_relay,"*) ;;
@@ -31,7 +31,7 @@ for tags in '' docker_sandboxes containers local_ports remote_http ports_over_ss
     *) if rg -q 'github.com/zelport/zelport-sdk-go/client$|github.com/hashicorp/yamux' "$work/deps"; then echo 'Excluded built_in_relay client was linked'; exit 1; fi ;;
   esac
   if [ -z "$tags" ]; then
-    if rg -q 'github.com/zelport/zelport/internal/(modules/|modulekit|sbx|containers|sshpipe|cloud)|github.com/(coder/websocket|flynn/noise|hashicorp/yamux)' "$work/deps"; then
+    if rg -q 'github.com/zelport/zelport/internal/(modules/|modulekit|sbx|containers|sshpipe|relay)|github.com/(coder/websocket|flynn/noise|hashicorp/yamux)' "$work/deps"; then
       echo 'Core imports a feature dependency'; exit 1
     fi
   fi

@@ -254,7 +254,7 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 		feature.Status(w, r, 503, "Sandbox service unavailable", s.Detail)
 		return
 	}
-	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: p.Address()}, modulekit.ProxyOptions{PreserveHost: true, GatewayAuthority: m.Host.GatewayAuthority("localhost")})
+	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: p.Address()}, modulekit.ProxyOptions{PreserveHost: true, ListenerAuthority: m.Host.ListenerAuthority("localhost")})
 }
 func (m *Module) Admin() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

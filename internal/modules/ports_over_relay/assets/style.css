@@ -1,25 +1,25 @@
 [data-module="ports_over_relay"] { min-width: 0; }
-[data-module="ports_over_relay"] .cloud-setup,
-[data-module="ports_over_relay"] .cloud-provider { padding: var(--panel-padding); margin: 0 0 var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-panel); }
-[data-module="ports_over_relay"] .cloud-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-[data-module="ports_over_relay"] .cloud-catalog { margin-top: 2rem; }
+[data-module="ports_over_relay"] .relay-setup,
+[data-module="ports_over_relay"] .relay-provider { padding: var(--panel-padding); margin: 0 0 var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-panel); }
+[data-module="ports_over_relay"] .relay-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+[data-module="ports_over_relay"] .relay-catalog { margin-top: 2rem; }
 
-[data-module="ports_over_relay"] .cloud-services-wrap { overflow-x: auto; }
+[data-module="ports_over_relay"] .relay-services-wrap { overflow-x: auto; }
 
-.cloud-administration{margin:24px 0}.cloud-admin-peer{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:12px;background:var(--surface)}.cloud-admin-peer a{flex-basis:100%;font-size:var(--text-help);overflow-wrap:anywhere}
+.relay-administration{margin:24px 0}.relay-admin-peer{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:12px;background:var(--surface)}.relay-admin-peer a{flex-basis:100%;font-size:var(--text-help);overflow-wrap:anywhere}
 /* Match service cards and the shared status palette. */
-[data-module="ports_over_relay"] .cloud-setup,[data-module="ports_over_relay"] .cloud-provider{background:var(--surface);border-radius:10px;margin:0 0 var(--space-4)}
-.cloud-section-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-.cloud-setup>.form-field{max-width:560px}.cloud-setup input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--text-body)}
-.cloud-admin-address{flex-basis:100%;font-size:var(--text-help);overflow-wrap:anywhere}.cloud-admin-peer>span.cloud-admin-address{color:var(--muted)}
-.cloud-provider h3{font-size:15px;margin:0 0 12px}.cloud-catalog>h2{margin-bottom:12px}
-.cloud-settings-dialog{width:min(560px,calc(100vw - 32px))}
-.cloud-settings-dialog .dialog-help{margin-top:8px}.cloud-settings-dialog .dialog-advanced .form-field{margin-bottom:8px}
+[data-module="ports_over_relay"] .relay-setup,[data-module="ports_over_relay"] .relay-provider{background:var(--surface);border-radius:10px;margin:0 0 var(--space-4)}
+.relay-section-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.relay-setup>.form-field{max-width:560px}.relay-setup input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--text-body)}
+.relay-admin-address{flex-basis:100%;font-size:var(--text-help);overflow-wrap:anywhere}.relay-admin-peer>span.relay-admin-address{color:var(--muted)}
+.relay-provider h3{font-size:15px;margin:0 0 12px}.relay-catalog>h2{margin-bottom:12px}
+.relay-settings-dialog{width:min(560px,calc(100vw - 32px))}
+.relay-settings-dialog .dialog-help{margin-top:8px}.relay-settings-dialog .dialog-advanced .form-field{margin-bottom:8px}
 @media(max-width:720px){
 
- .cloud-section-header{flex-wrap:wrap}
+ .relay-section-header{flex-wrap:wrap}
 }
-.cloud-setup [role=status]:empty{display:none}
+.relay-setup [role=status]:empty{display:none}
 
-.cloud-services-table th:nth-child(2){width:22%}.cloud-services-table th:last-child{width:26%}
-@media(max-width:720px){.cloud-services-table th:nth-child(2),.cloud-services-table th:last-child{width:auto}}
+.relay-services-table th:nth-child(2){width:22%}.relay-services-table th:last-child{width:26%}
+@media(max-width:720px){.relay-services-table th:nth-child(2),.relay-services-table th:last-child{width:auto}}

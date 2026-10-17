@@ -1,5 +1,5 @@
 pkgbase = zelport
-	pkgdesc = Local HTTP gateway with named localhost addresses and encrypted relay connections
+	pkgdesc = Local HTTP reverse proxy with named localhost addresses and encrypted relay connections
 	pkgver = 0.1.0preview.5
 	pkgrel = 1
 	url = https://github.com/zelport/zelport

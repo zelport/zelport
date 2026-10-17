@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zelport/zelport-relay/relay"
+	relayserver "github.com/zelport/zelport-relay/relay"
 	"github.com/zelport/zelport-sdk-go/client"
 	"github.com/zelport/zelport-sdk-go/protocol"
 	"github.com/zelport/zelport/internal/app"
 	"github.com/zelport/zelport/internal/feature"
 	"github.com/zelport/zelport/internal/modulekit"
-	cloud "github.com/zelport/zelport/internal/modules/ports_over_relay"
+	relaymodule "github.com/zelport/zelport/internal/modules/ports_over_relay"
 	"github.com/zelport/zelport/internal/web"
 	"io"
 	"net"
@@ -62,7 +62,7 @@ func (m *appModule) ServeRoute(w http.ResponseWriter, r *http.Request, _ feature
 
 type instance struct {
 	m    *app.Manager
-	mod  *cloud.Module
+	mod  *relaymodule.Module
 	web  *web.Server
 	port int
 	path string
@@ -70,7 +70,7 @@ type instance struct {
 
 func newInstance(t *testing.T, port int) (*instance, *appModule) {
 	t.Helper()
-	mod := cloud.New().(*cloud.Module)
+	mod := relaymodule.New().(*relaymodule.Module)
 	src := &appModule{Base: modulekit.Base{Desc: feature.Descriptor{Maturity: feature.Stable, ID: "test_source", Name: "Test", TabID: "test", Exportable: true}}, calls: make(chan string, 20)}
 	path := filepath.Join(t.TempDir(), "config.json")
 	m, e := app.New(path, port, src, mod)
@@ -162,15 +162,15 @@ func waitOffer(t *testing.T, i *instance, id string) protocol.Record {
 	t.Fatal("authenticated offer unavailable", string(i.mod.State().Data))
 	return protocol.Record{}
 }
-func TestCloudHTTPWebSocketStreamingAndRevocation(t *testing.T) {
+func TestRelayHTTPWebSocketStreamingAndRevocation(t *testing.T) {
 	for _, mode := range []string{"standalone-runtime", "embedded", "embedded-open"} {
 		t.Run(mode, func(t *testing.T) {
 			url, access, _ := hostedRelay(t, mode)
-			testCloudHTTPWebSocketStreamingAndRevocation(t, url, access)
+			testRelayHTTPWebSocketStreamingAndRevocation(t, url, access)
 		})
 	}
 }
-func testCloudHTTPWebSocketStreamingAndRevocation(t *testing.T, url, access string) {
+func testRelayHTTPWebSocketStreamingAndRevocation(t *testing.T, url, access string) {
 	group, _ := protocol.Token()
 	provider, _ := newInstance(t, 18090)
 	consumer, _ := newInstance(t, 18091)
@@ -179,7 +179,7 @@ func testCloudHTTPWebSocketStreamingAndRevocation(t *testing.T, url, access stri
 	consumer.settings(t, url, access, group, false)
 	waitPeerCatalogs(t, provider, consumer)
 	offer := waitOffer(t, consumer, source.ID)
-	ref := cloud.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ServiceID: source.ID, ProviderKey: offer.PublicKey}, RewriteOrigin: true}
+	ref := relaymodule.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ServiceID: source.ID, ProviderKey: offer.PublicKey}, RewriteOrigin: true}
 	b, _ := json.Marshal(ref)
 	save(t, consumer, feature.Route{Module: "ports_over_relay", Domain: "renamed.localhost", Settings: b})
 	server := httptest.NewServer(consumer.web)
@@ -275,11 +275,11 @@ func testCloudHTTPWebSocketStreamingAndRevocation(t *testing.T, url, access stri
 	}
 }
 
-func TestCloudIndirectLoopAndLostResponse(t *testing.T) {
+func TestRelayIndirectLoopAndLostResponse(t *testing.T) {
 	access, _ := protocol.Token()
 	token, _ := protocol.DecodeKey(access)
 	group, _ := protocol.Token()
-	relayServer, _ := relay.New(relay.Options{AccessToken: token})
+	relayServer, _ := relayserver.New(relayserver.Options{AccessToken: token})
 	rs := httptest.NewServer(relayServer)
 	defer rs.Close()
 	defer relayServer.Close()
@@ -317,7 +317,7 @@ func TestCloudIndirectLoopAndLostResponse(t *testing.T) {
 	provider.settings(t, relayURL, access, group, true)
 	consumer.settings(t, relayURL, access, group, false)
 	offer := waitOffer(t, consumer, source.ID)
-	ref, _ := json.Marshal(cloud.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ServiceID: source.ID, ProviderKey: offer.PublicKey}})
+	ref, _ := json.Marshal(relaymodule.ImportSettings{Import: protocol.Import{Group: offer.Group, DeviceID: offer.DeviceID, ServiceID: source.ID, ProviderKey: offer.PublicKey}})
 	imported := save(t, consumer, feature.Route{Module: "ports_over_relay", Domain: "loop.localhost", Settings: ref})
 	for _, tc := range []struct {
 		path string
@@ -347,7 +347,7 @@ func TestCloudIndirectLoopAndLostResponse(t *testing.T) {
 	save(t, consumer, imported)
 }
 
-func TestCloudAPISecurity(t *testing.T) {
+func TestRelayAPISecurity(t *testing.T) {
 	i, _ := newInstance(t, 18290)
 	for _, tc := range []struct {
 		host, origin, csrf string

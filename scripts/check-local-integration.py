@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Linux process acceptance for a supplied gateway binary and plugin helper.
+"""Linux process acceptance for a supplied Zelport App binary and plugin helper.
 
 Run in an isolated container as an unprivileged user. Uses only temporary files.
 """
@@ -36,11 +36,11 @@ with tempfile.TemporaryDirectory() as directory:
     env.pop('XDG_RUNTIME_DIR',None)
     hint=root/'state/zelport/endpoint.json'
     def start(port):
-        log=open(root/'gateway.log','w+')
+        log=open(root/'zelport.log','w+')
         p=subprocess.Popen([binary,'--port',str(port),'--config',str(root/'custom/config.json')],env=env,stdout=log,stderr=log)
         try:
             for _ in range(100):
-                if p.poll() is not None: raise AssertionError('gateway exited')
+                if p.poll() is not None: raise AssertionError('Zelport App exited')
                 try:
                     result=get(port)
                     if port!=8080 and not hint.exists(): raise OSError('hint not ready')

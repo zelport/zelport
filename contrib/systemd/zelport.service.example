@@ -1,6 +1,6 @@
 # Copy only after adapting the binary, port and existing configuration paths.
 [Unit]
-Description=Zelport local service gateway
+Description=Zelport local HTTP reverse proxy
 After=network.target
 
 [Service]

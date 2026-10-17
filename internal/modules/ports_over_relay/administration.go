@@ -20,7 +20,7 @@ import (
 
 func (m *Module) ServeAdministration(w http.ResponseWriter, r *http.Request) bool {
 	host, _, e := protocol.AdminAuthority(strings.ToLower(r.Host))
-	if e != nil || !strings.EqualFold(r.Host, m.Host.GatewayAuthority(host)) {
+	if e != nil || !strings.EqualFold(r.Host, m.Host.ListenerAuthority(host)) {
 		feature.Status(w, r, 404, "Unknown address", "Invalid administration authority.")
 		return true
 	}
@@ -78,7 +78,7 @@ func (m *Module) serviceLinks(target AdminTarget) []protocol.ServiceLink {
 		if ref.Group != target.Group || ref.DeviceID != target.DeviceID || ref.ProviderKey != target.ProviderKey || m.validateOffer(ref) != nil {
 			continue
 		}
-		address := "http://" + m.Host.GatewayAuthority(route.Domain)
+		address := "http://" + m.Host.ListenerAuthority(route.Domain)
 		if old := links[ref.ServiceID]; old == "" || address < old {
 			links[ref.ServiceID] = address
 		}
@@ -168,7 +168,7 @@ func (m *Module) openAdministrationAttempt(ctx context.Context, peer protocol.Pe
 	if pin, ok := s.Peers[peer.Group+"/"+peer.Consumer]; ok && pin.PublicKey != peer.ConsumerKey {
 		return nil, errors.New("consumer identity changed")
 	}
-	canonical := m.Host.GatewayAuthority(s.DeviceID + ".zelport.localhost")
+	canonical := m.Host.ListenerAuthority(s.DeviceID + ".zelport.localhost")
 	if o.Authority != canonical {
 		return nil, errors.New("administration service authority mismatch")
 	}
