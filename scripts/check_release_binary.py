@@ -10,6 +10,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import secrets
 import socket
 import subprocess
 import tarfile
@@ -128,6 +129,75 @@ def terminate_process(process: subprocess.Popen, log_path: Path,
             f'Zelport log:\n{_log_text(log_path)}')
 
 
+class ProcessOwner:
+    """Own child processes and their logs for one acceptance scenario."""
+
+    def __init__(self):
+        self.entries = []
+
+    def start(self, args, env, log_path: Path) -> subprocess.Popen:
+        log_path = Path(log_path)
+        log = log_path.open('w')
+        try:
+            process = subprocess.Popen(
+                args, env=env, stdout=log, stderr=subprocess.STDOUT)
+        except BaseException:
+            log.close()
+            raise
+        self.entries.append((process, log, log_path))
+        return process
+
+    def close(self, timeout: float = 5) -> None:
+        errors = []
+        for process, log, log_path in reversed(self.entries):
+            try:
+                terminate_process(process, log_path, timeout)
+            except AssertionError as error:
+                errors.append(str(error))
+            finally:
+                log.close()
+        self.entries.clear()
+        if errors:
+            raise AssertionError('\n'.join(errors))
+
+    def force_close(self) -> None:
+        for process, log, _ in reversed(self.entries):
+            try:
+                _force_stop(process)
+            finally:
+                log.close()
+        self.entries.clear()
+
+    def diagnostics(self) -> str:
+        return '\n'.join(
+            f'{path.name}:\n{_log_text(path)}' for _, _, path in self.entries)
+
+
+def wait_for(probe, ready, processes, *, timeout: float,
+             description: str):
+    """Poll a stateful condition while ensuring owned processes remain alive."""
+    deadline = time.monotonic() + timeout
+    last_state = None
+    last_error = None
+    while time.monotonic() < deadline:
+        for process in processes:
+            if process.poll() is not None:
+                raise AssertionError(
+                    f'{description} stopped because process {process.pid} '
+                    f'exited with status {process.returncode}')
+        try:
+            last_state = probe()
+            if ready(last_state):
+                return last_state
+        except (OSError, ValueError, KeyError, AssertionError) as error:
+            last_error = error
+        time.sleep(.02)
+    detail = f'last state: {last_state!r}'
+    if last_error is not None:
+        detail += f', last error: {last_error}'
+    raise AssertionError(f'{description} timed out; {detail}')
+
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(('127.0.0.1', 0))
@@ -145,10 +215,20 @@ def _has_ipv6_loopback() -> bool:
         return False
 
 
-def _request(port: int, path: str, *, host: str | None = None):
+def _request(port: int, path: str, *, host: str | None = None,
+             method: str = 'GET', payload=None, csrf: str | None = None):
     connection = http.client.HTTPConnection('127.0.0.1', port, timeout=2)
     try:
-        connection.request('GET', path, headers={'Host': host or f'localhost:{port}'})
+        headers = {'Host': host or f'localhost:{port}'}
+        body = None
+        if payload is not None:
+            headers.update({
+                'Content-Type': 'application/json',
+                'Origin': f'http://localhost:{port}',
+                'X-CSRF-Token': csrf or '',
+            })
+            body = json.dumps(payload)
+        connection.request(method, path, body=body, headers=headers)
         response = connection.getresponse()
         return response.status, response.read(), dict(response.headers)
     finally:
@@ -160,6 +240,21 @@ def _state(port: int):
     if status != 200:
         raise AssertionError(f'/api/state returned {status}: {body!r}')
     return json.loads(body)
+
+
+def _mutate(port: int, path: str, method: str, payload):
+    for _ in range(40):
+        state = _state(port)
+        body = dict(payload)
+        body['revision'] = state['revision']
+        status, response, _ = _request(
+            port, path, method=method, payload=body, csrf=state['csrf'])
+        if status == 409:
+            continue
+        if status not in (200, 201):
+            raise AssertionError(f'{method} {path} returned {status}: {response!r}')
+        return json.loads(response)
+    raise AssertionError(f'{method} {path} remained conflicted')
 
 
 def _wait_for_state(process: subprocess.Popen, port: int,
@@ -295,6 +390,128 @@ def run_app_acceptance(binary: Path, version: str, platform: str, *,
             backend_thread.join(timeout=2)
 
 
+def _app_environment(work: Path) -> dict[str, str]:
+    empty_path = work / 'empty-path'
+    empty_path.mkdir(exist_ok=True)
+    return {
+        'HOME': str(work / 'home'),
+        'PATH': str(empty_path),
+        'XDG_CONFIG_HOME': str(work / 'xdg-config'),
+        'XDG_STATE_HOME': str(work / 'xdg-state'),
+    }
+
+
+def _write_config(path: Path, routes=None) -> None:
+    path.write_text(json.dumps({
+        'version': 1,
+        'revision': 1,
+        'modules': {},
+        'routes': routes or [],
+    }), encoding='utf-8')
+
+
+def run_relay_acceptance(binary: Path, *, timeout: float = 15) -> None:
+    """Prove Ports over Relay data flow through the supplied App executable."""
+    binary = Path(binary).resolve()
+    with tempfile.TemporaryDirectory(prefix='zelport-release-relay-') as tmp:
+        work = Path(tmp)
+        provider_work = work / 'provider'
+        consumer_work = work / 'consumer'
+        provider_work.mkdir()
+        consumer_work.mkdir()
+        owner = ProcessOwner()
+        backend = http.server.ThreadingHTTPServer(('127.0.0.1', 0), _Backend)
+        backend_thread = threading.Thread(target=backend.serve_forever, daemon=True)
+        backend_thread.start()
+        provider_port, consumer_port, relay_port = (
+            _free_port(), _free_port(), _free_port())
+        source_id = 'd6ecf6f4-f393-4c67-b8db-66c842567d0e'
+        provider_config = provider_work / 'config.json'
+        consumer_config = consumer_work / 'config.json'
+        _write_config(provider_config, [{
+            'id': source_id,
+            'module': 'local_ports',
+            'domain': 'relay-source.localhost',
+            'settings': {'aux_port': backend.server_port},
+        }])
+        _write_config(consumer_config)
+        provider = owner.start(
+            [str(binary), '--port', str(provider_port), '--config', str(provider_config)],
+            _app_environment(provider_work), provider_work / 'zelport.log')
+        consumer = owner.start(
+            [str(binary), '--port', str(consumer_port), '--config', str(consumer_config)],
+            _app_environment(consumer_work), consumer_work / 'zelport.log')
+        try:
+            _wait_for_state(provider, provider_port, timeout)
+            _wait_for_state(consumer, consumer_port, timeout)
+            _mutate(provider_port, '/api/modules/built_in_relay/settings', 'PUT', {
+                'enabled': True,
+                'port': relay_port,
+                'bind_address': '127.0.0.1',
+                'require_access_token': False,
+            })
+            relay_url = f'ws://127.0.0.1:{relay_port}'
+            group = secrets.token_urlsafe(32)
+            common = {
+                'enabled': True,
+                'relay_url': relay_url,
+                'access_token': '',
+                'group_token': group,
+            }
+            _mutate(provider_port, '/api/modules/ports_over_relay/settings',
+                    'PUT', {**common, 'publish': True})
+            _mutate(consumer_port, '/api/modules/ports_over_relay/settings',
+                    'PUT', {**common, 'publish': False})
+
+            def offered_record():
+                status = _state(consumer_port)['states']['ports_over_relay']['data']['status']
+                if not status.get('connected'):
+                    return {'status': status, 'record': None}
+                record = next((
+                    record for record in status.get('records', [])
+                    if any(service.get('id') == source_id
+                           for service in record.get('services', []))
+                ), None)
+                return {'status': status, 'record': record}
+
+            offered = wait_for(
+                offered_record, lambda value: value['record'] is not None,
+                [provider, consumer], timeout=timeout,
+                description='relay service offer')
+            record = offered['record']
+            _mutate(consumer_port, '/api/routes', 'POST', {'route': {
+                'module': 'ports_over_relay',
+                'domain': 'relay-import.localhost',
+                'settings': {
+                    'group': record['group'],
+                    'device_id': record['device_id'],
+                    'service_id': source_id,
+                    'provider_key': record['public_key'],
+                    'rewrite_origin': False,
+                },
+            }})
+
+            result = wait_for(
+                lambda: _request(
+                    consumer_port, '/relay-probe',
+                    host=f'relay-import.localhost:{consumer_port}')[:2],
+                lambda value: value == (207, b'native release backend'),
+                [provider, consumer], timeout=timeout,
+                description='Ports over Relay request')
+            if result != (207, b'native release backend'):
+                raise AssertionError(f'unexpected relay response: {result!r}')
+            owner.close()
+        except Exception as error:
+            diagnostics = owner.diagnostics()
+            owner.force_close()
+            raise AssertionError(f'{error}\nRelay process logs:\n{diagnostics}') from error
+        finally:
+            owner.force_close()
+            backend.shutdown()
+            backend.server_close()
+            backend_thread.join(timeout=2)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle', type=Path, required=True)
@@ -305,7 +522,10 @@ def main() -> None:
         binary = verify_archive(
             args.bundle, args.version, args.platform, Path(tmp) / 'archive')
         run_app_acceptance(binary, args.version, args.platform)
-    print(f'PASS: {args.platform} archive and Zelport App acceptance')
+        run_relay_acceptance(binary)
+    print(
+        f'PASS: {args.platform} archive, Zelport App, Built-in Relay, '
+        'and Ports over Relay acceptance')
 
 
 if __name__ == '__main__':

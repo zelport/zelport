@@ -194,5 +194,32 @@ while True:
             self.assertIsNotNone(process.poll())
 
 
+class ReleaseRelayTest(unittest.TestCase):
+    def executable(self, root):
+        path = root / 'sleeper.py'
+        path.write_text(
+            f'#!{sys.executable}\nimport time\nwhile True:\n    time.sleep(1)\n',
+            encoding='utf-8')
+        path.chmod(0o755)
+        return path
+
+    def test_connection_timeout_reports_last_state(self):
+        with self.assertRaisesRegex(AssertionError, "last state: 'disconnected'"):
+            acceptance.wait_for(
+                lambda: 'disconnected', lambda state: state == 'connected',
+                [], timeout=.03, description='relay connection')
+
+    def test_force_close_reaps_both_app_processes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            binary = self.executable(root)
+            owner = acceptance.ProcessOwner()
+            first = owner.start([str(binary)], {}, root / 'first.log')
+            second = owner.start([str(binary)], {}, root / 'second.log')
+            owner.force_close()
+            self.assertIsNotNone(first.poll())
+            self.assertIsNotNone(second.poll())
+
+
 if __name__ == '__main__':
     unittest.main()
