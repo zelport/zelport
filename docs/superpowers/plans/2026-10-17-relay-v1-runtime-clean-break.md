@@ -25,6 +25,7 @@
 - Confirm cryptographic labels are centralized and exactly match the spec; an accidental future change must fail a test.
 - Confirm direct `go build` and `go install` semantics, not just Make targets, produce the complete App.
 - Confirm every rejected old version fails without modifying its input file or generating replacement credentials.
+- Confirm the simplified dashboard leaves no empty introduction space and long configuration, listener, or module values remain readable at desktop and narrow widths.
 
 ---
 
@@ -152,7 +153,26 @@
 - [ ] Run Go formatting, Node tests, the Python relay demo test mode, and focused Go tests.
 - [ ] Commit: `refactor!: align relay and listener terminology`.
 
-### Task 7: Make standard App compilation include all modules
+### Task 7: Simplify the dashboard introduction and runtime card
+
+**Files:**
+- Modify: `zelport/internal/web/assets/index.html`
+- Modify: `zelport/internal/web/assets/app.js`
+- Modify: `zelport/internal/web/assets/app.css`
+- Modify: `zelport/scripts/render-stability.test.mjs`
+- Modify if required by the focused fixture: `zelport/scripts/shell-ui.test.mjs`
+
+- [ ] Before editing dirty UI files, save their current diffs and identify the unrelated connection-diagnostic changes that must remain byte-for-byte equivalent in behavior.
+- [ ] Change the dashboard fixture test to require exactly four runtime cells in this order: `Version`, `Configuration`, `Listeners`, `Modules`; require no `Build time` or `Uptime` cell, and require the Modules cell to carry a full-width layout class.
+- [ ] Keep the existing runtime nodes stable when only `uptime_seconds` or `built_at` changes, proving those retained API fields no longer affect dashboard rendering; run `node --test scripts/render-stability.test.mjs` and observe the focused failure.
+- [ ] Remove the complete introductory marketing/endpoint block from the HTML and delete its rendering call, formatter, and obsolete responsive/desktop CSS without leaving vertical placeholder space.
+- [ ] Render the four approved fields from an explicit ordered list: a three-column desktop first row for Version, Configuration, and Listeners, followed by a Modules cell spanning the full grid width; collapse naturally to one column at the existing narrow-screen breakpoint.
+- [ ] Retain `built_at` and `uptime_seconds` in the backend runtime response; this task changes presentation only and does not alter the local integration API.
+- [ ] Run `node --test scripts/render-stability.test.mjs scripts/shell-ui.test.mjs`, the complete `node --test scripts/*.test.mjs` suite, and focused `GOWORK=off go test ./internal/web`.
+- [ ] Inspect the dashboard at desktop and narrow viewport widths in both color schemes, confirming the service table starts without the removed introduction and long configuration/listener/module values wrap without overflow.
+- [ ] Commit only the preserved dirty UI work plus this approved slice when their ownership is clear; otherwise keep the dashboard slice isolated as `feat(ui): simplify dashboard runtime summary`.
+
+### Task 8: Make standard App compilation include all modules
 
 **Files:**
 - Modify: `zelport/cmd/zelport/module_*.go`
@@ -169,7 +189,7 @@
 - [ ] Run `make check-modules`, `make test`, `make vet`, and `make build VERSION=0.10.0` in `zelport`.
 - [ ] Commit: `build!: make the complete app the standard build`.
 
-### Task 8: Verify runtime integration as one clean-break slice
+### Task 9: Verify runtime integration as one clean-break slice
 
 **Files:**
 - Modify as failures require: runtime tests only; do not broaden behavior.
@@ -181,10 +201,10 @@
 - [ ] Build `zelport`, `zelport-relay`, and diagnostic `zelport-core`; scan printable strings for retired identity and terminology tokens assembled from fragments.
 - [ ] Commit dependency pins and any strictly necessary integration fixture updates: `build(deps): pin relay components to v0.10.0`.
 
-### Task 9: Runtime self-review gate
+### Task 10: Runtime self-review gate
 
 **Files:**
-- Review: all changes from Tasks 1–8
+- Review: all changes from Tasks 1–9
 
 - [ ] Compare the diff against the spec sections “Product architecture”, “Domain terminology”, “Protocol identity”, and “Test strategy”.
 - [ ] Verify no compatibility, migration, fallback, or legacy-named alias was introduced.
