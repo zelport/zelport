@@ -174,7 +174,7 @@ func TestRelayURLAcceptsOnlyCurrentEndpoint(t *testing.T) {
 			t.Fatalf("current endpoint %q rejected: %v", relayURL, err)
 		}
 	}
-	for _, relayURL := range []string{"wss://relay.example/v0/ws", "wss://relay.example/v2/ws", "wss://relay.example/v3/ws"} {
+	for _, relayURL := range []string{"wss://relay.example/v0/ws", "wss://relay.example/v2/ws", "wss://relay.example/v99/ws"} {
 		s.RelayURL = relayURL
 		body, _ := json.Marshal(s)
 		if err := mod.ValidateSettings(body); err == nil {
