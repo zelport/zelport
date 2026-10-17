@@ -97,7 +97,7 @@ func hostedRelay(t *testing.T, mode string) (url, access string, restart func())
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
 	configure := func(enabled bool) {
-		response := inst.api(t, "PUT", "/api/modules/relay/settings", map[string]any{"enabled": enabled, "port": port, "bind_address": "127.0.0.1", "require_access_token": mode != "embedded-open"})
+		response := inst.api(t, "PUT", "/api/modules/built_in_relay/settings", map[string]any{"enabled": enabled, "port": port, "bind_address": "127.0.0.1", "require_access_token": mode != "embedded-open"})
 		if response.Code != 200 {
 			t.Fatal(response.Code, response.Body.String())
 		}
@@ -106,7 +106,7 @@ func hostedRelay(t *testing.T, mode string) (url, access string, restart func())
 	if mode == "embedded-open" {
 		return "ws://127.0.0.1:" + strconv.Itoa(port), "", func() { configure(false); configure(true) }
 	}
-	response := inst.api(t, "POST", "/api/modules/relay/credentials", map[string]any{"action": "reveal"})
+	response := inst.api(t, "POST", "/api/modules/built_in_relay/credentials", map[string]any{"action": "reveal"})
 	if response.Code != 200 {
 		t.Fatal(response.Code, response.Body.String())
 	}

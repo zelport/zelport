@@ -68,7 +68,7 @@ type Module struct {
 
 func New() feature.Module {
 	files, _ := fs.Sub(assets, "assets")
-	return &Module{Base: modulekit.Base{Desc: feature.Descriptor{Maturity: feature.Experimental, ID: "relay", Name: "Built-in Relay", UIPlacement: "settings", Order: 70, PollInterval: 15 * time.Second, Assets: files}}}
+	return &Module{Base: modulekit.Base{Desc: feature.Descriptor{Maturity: feature.Experimental, ID: "built_in_relay", Name: "Built-in Relay", UIPlacement: "settings", Order: 70, PollInterval: 15 * time.Second, Assets: files}}}
 }
 func (m *Module) ValidateSettings(raw json.RawMessage) error { _, err := settings(raw); return err }
 func (m *Module) ValidateRoute(feature.Route) error {
@@ -360,5 +360,5 @@ func (m *Module) ConnectionSummaries() []feature.ConnectionSummary {
 			state = "starting"
 		}
 	}
-	return []feature.ConnectionSummary{{ID: "relay", Label: "Built-in Relay", State: state}}
+	return []feature.ConnectionSummary{{ID: "built_in_relay", Label: "Built-in Relay", State: state}}
 }

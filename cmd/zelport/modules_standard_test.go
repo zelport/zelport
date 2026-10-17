@@ -15,12 +15,12 @@ func TestStandardBuildRegistersAllModules(t *testing.T) {
 	slices.Sort(got)
 
 	want := []string{
+		"built_in_relay",
 		"containers",
 		"docker_sandboxes",
 		"local_ports",
 		"ports_over_relay",
 		"ports_over_ssh",
-		"relay",
 		"remote_http",
 	}
 	if !slices.Equal(got, want) {

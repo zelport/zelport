@@ -50,7 +50,7 @@ func api(t *testing.T, s *web.Server, method, path string, body map[string]any) 
 		body["revision"] = v.Revision
 	}
 	b, _ := json.Marshal(body)
-	r := httptest.NewRequest(method, "http://localhost:8080/api/modules/relay/"+path, strings.NewReader(string(b)))
+	r := httptest.NewRequest(method, "http://localhost:8080/api/modules/built_in_relay/"+path, strings.NewReader(string(b)))
 	r.Header.Set("Origin", "http://localhost:8080")
 	r.Header.Set("X-CSRF-Token", v.CSRF)
 	w := httptest.NewRecorder()
@@ -220,7 +220,7 @@ func TestConcurrentEditsAndAdminProtection(t *testing.T) {
 	}
 	for _, path := range []string{"settings", "credentials"} {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("POST", "http://localhost:8080/api/modules/relay/"+path, strings.NewReader(`{}`))
+		r := httptest.NewRequest("POST", "http://localhost:8080/api/modules/built_in_relay/"+path, strings.NewReader(`{}`))
 		s.ServeHTTP(w, r)
 		if w.Code != 403 {
 			t.Fatal("unprotected mutation", w.Code)
@@ -251,7 +251,7 @@ func TestInvalidSettingsAndMissingModule(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	for _, path := range []string{"/api/modules/relay/settings", "/assets/modules/relay/module.js"} {
+	for _, path := range []string{"/api/modules/built_in_relay/settings", "/assets/modules/built_in_relay/module.js"} {
 		w := httptest.NewRecorder()
 		core.ServeHTTP(w, httptest.NewRequest("GET", "http://localhost:8080"+path, nil))
 		if w.Code != 404 {
@@ -502,7 +502,7 @@ func TestFailedOpenModeSavePreservesProtectedServer(t *testing.T) {
 func TestDesktopConnectionSummary(t *testing.T) {
 	mod, _, _ := setup(t, "")
 	v := mod.ConnectionSummaries()
-	if len(v) != 1 || v[0].ID != "relay" || v[0].State != "stopped" || v[0].Label != "Built-in Relay" {
+	if len(v) != 1 || v[0].ID != "built_in_relay" || v[0].State != "stopped" || v[0].Label != "Built-in Relay" {
 		t.Fatalf("%+v", v)
 	}
 	mod.mu.Lock()
