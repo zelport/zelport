@@ -1,0 +1,108 @@
+name: Verify release binaries
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify source and packaging
+        run: make check
+      - name: Verify module boundaries
+        run: make check-modules
+
+  build:
+    needs: source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Select and validate version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            [[ "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version=0.0.0
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Build release bundle once
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          make release VERSION="$version"
+      - name: Store release bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zelport-release-${{ github.run_id }}
+          path: bin/homebrew/${{ steps.version.outputs.version }}
+          if-no-files-found: error
+          retention-days: 1
+
+  native:
+    needs: build
+    name: Native ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            platform: darwin_arm64
+          - runner: macos-15-intel
+            platform: darwin_amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux_arm64
+          - runner: ubuntu-24.04
+            platform: linux_amd64
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Download the exact release bundle
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: zelport-release-${{ github.run_id }}
+          path: release
+      - name: Exercise the packaged binary natively
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/check_release_binary.py \
+            --bundle release \
+            --version "${{ needs.build.outputs.version }}" \
+            --platform "${{ matrix.platform }}"
