@@ -2,6 +2,7 @@ class Zelport < Formula
   desc "Local HTTP reverse proxy for named localhost services"
   homepage "https://github.com/zelport/zelport"
   license "MIT"
+  version "@VERSION@"
 
 @DOWNLOADS@
 
