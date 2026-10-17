@@ -76,10 +76,10 @@ def verify_archive(bundle: Path, version: str, platform: str,
             if not member.isreg():
                 raise ValueError(f'archive member is not a regular file: {member.name}')
             expected_mode = EXPECTED_MEMBERS[member.name]
-            if member.mode & 0o777 != expected_mode:
+            if member.mode != expected_mode:
                 raise ValueError(
                     f'archive member mode for {member.name} is '
-                    f'{member.mode & 0o777:o}, expected {expected_mode:o}')
+                    f'{member.mode:o}, expected {expected_mode:o}')
 
         destination = Path(destination)
         destination.mkdir(parents=True, exist_ok=False)
@@ -273,6 +273,27 @@ def _wait_for_state(process: subprocess.Popen, port: int,
     raise AssertionError(f'Zelport App startup timed out: {last_error}')
 
 
+def assert_missing_tools_neutral(state) -> bool:
+    """Require absent optional CLIs to be reported as neutral, not failed."""
+    states = state.get('states', {})
+    engines = states.get('containers', {}).get('data', {}).get('engines', [])
+    by_name = {engine.get('engine'): engine for engine in engines}
+    expected_engines = {'docker', 'podman', 'nerdctl'}
+    if set(by_name) != expected_engines:
+        raise AssertionError(
+            f'missing-tool neutrality did not report all container CLIs: {engines!r}')
+    for name, engine in by_name.items():
+        if (engine.get('cli_status') != 'not_found'
+                or engine.get('runtime_status') != 'not_checked'):
+            raise AssertionError(
+                f'missing {name} CLI is not neutral: {engine!r}')
+    sandbox = states.get('docker_sandboxes', {}).get('data', {})
+    if sandbox.get('cli', {}).get('status') != 'not_found':
+        raise AssertionError(
+            f'missing sbx CLI is not neutral: {sandbox!r}')
+    return True
+
+
 class _Backend(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         body = b'native release backend'
@@ -355,6 +376,10 @@ def run_app_acceptance(binary: Path, version: str, platform: str, *,
                         raise AssertionError(
                             f'standard module IDs are {sorted(modules)}, '
                             f'want {sorted(EXPECTED_MODULES)}')
+                    state = wait_for(
+                        lambda: _state(app_port), assert_missing_tools_neutral,
+                        [process], timeout=startup_timeout,
+                        description='neutral missing-tool discovery')
 
                     status, body, headers = _request(
                         app_port, '/probe?q=1',
@@ -420,28 +445,33 @@ def run_relay_acceptance(binary: Path, *, timeout: float = 15) -> None:
         provider_work.mkdir()
         consumer_work.mkdir()
         owner = ProcessOwner()
-        backend = http.server.ThreadingHTTPServer(('127.0.0.1', 0), _Backend)
-        backend_thread = threading.Thread(target=backend.serve_forever, daemon=True)
-        backend_thread.start()
-        provider_port, consumer_port, relay_port = (
-            _free_port(), _free_port(), _free_port())
-        source_id = 'd6ecf6f4-f393-4c67-b8db-66c842567d0e'
-        provider_config = provider_work / 'config.json'
-        consumer_config = consumer_work / 'config.json'
-        _write_config(provider_config, [{
-            'id': source_id,
-            'module': 'local_ports',
-            'domain': 'relay-source.localhost',
-            'settings': {'aux_port': backend.server_port},
-        }])
-        _write_config(consumer_config)
-        provider = owner.start(
-            [str(binary), '--port', str(provider_port), '--config', str(provider_config)],
-            _app_environment(provider_work), provider_work / 'zelport.log')
-        consumer = owner.start(
-            [str(binary), '--port', str(consumer_port), '--config', str(consumer_config)],
-            _app_environment(consumer_work), consumer_work / 'zelport.log')
+        backend = None
+        backend_thread = None
         try:
+            backend = http.server.ThreadingHTTPServer(('127.0.0.1', 0), _Backend)
+            backend_thread = threading.Thread(
+                target=backend.serve_forever, daemon=True)
+            backend_thread.start()
+            provider_port, consumer_port, relay_port = (
+                _free_port(), _free_port(), _free_port())
+            source_id = 'd6ecf6f4-f393-4c67-b8db-66c842567d0e'
+            provider_config = provider_work / 'config.json'
+            consumer_config = consumer_work / 'config.json'
+            _write_config(provider_config, [{
+                'id': source_id,
+                'module': 'local_ports',
+                'domain': 'relay-source.localhost',
+                'settings': {'aux_port': backend.server_port},
+            }])
+            _write_config(consumer_config)
+            provider = owner.start(
+                [str(binary), '--port', str(provider_port),
+                 '--config', str(provider_config)],
+                _app_environment(provider_work), provider_work / 'zelport.log')
+            consumer = owner.start(
+                [str(binary), '--port', str(consumer_port),
+                 '--config', str(consumer_config)],
+                _app_environment(consumer_work), consumer_work / 'zelport.log')
             _wait_for_state(provider, provider_port, timeout)
             _wait_for_state(consumer, consumer_port, timeout)
             _mutate(provider_port, '/api/modules/built_in_relay/settings', 'PUT', {
@@ -507,9 +537,11 @@ def run_relay_acceptance(binary: Path, *, timeout: float = 15) -> None:
             raise AssertionError(f'{error}\nRelay process logs:\n{diagnostics}') from error
         finally:
             owner.force_close()
-            backend.shutdown()
-            backend.server_close()
-            backend_thread.join(timeout=2)
+            if backend is not None:
+                backend.shutdown()
+                backend.server_close()
+            if backend_thread is not None:
+                backend_thread.join(timeout=2)
 
 
 def main() -> None:

@@ -116,7 +116,11 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Download the tested release bundle
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
@@ -124,51 +128,7 @@ jobs:
           path: release
       - name: Publish the verified assets atomically
         shell: bash
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
-          set -euo pipefail
-          created_draft=false
-          cleanup() {
-            status=$?
-            trap - EXIT
-            if [[ "$created_draft" == true ]]; then
-              gh release delete "$GITHUB_REF_NAME" --yes || true
-            fi
-            exit "$status"
-          }
-          trap cleanup EXIT
-
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            echo "refusing to replace existing release $GITHUB_REF_NAME" >&2
-            exit 1
-          fi
-
-          version="${{ needs.build.outputs.version }}"
-          test "$GITHUB_REF_NAME" = "v$version"
-          assets=(
-            "release/zelport_${version}_darwin_arm64.tar.gz"
-            "release/zelport_${version}_darwin_amd64.tar.gz"
-            "release/zelport_${version}_linux_arm64.tar.gz"
-            "release/zelport_${version}_linux_amd64.tar.gz"
-            "release/SHA256SUMS"
-          )
-          for asset in "${assets[@]}"; do
-            test -f "$asset"
-          done
-
-          gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
-            --draft \
-            --verify-tag \
-            --title "Zelport App $GITHUB_REF_NAME"
-          created_draft=true
-
-          mkdir published
-          gh release download "$GITHUB_REF_NAME" --dir published
-          test "$(find published -type f | wc -l | tr -d ' ')" = 5
-          (cd published && sha256sum --check SHA256SUMS)
-          for asset in "${assets[@]}"; do
-            cmp "$asset" "published/${asset##*/}"
-          done
-
-          gh release edit "$GITHUB_REF_NAME" --draft=false
-          created_draft=false
-          trap - EXIT
+          scripts/publish_release.sh release

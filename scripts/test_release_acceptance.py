@@ -9,6 +9,7 @@ import tarfile
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 
 spec = importlib.util.spec_from_file_location(
@@ -94,6 +95,20 @@ class ReleaseArchiveTest(unittest.TestCase):
             ])
             with self.assertRaisesRegex(ValueError, 'mode'):
                 self.verify(bundle, root / 'extract')
+
+    def test_rejects_special_permission_bits_before_extraction(self):
+        for mode in (0o4755, 0o2755, 0o1755):
+            with self.subTest(mode=oct(mode)), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                destination = root / 'extract'
+                bundle = self.make_bundle(root, members=[
+                    ('zelport', b'binary', mode, tarfile.REGTYPE),
+                    ('LICENSE', b'license', 0o644, tarfile.REGTYPE),
+                    ('THIRD_PARTY_NOTICES.txt', b'notices', 0o644, tarfile.REGTYPE),
+                ])
+                with self.assertRaisesRegex(ValueError, 'mode'):
+                    self.verify(bundle, destination)
+                self.assertFalse(destination.exists())
 
     def test_rejects_unknown_platform(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -193,6 +208,24 @@ while True:
                     acceptance.terminate_process(process, log_path, timeout=.1)
             self.assertIsNotNone(process.poll())
 
+    def test_missing_third_party_tools_require_neutral_states(self):
+        neutral = {
+            'states': {
+                'containers': {'data': {'engines': [
+                    {'engine': engine, 'cli_status': 'not_found',
+                     'runtime_status': 'not_checked'}
+                    for engine in ('docker', 'podman', 'nerdctl')
+                ]}},
+                'docker_sandboxes': {
+                    'data': {'cli': {'status': 'not_found'}}},
+            },
+        }
+        acceptance.assert_missing_tools_neutral(neutral)
+        neutral['states']['containers']['data']['engines'][0][
+            'runtime_status'] = 'unavailable'
+        with self.assertRaisesRegex(AssertionError, 'neutral'):
+            acceptance.assert_missing_tools_neutral(neutral)
+
 
 class ReleaseRelayTest(unittest.TestCase):
     def executable(self, root):
@@ -219,6 +252,26 @@ class ReleaseRelayTest(unittest.TestCase):
             owner.force_close()
             self.assertIsNotNone(first.poll())
             self.assertIsNotNone(second.poll())
+
+    def test_second_app_launch_failure_cleans_first_child_and_backend(self):
+        owner = mock.Mock()
+        owner.start.side_effect = [mock.Mock(), OSError('second launch failed')]
+        owner.diagnostics.return_value = 'provider log'
+        backend = mock.Mock(server_port=12345)
+        thread = mock.Mock()
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(acceptance, 'ProcessOwner', return_value=owner), \
+                mock.patch.object(acceptance.http.server, 'ThreadingHTTPServer',
+                                  return_value=backend), \
+                mock.patch.object(acceptance.threading, 'Thread', return_value=thread), \
+                mock.patch.object(acceptance, '_free_port', side_effect=[20001, 20002, 20003]):
+            binary = Path(tmp) / 'zelport'
+            with self.assertRaisesRegex(AssertionError, 'second launch failed'):
+                acceptance.run_relay_acceptance(binary, timeout=.01)
+        owner.force_close.assert_called()
+        backend.shutdown.assert_called_once()
+        backend.server_close.assert_called_once()
+        thread.join.assert_called_once()
 
 
 if __name__ == '__main__':
