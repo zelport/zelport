@@ -28,13 +28,13 @@ check_composition() {
   for module in $modules; do
     case " $expected " in
       *" $module "*)
-        if ! rg -q "^github.com/zelport/zelport/internal/modules/$module$" "$work/deps"; then
+        if ! grep -Eq "^github.com/zelport/zelport/internal/modules/$module$" "$work/deps"; then
           echo "Expected module was not linked: $module"
           exit 1
         fi
         ;;
       *)
-        if rg -q "^github.com/zelport/zelport/internal/modules/$module$" "$work/deps"; then
+        if grep -Eq "^github.com/zelport/zelport/internal/modules/$module$" "$work/deps"; then
           echo "Excluded module was linked: $module"
           exit 1
         fi
@@ -45,7 +45,7 @@ check_composition() {
   case " $expected " in
     *" ports_over_relay "*|*" built_in_relay "*) ;;
     *)
-      if rg -q 'github.com/zelport/zelport-(sdk-go|relay)|github.com/(coder/websocket|flynn/noise|hashicorp/yamux)' "$work/deps"; then
+      if grep -Eq 'github.com/zelport/zelport-(sdk-go|relay)|github.com/(coder/websocket|flynn/noise|hashicorp/yamux)' "$work/deps"; then
         echo 'Excluded relay dependency was linked'
         exit 1
       fi
@@ -54,7 +54,7 @@ check_composition() {
   case " $expected " in
     *" built_in_relay "*) ;;
     *)
-      if rg -q 'github.com/zelport/zelport-relay/relay$' "$work/deps"; then
+      if grep -Eq 'github.com/zelport/zelport-relay/relay$' "$work/deps"; then
         echo 'Excluded Built-in Relay server was linked'
         exit 1
       fi
@@ -63,7 +63,7 @@ check_composition() {
   case " $expected " in
     *" ports_over_relay "*) ;;
     *)
-      if rg -q 'github.com/zelport/zelport-sdk-go/client$|github.com/hashicorp/yamux' "$work/deps"; then
+      if grep -Eq 'github.com/zelport/zelport-sdk-go/client$|github.com/hashicorp/yamux' "$work/deps"; then
         echo 'Excluded Ports over Relay client was linked'
         exit 1
       fi

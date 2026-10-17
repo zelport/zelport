@@ -5,6 +5,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / '.github/workflows/release.yml'
+MODULE_BUILD_SCRIPT = ROOT / 'scripts/check-module-builds.sh'
 
 
 class ReleaseVerificationWorkflowTest(unittest.TestCase):
@@ -68,6 +69,11 @@ class ReleaseVerificationWorkflowTest(unittest.TestCase):
             '            --version "${{ needs.build.outputs.version }}" \\\n'
             '            --platform "${{ matrix.platform }}"',
             self.workflow)
+
+    def test_module_boundary_check_uses_only_standard_search_tools(self):
+        script = MODULE_BUILD_SCRIPT.read_text(encoding='utf-8')
+        self.assertNotRegex(script, r'(?m)\brg\b')
+        self.assertIn('grep -Eq', script)
 
 
 class ReleasePublicationWorkflowTest(unittest.TestCase):
