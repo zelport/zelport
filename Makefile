@@ -10,7 +10,7 @@ VERSION_LDFLAGS = $(EXTRA_LDFLAGS) -X main.version=$(VERSION) -X 'main.builtAt=$
 check: test vet check-packaging
 
 check-packaging:
-	python3 -m unittest discover -s scripts -p test_release.py
+	python3 -m unittest discover -s scripts -p 'test_release*.py'
 	python3 -m unittest discover -s contrib/archlinux -p test_prepare.py
 
 # Supply the stable release version, e.g. make release VERSION=0.10.0.
