@@ -192,8 +192,8 @@ func TestSettingsCounterKeepsStreams(t *testing.T) {
 		t.Fatal("counter revoked route")
 	}
 }
-func TestInvalidAndLegacyConfig(t *testing.T) {
-	for _, content := range []string{`{"version":5,"routes":[]}`, `{"version":6,"revision":0,"modules":{},"routes":[],"extra":true}`, `{"version":6,"version":6}`, `{"version":6} {}`} {
+func TestInvalidConfiguration(t *testing.T) {
+	for _, content := range []string{`{"version":0,"routes":[]}`, `{"version":1,"revision":0,"modules":{},"routes":[],"extra":true}`, `{"version":1,"version":1}`, `{"version":1} {}`} {
 		p := filepath.Join(t.TempDir(), "c")
 		os.WriteFile(p, []byte(content), 0600)
 		if _, e := New(p, 8080); e == nil {

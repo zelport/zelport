@@ -8,15 +8,51 @@ import (
 	"testing"
 )
 
-func TestConfigRequiresExplicitVersion(t *testing.T) {
-	for _, body := range []string{`null`, `{}`, `{"revision":1,"modules":{},"routes":[]}`} {
-		p := filepath.Join(t.TempDir(), "config.json")
-		if e := os.WriteFile(p, []byte(body), 0600); e != nil {
-			t.Fatal(e)
-		}
-		if _, e := New(p, 8080); e == nil {
-			t.Errorf("accepted configuration without version: %s", body)
-		}
+func TestConfigRejectsEveryVersionExceptOneWithoutRewriting(t *testing.T) {
+	for _, body := range []string{
+		`null`,
+		`{}`,
+		`{"revision":1,"modules":{},"routes":[]}`,
+		`{"version":0,"revision":1,"modules":{},"routes":[]}`,
+		`{"version":2,"revision":1,"modules":{},"routes":[]}`,
+		`{"version":3,"revision":1,"modules":{},"routes":[]}`,
+		`{"version":6,"revision":1,"modules":{},"routes":[]}`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.json")
+			before := []byte(body)
+			if err := os.WriteFile(path, before, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := New(path, 8080); err == nil {
+				t.Fatal("accepted unsupported configuration")
+			}
+			after, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(after) != string(before) {
+				t.Fatal("rejected configuration was rewritten")
+			}
+		})
+	}
+}
+
+func TestConfigLoadsExplicitVersionOneWithoutRewriting(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.json")
+	before := []byte("{\"version\":1,\"revision\":42,\"modules\":{},\"routes\":[]}\n")
+	if err := os.WriteFile(path, before, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := New(path, 8080); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Fatal("existing configuration was rewritten")
 	}
 }
 
@@ -40,14 +76,14 @@ func TestNewCreatesDefaultConfiguration(t *testing.T) {
 	if err := json.Unmarshal(body, &cfg); err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Version != 6 || cfg.Revision != 0 || cfg.Modules == nil || cfg.Routes == nil {
+	if cfg.Version != 1 || cfg.Revision != 0 || cfg.Modules == nil || cfg.Routes == nil || len(cfg.Modules) != 0 || len(cfg.Routes) != 0 {
 		t.Fatalf("invalid defaults: %s", body)
 	}
 }
 
 func TestNewPreservesExistingConfiguration(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.json")
-	body := []byte("{\"version\":6,\"revision\":42,\"modules\":{},\"routes\":[]}\n")
+	body := []byte("{\"version\":1,\"revision\":42,\"modules\":{},\"routes\":[]}\n")
 	if err := os.WriteFile(path, body, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +119,7 @@ func TestInitialWriteDoesNotReplaceConcurrentFile(t *testing.T) {
 	if err := os.WriteFile(path, body, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeConfiguration(path, configuration{Version: 6}, true); !errors.Is(err, os.ErrExist) {
+	if err := writeConfiguration(path, configuration{Version: 1}, true); !errors.Is(err, os.ErrExist) {
 		t.Fatalf("expected exclusive creation error, got %v", err)
 	}
 	got, err := os.ReadFile(path)

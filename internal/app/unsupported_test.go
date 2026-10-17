@@ -107,11 +107,11 @@ func TestMissingModulePreservedAndRestored(t *testing.T) {
 
 func TestMissingModuleStillValidatesConfigurationEnvelope(t *testing.T) {
 	for _, raw := range []string{
-		`{"version":5,"modules":{"missing":{}},"routes":[]}`,
-		`{"version":6,"modules":{"bad-id":{}},"routes":[]}`,
-		`{"version":6,"modules":{"missing":{}},"routes":[{"id":"bad","module":"missing","domain":"valid.localhost","settings":{}}]}`,
-		`{"version":6,"modules":{"present":[]},"routes":[]}`,
-		`{"version":6,`,
+		`{"version":6,"modules":{"missing":{}},"routes":[]}`,
+		`{"version":1,"modules":{"bad-id":{}},"routes":[]}`,
+		`{"version":1,"modules":{"missing":{}},"routes":[{"id":"bad","module":"missing","domain":"valid.localhost","settings":{}}]}`,
+		`{"version":1,"modules":{"present":[]},"routes":[]}`,
+		`{"version":1,`,
 	} {
 		t.Run(raw, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "c.json")
