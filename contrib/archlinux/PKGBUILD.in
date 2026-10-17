@@ -1,5 +1,5 @@
 # Maintainer: Zelport project (https://github.com/zelport)
-# Generate with contrib/distribution/prepare.py.
+# Generate with contrib/archlinux/prepare.py.
 pkgname=zelport
 pkgver=@PKGVER@
 _upstream_version=@VERSION@
@@ -16,7 +16,7 @@ optdepends=('systemd: user service management'
             'podman: Podman container discovery'
             'nerdctl: containerd discovery')
 options=('!debug' '!strip')
-source=("zelport-${_upstream_version}.tar.gz::https://github.com/zelport/zelport/archive/refs/tags/v${_upstream_version}.tar.gz")
+source=("zelport-${_upstream_version}.tar.gz::https://github.com/zelport/zelport/releases/download/v${_upstream_version}/zelport_${_upstream_version}_source.tar.gz")
 sha256sums=('@SHA256@')
 
 prepare() {

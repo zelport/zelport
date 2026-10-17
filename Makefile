@@ -11,7 +11,7 @@ check: test vet check-packaging
 
 check-packaging:
 	python3 -m unittest discover -s scripts -p test_release.py
-	python3 -m unittest discover -s contrib/distribution -p test_prepare.py
+	python3 -m unittest discover -s contrib/archlinux -p test_prepare.py
 	bash -n install.sh
 	python3 -m unittest discover -s contrib/install -p test_install.py
 

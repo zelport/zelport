@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def prepare(version, source_archive, output):
-    if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-preview\.[1-9][0-9]*)?', version):
-        raise ValueError('Use a version such as 0.1.0 or 0.1.0-preview.1, without v')
+    if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', version):
+        raise ValueError('Use a stable numeric version such as 0.10.0, without v')
     prefix = f'zelport-{version}/'
     with tarfile.open(source_archive, 'r:gz') as archive:
         for name in ['go.mod', 'Makefile', 'LICENSE', 'THIRD_PARTY_NOTICES.txt', 'contrib/systemd/zelport.service']:
@@ -27,7 +27,7 @@ def prepare(version, source_archive, output):
                     raise ValueError('Publish dependencies first; local pins or replacements are not allowed')
     digest = hashlib.sha256(Path(source_archive).read_bytes()).hexdigest()
     recipe = (ROOT / 'contrib/archlinux/PKGBUILD.in').read_text()
-    recipe = recipe.replace('@VERSION@', version).replace('@PKGVER@', version.replace('-', '')).replace('@SHA256@', digest)
+    recipe = recipe.replace('@VERSION@', version).replace('@PKGVER@', version).replace('@SHA256@', digest)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     (output / 'PKGBUILD').write_text(recipe)
