@@ -7,8 +7,9 @@ numeric `revision`.
 
 ## Release inputs
 
-`make release VERSION=0.10.0` creates four binary archives, the source and Arch
-packaging assets, and `SHA256SUMS`:
+`make release-ready VERSION=0.10.0` runs the complete source and module checks,
+then creates and verifies four binary archives, the source and Arch packaging
+assets, and `SHA256SUMS` in `dist/0.10.0`:
 
 - `zelport_0.10.0_darwin_arm64.tar.gz`
 - `zelport_0.10.0_darwin_amd64.tar.gz`
@@ -29,6 +30,8 @@ runner. Only a bundle that passes all four native acceptance jobs can enter the
 draft publication step. The workflow downloads that draft again, verifies
 `SHA256SUMS` and compares every asset byte-for-byte before making it public.
 It never rebuilds an archive after native testing.
+After publication, `make verify-published-release VERSION=0.10.0` independently
+downloads the public release and verifies its exact asset set and checksums.
 
 Publish the tap formula only after every referenced release URL is immutable and
 its downloaded bytes match the candidate checksum. Run `brew style`, strict

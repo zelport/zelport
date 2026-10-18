@@ -28,9 +28,7 @@ jobs:
           go-version-file: go.mod
           cache: true
       - name: Verify source and packaging
-        run: make check
-      - name: Verify module boundaries
-        run: make check-modules
+        run: make verify
 
   build:
     needs: source
@@ -63,12 +61,13 @@ jobs:
         run: |
           set -euo pipefail
           version="${{ steps.version.outputs.version }}"
-          make release VERSION="$version"
+          make release-assets VERSION="$version"
+          make verify-release-assets VERSION="$version"
       - name: Store release bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: zelport-release-${{ github.run_id }}
-          path: bin/homebrew/${{ steps.version.outputs.version }}
+          path: dist/${{ steps.version.outputs.version }}
           if-no-files-found: error
           retention-days: 1
 

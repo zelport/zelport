@@ -37,9 +37,10 @@ class ReleaseVerificationWorkflowTest(unittest.TestCase):
 
     def test_job_order_builds_once_before_native_execution(self):
         self.assertRegex(self.workflow, r'(?m)^  build:\n    needs: source$')
+        self.assertIn('run: make verify', self.workflow)
         self.assertRegex(self.workflow, r'(?m)^  native:\n    needs: build$')
         native = self.workflow.split('\n  native:', 1)[1]
-        self.assertNotIn('make release', native)
+        self.assertNotIn('make release-assets', native)
         self.assertNotIn('go build', native)
 
     def test_artifact_is_short_lived_and_default_permissions_are_read_only(self):
@@ -63,7 +64,9 @@ class ReleaseVerificationWorkflowTest(unittest.TestCase):
         self.assertIn('version=0.0.0', self.workflow)
         self.assertIn('version="${GITHUB_REF_NAME#v}"', self.workflow)
         self.assertIn('echo "version=$version" >> "$GITHUB_OUTPUT"', self.workflow)
-        self.assertIn('make release VERSION="$version"', self.workflow)
+        self.assertIn('make release-assets VERSION="$version"', self.workflow)
+        self.assertIn('make verify-release-assets VERSION="$version"', self.workflow)
+        self.assertIn('path: dist/${{ steps.version.outputs.version }}', self.workflow)
         self.assertIn(
             'python3 scripts/check_release_binary.py \\\n'
             '            --bundle release \\\n'
