@@ -34,6 +34,11 @@ func main() {
 	}
 }
 func run() error {
+	return runWithRuntime(func() (context.Context, context.CancelFunc) {
+		return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	}, listen)
+}
+func runWithRuntime(newContext func() (context.Context, context.CancelFunc), openListeners func(int) ([]net.Listener, error)) error {
 	started := time.Now()
 	port := flag.Int("port", 8080, "HTTP reverse proxy and administration port")
 	config := flag.String("config", "", "configuration file (default: XDG config on macOS/Linux, native user config directory elsewhere)")
@@ -71,7 +76,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("configuration: %w", err)
 	}
-	listeners, err := listen(*port)
+	listeners, err := openListeners(*port)
 	if err != nil {
 		return err
 	}
@@ -94,7 +99,7 @@ func run() error {
 	}
 	m.SetAdministrationHandler(handler.ServeRemoteAdministration)
 	defer handler.Close()
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := newContext()
 	defer cancel()
 	if err := m.Start(ctx); err != nil {
 		return err
@@ -113,9 +118,9 @@ func run() error {
 			log.Printf("warning: cannot record local endpoint: %v", err)
 		}
 	}
-	log.Printf("Zelport %s", version)
+	log.Printf("Zelport App %s", version)
 	log.Printf("Build time: %s", builtAt)
-	log.Printf("Zelport is listening at http://localhost:%d (loopback only)", *port)
+	log.Printf("Zelport App is listening at http://localhost:%d (loopback only)", *port)
 	log.Printf("Configuration: %s", *config)
 	select {
 	case <-ctx.Done():

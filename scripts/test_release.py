@@ -8,9 +8,17 @@ import unittest
 spec = importlib.util.spec_from_file_location('release', Path(__file__).with_name('release.py'))
 release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReleaseTest(unittest.TestCase):
+    def test_systemd_units_use_product_name(self):
+        for name in ['zelport.service', 'zelport.service.example']:
+            with self.subTest(name=name):
+                unit = (ROOT / 'contrib/systemd' / name).read_text()
+                descriptions = [line for line in unit.splitlines() if line.startswith('Description=')]
+                self.assertEqual(descriptions, ['Description=Zelport App'])
+
     def test_archives_and_formula_match(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
