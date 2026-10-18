@@ -7,12 +7,16 @@ numeric `revision`.
 
 ## Release inputs
 
-`make release VERSION=0.10.0` creates four archives and `SHA256SUMS`:
+`make release VERSION=0.10.0` creates four binary archives, the source and Arch
+packaging assets, and `SHA256SUMS`:
 
 - `zelport_0.10.0_darwin_arm64.tar.gz`
 - `zelport_0.10.0_darwin_amd64.tar.gz`
 - `zelport_0.10.0_linux_arm64.tar.gz`
 - `zelport_0.10.0_linux_amd64.tar.gz`
+- `zelport_0.10.0_source.tar.gz`
+- `PKGBUILD`
+- `zelport-0.10.0.SRCINFO`
 
 Each archive contains executable `zelport`, `LICENSE` and
 `THIRD_PARTY_NOTICES.txt`. The generated formula declares `version "0.10.0"`,

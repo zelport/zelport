@@ -28,9 +28,12 @@ def prepare(version, source_archive, output):
     digest = hashlib.sha256(Path(source_archive).read_bytes()).hexdigest()
     recipe = (ROOT / 'contrib/archlinux/PKGBUILD.in').read_text()
     recipe = recipe.replace('@VERSION@', version).replace('@PKGVER@', version).replace('@SHA256@', digest)
+    srcinfo = (ROOT / 'contrib/archlinux/SRCINFO.in').read_text()
+    srcinfo = srcinfo.replace('@VERSION@', version).replace('@SHA256@', digest)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     (output / 'PKGBUILD').write_text(recipe)
+    (output / '.SRCINFO').write_text(srcinfo)
     return output
 
 

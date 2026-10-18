@@ -54,6 +54,21 @@ def package(version, binaries, output):
                     with source.open('rb') as stream:
                         archive.addfile(info, stream)
             hashes[platform] = hashlib.sha256((stage / name).read_bytes()).hexdigest()
+        source_name = f'zelport_{version}_source.tar.gz'
+        subprocess.run([
+            'git', 'archive', '--format=tar.gz', f'--prefix=zelport-{version}/',
+            f'--output={stage / source_name}', 'HEAD',
+        ], cwd=ROOT, check=True)
+        arch = stage / 'arch'
+        subprocess.run([
+            os.environ.get('PYTHON', 'python3'), str(ROOT / 'contrib/archlinux/prepare.py'),
+            '--version', version,
+            '--source-archive', str(stage / source_name),
+            '--output', str(arch),
+        ], cwd=ROOT, check=True, stdout=subprocess.DEVNULL)
+        (arch / 'PKGBUILD').replace(stage / 'PKGBUILD')
+        (arch / '.SRCINFO').replace(stage / f'zelport-{version}.SRCINFO')
+        arch.rmdir()
         downloads = []
         for goos, brew_os in [('darwin', 'macos'), ('linux', 'linux')]:
             downloads.append(f'  on_{brew_os} do')
@@ -71,8 +86,11 @@ def package(version, binaries, output):
         formula = template.replace('@VERSION@', version).replace('@DOWNLOADS@', '\n'.join(downloads))
         (stage / 'Formula').mkdir()
         (stage / 'Formula/zelport.rb').write_text(formula)
+        checksum_names = [f'zelport_{version}_{platform}.tar.gz' for platform in PLATFORMS]
+        checksum_names.extend([source_name, 'PKGBUILD', f'zelport-{version}.SRCINFO'])
         (stage / 'SHA256SUMS').write_text(''.join(
-            f'{hashes[p]}  zelport_{version}_{p}.tar.gz\n' for p in PLATFORMS))
+            f'{hashlib.sha256((stage / name).read_bytes()).hexdigest()}  {name}\n'
+            for name in checksum_names))
         stage.rename(output)
 
 

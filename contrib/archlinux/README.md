@@ -26,9 +26,11 @@ the service before removing the package.
 
 ## Prepare a release recipe
 
-The source archive is an immutable App release asset. Generate it from the
-reviewed source commit with the exact `zelport-0.10.0/` prefix, then generate the
-recipe from those bytes:
+`make release VERSION=0.10.0` generates the immutable source archive,
+`PKGBUILD`, and `.SRCINFO` together with the binary release assets. To reproduce
+the packaging inputs separately, generate the source archive from the reviewed
+commit with the exact `zelport-0.10.0/` prefix, then generate the recipe from
+those bytes:
 
 ```sh
 git archive --format=tar.gz --prefix=zelport-0.10.0/ \

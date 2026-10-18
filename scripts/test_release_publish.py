@@ -74,6 +74,9 @@ class ReleasePublishTest(unittest.TestCase):
             f'zelport_{self.version}_darwin_amd64.tar.gz',
             f'zelport_{self.version}_linux_arm64.tar.gz',
             f'zelport_{self.version}_linux_amd64.tar.gz',
+            f'zelport_{self.version}_source.tar.gz',
+            'PKGBUILD',
+            f'zelport-{self.version}.SRCINFO',
         ]
         sums = []
         for name in names:

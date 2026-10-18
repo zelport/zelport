@@ -115,6 +115,10 @@ class ReleasePublicationWorkflowTest(unittest.TestCase):
         self.assertLess(download, checksum)
         self.assertLess(checksum, compare)
         self.assertLess(compare, make_public)
+        self.assertIn('"$bundle/zelport_${VERSION}_source.tar.gz"', publish)
+        self.assertIn('"$bundle/PKGBUILD"', publish)
+        self.assertIn('"$bundle/zelport-${VERSION}.SRCINFO"', publish)
+        self.assertIn('= 8', publish)
 
     def test_failure_cleanup_deletes_only_the_draft_created_by_this_job(self):
         publish = PUBLISH_SCRIPT.read_text(encoding='utf-8')

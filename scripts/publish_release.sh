@@ -12,6 +12,9 @@ assets=(
   "$bundle/zelport_${VERSION}_darwin_amd64.tar.gz"
   "$bundle/zelport_${VERSION}_linux_arm64.tar.gz"
   "$bundle/zelport_${VERSION}_linux_amd64.tar.gz"
+  "$bundle/zelport_${VERSION}_source.tar.gz"
+  "$bundle/PKGBUILD"
+  "$bundle/zelport-${VERSION}.SRCINFO"
   "$bundle/SHA256SUMS"
 )
 for asset in "${assets[@]}"; do
@@ -50,7 +53,7 @@ gh release upload "$GITHUB_REF_NAME" "${assets[@]}"
 
 mkdir published
 gh release download "$GITHUB_REF_NAME" --dir published
-test "$(find published -type f | wc -l | tr -d ' ')" = 5
+test "$(find published -type f | wc -l | tr -d ' ')" = 8
 (cd published && sha256sum --check SHA256SUMS)
 for asset in "${assets[@]}"; do
   cmp "$asset" "published/${asset##*/}"

@@ -1,0 +1,25 @@
+pkgbase = zelport
+	pkgdesc = Local HTTP reverse proxy with named localhost addresses and encrypted relay connections
+	pkgver = @VERSION@
+	pkgrel = 1
+	url = https://github.com/zelport/zelport
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	license = BSD-3-Clause
+	license = ISC
+	license = MPL-2.0
+	makedepends = go>=1.27
+	makedepends = make
+	depends = ca-certificates
+	optdepends = systemd: user service management
+	optdepends = openssh: Ports over SSH
+	optdepends = docker: Docker container discovery
+	optdepends = podman: Podman container discovery
+	optdepends = nerdctl: containerd discovery
+	options = !debug
+	options = !strip
+	source = zelport-@VERSION@.tar.gz::https://github.com/zelport/zelport/releases/download/v@VERSION@/zelport_@VERSION@_source.tar.gz
+	sha256sums = @SHA256@
+
+pkgname = zelport

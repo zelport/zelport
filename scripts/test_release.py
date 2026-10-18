@@ -35,6 +35,20 @@ class ReleaseTest(unittest.TestCase):
                     self.assertEqual(tar.getmember('zelport').mode, 0o755)
                     self.assertEqual(tar.getmember('LICENSE').mode, 0o644)
                     self.assertEqual(tar.getmember('THIRD_PARTY_NOTICES.txt').mode, 0o644)
+            source = output / 'zelport_0.10.0_source.tar.gz'
+            recipe = output / 'PKGBUILD'
+            srcinfo = output / 'zelport-0.10.0.SRCINFO'
+            source_digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            for asset in [source, recipe, srcinfo]:
+                expected_checksums.append(
+                    f'{hashlib.sha256(asset.read_bytes()).hexdigest()}  {asset.name}')
+            with tarfile.open(source) as tar:
+                self.assertIn('zelport-0.10.0/go.mod', tar.getnames())
+                self.assertIn('zelport-0.10.0/contrib/systemd/zelport.service', tar.getnames())
+            self.assertIn('pkgver=0.10.0', recipe.read_text())
+            self.assertIn(source_digest, recipe.read_text())
+            self.assertIn('pkgver = 0.10.0', srcinfo.read_text())
+            self.assertIn(source_digest, srcinfo.read_text())
             self.assertEqual(checksums, expected_checksums)
             self.assertIn('version "0.10.0"', formula)
             self.assertNotIn('revision ', formula)

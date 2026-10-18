@@ -28,6 +28,7 @@ class PackagingTests(unittest.TestCase):
             source = self.source(root)
             out = m.prepare('0.10.0', source, root / 'out')
             recipe = (out / 'PKGBUILD').read_text()
+            srcinfo = (out / '.SRCINFO').read_text()
             self.assertIn(hashlib.sha256(source.read_bytes()).hexdigest(), recipe)
             self.assertIn('pkgname=zelport\n', recipe)
             self.assertIn('pkgver=0.10.0\n', recipe)
@@ -36,6 +37,9 @@ class PackagingTests(unittest.TestCase):
             self.assertNotIn('make build-' + 'full', recipe)
             self.assertNotIn('@VERSION@', recipe)
             self.assertNotIn('source_x86_64', recipe)
+            self.assertIn('pkgver = 0.10.0', srcinfo)
+            self.assertIn(hashlib.sha256(source.read_bytes()).hexdigest(), srcinfo)
+            self.assertNotIn('@VERSION@', srcinfo)
             with self.assertRaises(FileExistsError):
                 m.prepare('0.10.0', source, out)
 
