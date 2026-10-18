@@ -111,9 +111,8 @@ Do not commit binaries, archives, local staging caches, credentials, or runtime
 configuration. Use synthetic public examples and reserved domains. Review
 staged changes before committing.
 
-Use Git author and committer `zdeneksvarc` with
-`79550344+zdeneksvarc@users.noreply.github.com`; do not inherit a personal
-identity from global Git configuration.
+Preserve the existing repository-local Git author and committer configuration
+unless the user explicitly requests a change.
 
 The installer source of truth is the sibling `zelport-installer` repository.
 Its verified release workflow synchronizes the generated website copy. Never
