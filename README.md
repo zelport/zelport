@@ -82,13 +82,6 @@ Removing or changing a route revokes its active requests and upgraded
 connections. An unknown hostname returns 404, unavailable source infrastructure
 returns 503, and an unreachable HTTP backend returns 502.
 
-## Relay
-
-[Zelport Relay](https://github.com/zelport/zelport-relay) is the standalone
-server; Built-in Relay embeds it, while Ports over Relay is a client service
-source. See [Ports over Relay](PORTS_OVER_RELAY.md) for the trust model and
-[Relay Protocol v1](docs/ports-over-relay-v1.md) for the normative contract.
-
 ## Architecture and operations
 
 - [Architecture](DESIGN.md)
