@@ -1,6 +1,6 @@
 # Relay Protocol v1
 
-This is the normative protocol contract used by Zelport App 0.10.0,
+This is the normative protocol contract used by Zelport App `v0.10.0`,
 `zelport-sdk-go` v0.10.0 and Zelport Relay v0.10.0. Implementations accept only
 the identities and formats defined here.
 

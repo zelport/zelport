@@ -26,12 +26,13 @@ the service before removing the package.
 
 ## Prepare a release recipe
 
-Set `VERSION` to the numeric SemVer being prepared, without a `v` prefix.
-`make release-ready` verifies and generates the immutable source archive,
-`PKGBUILD`, and `.SRCINFO` together with the binary release assets:
+Set `VERSION` to the canonical App release identifier. `make release-ready`
+validates it, derives the package's required prefix-free value, and generates
+the immutable source archive, `PKGBUILD`, and `.SRCINFO` together with the
+binary release assets:
 
 ```sh
-: "${VERSION:?set VERSION to numeric SemVer without v}"
+: "${VERSION:?set VERSION to a canonical release such as v0.10.2}"
 make release-ready VERSION="$VERSION"
 ```
 

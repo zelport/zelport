@@ -1,13 +1,14 @@
 # Homebrew distribution
 
 The rolling `zelport/homebrew-tap` repository packages Zelport App releases. It
-has no independent release tag or product version. The formula version follows
-the App (`0.10.0` for this release); packaging-only corrections use Homebrew's
-numeric `revision`.
+has no independent release tag or product version. The formula follows the
+canonical App release (`v0.10.0` here); its required prefix-free `version` field
+is derived automatically. Packaging-only corrections use Homebrew's numeric
+`revision`.
 
 ## Release inputs
 
-`make release-ready VERSION=0.10.0` runs the complete source and module checks,
+`make release-ready VERSION=v0.10.0` runs the complete source and module checks,
 then creates and verifies four binary archives, the source and Arch packaging
 assets, and `SHA256SUMS` in `dist/0.10.0`:
 
@@ -30,7 +31,7 @@ runner. Only a bundle that passes all four native acceptance jobs can enter the
 draft publication step. The workflow downloads that draft again, verifies
 `SHA256SUMS` and compares every asset byte-for-byte before making it public.
 It never rebuilds an archive after native testing.
-After publication, `make verify-published-release VERSION=0.10.0` independently
+After publication, `make verify-published-release VERSION=v0.10.0` independently
 downloads the public release and verifies its exact asset set and checksums.
 
 Publish the tap formula only after every referenced release URL is immutable and

@@ -12,7 +12,7 @@ the current `--port` model.
 
 ## Additional packaging
 
-Evaluate native packages only after the 0.10.0 release process is stable. Each
+Evaluate native packages only after the `v0.10.0` release process is stable. Each
 format must preserve regular-user execution, owner-only configuration, complete
 third-party notices and the full standard Zelport App composition.
 

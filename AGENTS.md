@@ -107,6 +107,12 @@ footer. Do not rewrite shared history as part of routine work. The planned clean
 history for the first `v1.0.0` publication is a separately authorized release
 operation.
 
+The canonical App release identifier is `vMAJOR.MINOR.PATCH`. Use it in
+documentation, operator-facing Make invocations, tags, GitHub Releases,
+automation inputs and verification reports. Release tooling derives the numeric
+payload only for embedded binary versions, package metadata, directories and
+artifact filenames that cannot use the prefix.
+
 Do not commit binaries, archives, local staging caches, credentials, or runtime
 configuration. Use synthetic public examples and reserved domains. Review
 staged changes before committing.

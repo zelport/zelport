@@ -1,6 +1,6 @@
 # Arch package verification
 
-Verified on 2026-10-17 for Zelport App `0.10.0`.
+Verified on 2026-10-17 for Zelport App `v0.10.0`.
 
 - Source snapshot: tag `v0.10.0`, App commit `040a82b`, with archive prefix
   `zelport-0.10.0/`.
@@ -27,12 +27,14 @@ Not yet verified:
 
 ## Reproducing recipe inputs
 
-Set `VERSION` to numeric SemVer without `v` and `REVIEWED_COMMIT` to the exact
-reviewed commit:
+Set `RELEASE` to the canonical App release identifier and `REVIEWED_COMMIT` to
+the exact reviewed commit. Derive the prefix-free package value only for the
+low-level generator and artifact names:
 
 ```sh
-: "${VERSION:?set VERSION to numeric SemVer without v}"
+: "${RELEASE:?set RELEASE to a canonical release such as v0.10.0}"
 : "${REVIEWED_COMMIT:?set REVIEWED_COMMIT to the reviewed commit}"
+VERSION=${RELEASE#v}
 git archive --format=tar.gz --prefix="zelport-${VERSION}/" \
   --output="bin/arch/zelport_${VERSION}_source.tar.gz" "$REVIEWED_COMMIT"
 python3 contrib/archlinux/prepare.py \
@@ -41,6 +43,6 @@ python3 contrib/archlinux/prepare.py \
   --output "bin/arch/${VERSION}"
 ```
 
-The generator accepts stable numeric SemVer, verifies required source files,
-rejects local module versions and `replace` directives, records the archive
-SHA-256, and refuses to overwrite its output directory.
+The low-level generator accepts the derived numeric payload, verifies required
+source files, rejects local module versions and `replace` directives, records
+the archive SHA-256, and refuses to overwrite its output directory.
