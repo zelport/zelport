@@ -62,12 +62,13 @@ A compact row can grow for touch targets; fixed-height rows must not clip conten
 Focus indication is visible for keyboard navigation. Active text fields may use a
 focus-within border. Never remove focus feedback without an equivalent indicator.
 
-The Dashboard's **Zelport runtime** panel uses a two-row information hierarchy.
-Version, Configuration and Listeners occupy the first row. Modules occupies the
-second row at full panel width so the complete internal composition remains
-readable. Build time and uptime are not shown in this panel. Configuration paths
-and listener values wrap or scroll within their own cells without widening the
-page.
+The Dashboard's **Zelport runtime** panel keeps Version, Hostname, Configuration,
+Listeners and Modules in one row. Modules uses a compact count button whose
+non-modal popover lists the included module names and maturity. Runtime facts
+become a two-column grid at intermediate widths and one column on mobile; the
+Modules field spans both intermediate columns. Build time and uptime are not
+shown in this panel. Configuration paths and listener values wrap or scroll
+within their own cells without widening the page.
 
 ## Layers, feedback and lifecycle
 
@@ -79,6 +80,11 @@ Long diagnostics expand in document flow and never overlap neighboring sections.
 Errors belong to the affected view or form. Pending controls prevent duplicate
 submission. Refresh stays in the same navigation position across tabs, disabled
 with an explanation where it has no useful action.
+
+Persistent configuration warnings use the compact shared notice treatment: a
+plain-language heading, a restrained amber marker, and technical identifiers in
+monospace. They remain distinct from red operational errors and purple remote
+administration context.
 
 Unchanged polling retains DOM nodes, selection, focus, scroll and drafts. Current
 revision/state updates independently of rendering. A display redesign must not

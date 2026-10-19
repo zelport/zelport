@@ -17,6 +17,7 @@ type RuntimeInfo struct {
 	PID               int       `json:"pid"`
 	GoVersion         string    `json:"go_version"`
 	Platform          string    `json:"platform"`
+	Hostname          string    `json:"hostname"`
 	ConfigPath        string    `json:"config_path"`
 	ConfigDisplayPath string    `json:"config_display_path"`
 	Listeners         []string  `json:"listeners"`
@@ -35,6 +36,12 @@ func newRuntimeInfo(options []RuntimeInfo) RuntimeInfo {
 	}
 	if info.BuiltAt == "" {
 		info.BuiltAt = "unknown"
+	}
+	if info.Hostname == "" {
+		info.Hostname, _ = os.Hostname()
+	}
+	if info.Hostname == "" {
+		info.Hostname = "unknown"
 	}
 	home, _ := os.UserHomeDir()
 	info.ConfigDisplayPath = displayConfigPath(info.ConfigPath, home)

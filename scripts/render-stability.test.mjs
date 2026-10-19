@@ -60,13 +60,17 @@ test('Dashboard retains rows and runtime nodes across polling and uptime changes
  const context={ui,document:{getElementById:get,body:new Node('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout(){},clearTimeout(){},location:{hash:''}};
  const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace("import * as ui from './ui.js';",'').replace('init().catch(e=>message(e.message));','');
  runInNewContext(source+'\nglobalThis.update=s=>{state=s;render()};',context);
- const state={port:8080,modules:[],states:{test:{routes:[{id:'one',module:'test',domain:'test.localhost',summary:{state:'ready',target:'localhost'}}]}},runtime:{version:'dev',built_at:'unknown',uptime_seconds:1,listeners:[],config_path:'test'}};
+ const state={port:8080,modules:[],states:{test:{routes:[{id:'one',module:'test',domain:'test.localhost',summary:{state:'ready',target:'localhost'}}]}},runtime:{version:'dev',hostname:'test-host',built_at:'unknown',uptime_seconds:1,listeners:[],config_path:'test'}};
  context.update(state);const rows=tree(get('dashboard-services')),runtime=tree(get('runtime-info'));
  assert.equal(rows.filter(n=>n.tag==='thead').length,1);assert.equal(rows.filter(n=>n.tag==='tbody').length,1);
  assert.ok(rows.find(n=>n.tag==='table').className.includes('data-table'));
- assert.deepEqual(get('runtime-info').children.map(c=>c.dataset.label),['Version','Configuration','Listeners','Modules']);
- assert.ok(get('runtime-info').children.at(-1).className.includes('runtime-modules'));
+ assert.deepEqual(get('runtime-info').children.map(c=>c.dataset.label),['Version','Hostname','Configuration','Listeners','Modules']);
+ const moduleCell=get('runtime-info').children.at(-1),moduleNodes=tree(moduleCell);assert.ok(moduleCell.className.includes('runtime-modules'));
+ assert.ok(moduleNodes.some(n=>n.className.includes('runtime-modules-trigger')&&n.textContent==='Core only'));
  context.update({...state,revision:2,runtime:{...state.runtime,built_at:'2099-01-01 00:00:00 UTC',uptime_seconds:61}});sameNodes(tree(get('dashboard-services')),rows);sameNodes(tree(get('runtime-info')),runtime);
+ context.update({...state,modules:[{id:'stable',name:'Stable module',maturity:'stable'},{id:'preview',name:'Preview module',maturity:'experimental'}]});
+ assert.ok(tree(moduleCell).some(n=>n.className.includes('runtime-modules-trigger')&&n.textContent==='Show modules (2)'));
+ assert.ok(tree(moduleCell).some(n=>n.textContent==='Stable module'));assert.ok(tree(moduleCell).some(n=>n.className.includes('maturity-experimental')));
  const stableDomain=tree(get('dashboard-services')).find(n=>n.tag==='a');
  const changed={...state,states:{test:{routes:[{...state.states.test.routes[0],summary:{state:'unavailable',target:'localhost'}}]}}};context.update(changed);
  assert.equal(tree(get('dashboard-services')).find(n=>n.tag==='a'),stableDomain,'a status update must retain the selected domain node');
@@ -84,6 +88,19 @@ test('Dashboard shell omits the retired marketing and endpoint introduction',()=
  const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8');
  for(const token of ['class="intro"','id="endpoint"','MADE FOR LOCALHOST','MAGIC FUNNEL ADDRESS','Unified entry point'])assert.ok(!html.includes(token),token);
  assert.doesNotMatch(css,/\.intro\b|\.endpoint\b|\.hero-mesh\b/);
+});
+
+test('unsupported modules use a stable, readable configuration notice',()=>{
+ const nodes=new Map(),get=id=>{if(!nodes.has(id))nodes.set(id,new Node('section'));return nodes.get(id)};
+ const context={ui,document:{getElementById:get,body:new Node('body'),addEventListener(){}},window:{addEventListener(){}},setTimeout(){},clearTimeout(){},location:{hash:''}};
+ const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace("import * as ui from './ui.js';",'').replace('init().catch(e=>message(e.message));','');
+ runInNewContext(source+'\nglobalThis.update=s=>{state=s;render()};',context);
+ const base={modules:[],states:{},runtime:{version:'dev',listeners:[],config_path:'test'}};
+ context.update({...base,unsupported_modules:['relay']});
+ const notice=get('unsupported-modules'),original=tree(notice);
+ assert.equal(notice.hidden,false);assert.ok(original.some(n=>n.textContent==='Configured module unavailable'));assert.ok(original.some(n=>n.tag==='code'&&n.textContent==='relay'));
+ context.update({...base,revision:2,unsupported_modules:['relay']});sameNodes(tree(notice),original);
+ context.update({...base,unsupported_modules:[]});assert.equal(notice.hidden,true);assert.equal(notice.children.length,0);
 });
 
 for(const lifecycle of ['deactivate','dispose'])test(`relay client discards a late secret response after ${lifecycle}`,async()=>{

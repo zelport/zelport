@@ -77,9 +77,9 @@ and dialog. Polling should retain DOM nodes when displayed content is unchanged
 and preserve selection, focus, scroll, expanded sections, and form drafts.
 Verify narrow and short viewports as well as unchanged polls and real updates.
 
-The Zelport runtime panel uses Version, Configuration, and Listeners on its first
-row and a full-width Modules field on its second row. Do not show build time or
-uptime there.
+The Zelport runtime panel uses Version, Hostname, Configuration, Listeners, and a
+compact Modules popover on one row, with responsive wrapping. Do not show build
+time or uptime there.
 
 ## Verification
 

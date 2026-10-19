@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 let state, active='dashboard', pending, timer, busy=false;
 const modules=new Map(),messages=new Map(),refreshErrors=new Map(),availabilityControls=new Map();
 let availabilitySaving=false, fallbackToolbar, fallbackRefresh, fallbackRefreshing=false;
-let navigation;
+let navigation,runtimeModules;
 function renderRefreshControl(){
  if(!fallbackToolbar)return;
  const moduleRefresh=active!=='settings'&&[...modules.values()].some(m=>moduleVisible(m)&&m.toolbar?.querySelector('.refresh-icon'));
@@ -66,18 +66,21 @@ function schedule(){
  if(interval)timer=setTimeout(async()=>{await refreshVisible();schedule();},interval);
 }
 // Native popovers live in the top layer; position them against their own trigger.
+function positionPopover(trigger,popover){
+ const edge=16,gap=8,width=document.documentElement.clientWidth,height=window.innerHeight;
+ popover.style.maxHeight=`${Math.max(0,height-edge*2)}px`;
+ const anchor=trigger.getBoundingClientRect(),box=popover.getBoundingClientRect();
+ const left=Math.max(edge,Math.min(anchor.right-box.width,width-edge-box.width));
+ let top=anchor.bottom+gap;
+ if(top+box.height>height-edge&&anchor.top-gap-box.height>=edge)top=anchor.top-gap-box.height;
+ popover.style.left=`${left}px`;popover.style.top=`${Math.max(edge,Math.min(top,height-edge-box.height))}px`;
+}
 function positionHeaderPopovers(){
  for(const m of modules.values()){
   const i=m.indicator;if(!i||!i.popover.matches(':popover-open'))continue;
-  const edge=16,gap=8,width=document.documentElement.clientWidth,height=window.innerHeight;
-  i.popover.style.maxHeight=`${Math.max(0,height-edge*2)}px`;
-  const anchor=i.trigger.getBoundingClientRect(),box=i.popover.getBoundingClientRect();
-  const left=Math.max(edge,Math.min(anchor.right-box.width,width-edge-box.width));
-  let top=anchor.bottom+gap;
-  if(top+box.height>height-edge&&anchor.top-gap-box.height>=edge)top=anchor.top-gap-box.height;
-  top=Math.max(edge,Math.min(top,height-edge-box.height));
-  i.popover.style.left=`${left}px`;i.popover.style.top=`${top}px`;
+  positionPopover(i.trigger,i.popover);
  }
+ if(runtimeModules?.popover.matches?.(':popover-open'))positionPopover(runtimeModules.trigger,runtimeModules.popover);
 }
 window.addEventListener('resize',positionHeaderPopovers);
 window.addEventListener('scroll',positionHeaderPopovers,true);
@@ -164,10 +167,36 @@ function renderDashboardServices(){
  }
  // Preserve existing row order across snapshots; newly discovered services append.
 }
-function render(){if(!state)return;const missing=state.unsupported_modules||[];const notice=$('unsupported-modules');notice.hidden=!missing.length;ui.setText(notice,missing.length?`Modules not included in this build: ${missing.join(', ')}. Their configuration is preserved; services are inactive.`:'');renderAvailability();renderHeaderStatus();const remote=$('remote-administration');remote.hidden=!state.remote_admin;if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
+function renderUnsupportedModules(){
+ const missing=state.unsupported_modules||[],notice=$('unsupported-modules');notice.hidden=!missing.length;
+ ui.renderChanged(notice,missing,()=>{
+  notice.replaceChildren();if(!missing.length)return;
+  const icon=ui.el('span','configuration-notice-icon','!'),content=ui.el('div','configuration-notice-content');icon.setAttribute('aria-hidden','true');
+  const heading=ui.el('strong',null,missing.length===1?'Configured module unavailable':'Configured modules unavailable'),detail=ui.el('p');
+  detail.append(ui.el('span',null,'This build does not include '));
+  missing.forEach((id,index)=>{if(index)detail.append(ui.el('span',null,index===missing.length-1?' and ':', '));detail.append(ui.el('code',null,id));});
+  detail.append(ui.el('span',null,missing.length===1?'. Its configuration is preserved, but related services are inactive.':'. Their configurations are preserved, but related services are inactive.'));
+  content.append(heading,detail);notice.append(icon,content);
+ });
+}
+function render(){if(!state)return;renderUnsupportedModules();renderAvailability();renderHeaderStatus();const remote=$('remote-administration');remote.hidden=!state.remote_admin;if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
  renderDashboardServices();
- const rt=state.runtime,fields=[['Version',rt.version],['Configuration',rt.config_display_path||rt.config_path],['Listeners',rt.listeners?.join(', ')],['Modules',state.modules.map(m=>m.name).join(', ')||'Core only']];
- for(const [label,value]of fields){let cell=[...$('runtime-info').children].find(c=>c.dataset.label===label);if(!cell){cell=ui.el('div',label==='Modules'?'runtime-modules':null);cell.dataset.label=label;cell.append(ui.el('dt',null,label),ui.el('dd'));$('runtime-info').append(cell);}ui.setText(cell.lastElementChild,value);if(label==='Configuration')cell.lastElementChild.title=rt.config_path||'';}}
+ const rt=state.runtime,fields=[['Version',rt.version],['Hostname',rt.hostname],['Configuration',rt.config_display_path||rt.config_path],['Listeners',rt.listeners?.join(', ')],['Modules',state.modules.map(m=>m.name).join(', ')||'Core only']];
+ for(const [label,value]of fields){let cell=[...$('runtime-info').children].find(c=>c.dataset.label===label);if(!cell){cell=ui.el('div',label==='Modules'?'runtime-modules':null);cell.dataset.label=label;cell.append(ui.el('dt',null,label),ui.el('dd'));$('runtime-info').append(cell);}if(label==='Modules')renderRuntimeModules(cell);else ui.setText(cell.lastElementChild,value);if(label==='Configuration')cell.lastElementChild.title=rt.config_path||'';}}
+function renderRuntimeModules(cell){
+ if(!runtimeModules){
+  const value=cell.lastElementChild,root=ui.el('div','runtime-modules-disclosure'),trigger=ui.el('button','runtime-modules-trigger'),popover=ui.el('div','runtime-modules-popover');
+  trigger.type='button';trigger.setAttribute('aria-haspopup','true');trigger.setAttribute('aria-expanded','false');popover.id='runtime-modules-popover';popover.setAttribute('popover','auto');popover.setAttribute('aria-labelledby','runtime-modules-heading');trigger.setAttribute('popovertarget',popover.id);
+  popover.addEventListener('beforetoggle',event=>{trigger.setAttribute('aria-expanded',String(event.newState==='open'));if(event.newState==='open')requestAnimationFrame(positionHeaderPopovers);});root.append(trigger,popover);value.append(root);runtimeModules={trigger,popover};
+ }
+ const descriptors=state.modules.map(({id,name,maturity})=>({id,name,maturity})),count=descriptors.length,{trigger,popover}=runtimeModules;
+ ui.setText(trigger,count?`Show modules (${count})`:'Core only');trigger.disabled=!count;trigger.setAttribute('aria-label',count?`Show ${count} included module${count===1?'':'s'}`:'No modules included');
+ ui.renderChanged(popover,descriptors,()=>{
+  const heading=ui.el('strong','runtime-modules-heading','Included modules');heading.id='runtime-modules-heading';const list=ui.el('ul','runtime-modules-list');
+  for(const descriptor of descriptors){const item=ui.el('li'),name=ui.el('span',null,descriptor.name);item.append(name);if(descriptor.maturity==='experimental')item.append(ui.experimentalBadge());list.append(item);}
+  popover.replaceChildren(heading,list);
+ });
+}
 function renderAvailability(){
  for(const [id,row]of availabilityControls){
   const a=state.module_availability?.[id];if(!a)continue;

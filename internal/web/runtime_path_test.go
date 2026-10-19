@@ -22,3 +22,12 @@ func TestDisplayConfigPath(t *testing.T) {
 		})
 	}
 }
+
+func TestRuntimeHostname(t *testing.T) {
+	if got := newRuntimeInfo([]RuntimeInfo{{Hostname: "test-host"}}).Hostname; got != "test-host" {
+		t.Fatalf("hostname = %q, want test-host", got)
+	}
+	if got := newRuntimeInfo(nil).Hostname; got == "" {
+		t.Fatal("default hostname is empty")
+	}
+}
