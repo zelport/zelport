@@ -74,7 +74,7 @@ func (m *Module) ValidateRoute(r feature.Route) error {
 				}
 			}
 			if !found {
-				return fmt.Errorf("selected container mapping is not available; refresh the list")
+				return fmt.Errorf("The selected container mapping is unavailable. Refresh the list.")
 			}
 		}
 	}

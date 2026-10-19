@@ -56,13 +56,13 @@ func (m *Module) ValidateSettings(b json.RawMessage) error {
 	established := s.ProtocolVersion != 0 || s.AdminServiceID != "" || len(s.Peers) != 0 || s.Enabled || s.Publish || s.RelayURL != "" || s.AccessToken != "" || s.GroupToken != "" || s.DeviceID != "" || s.PrivateKey != "" || s.Sequence != 0 || len(s.Watermarks) != 0
 	if established {
 		if s.ProtocolVersion != protocol.Version {
-			return errors.New("relay protocol_version must be 1; create a fresh Ports over Relay configuration")
+			return errors.New("Relay protocol_version must be 1. Create a fresh Ports over Relay configuration.")
 		}
 		if !protocol.ValidID(s.DeviceID) {
-			return errors.New("relay identity is missing or invalid; restore the configuration backup")
+			return errors.New("The relay identity is missing or invalid. Restore the configuration backup.")
 		}
 		if _, e := protocol.DecodeKey(s.PrivateKey); e != nil {
-			return errors.New("relay private identity is invalid; restore the configuration backup")
+			return errors.New("The relay private identity is invalid. Restore the configuration backup.")
 		}
 		if _, e := protocol.DecodeKey(s.GroupToken); e != nil {
 			return errors.New("E2E secret must contain 32 random bytes")

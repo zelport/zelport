@@ -134,11 +134,11 @@ export function picker(label,options,value,{placeholder='Select…'}={}){
 export function routeEditRevision(original,state){
  if(original?.id){
   const latest=Object.values(state.states).flatMap(s=>s.routes||[]).find(r=>r.id===original.id);
-  if(!latest)throw Error('This service was removed in another window. Your entries are preserved; close this dialog to continue.');
+  if(!latest)throw Error('This service was removed in another window. Your entries are preserved. Close this dialog to continue.');
   const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
   const content=r=>canonical({module:r.module,domain:r.domain,editor:r.editor});
   if(content(original)!==content(latest)){
-   const error=Error('This service changed in another window. Your entries are preserved. Reload saved values to review the current service; this discards your draft.');
+   const error=Error('This service changed in another window. Your entries are preserved. Reload the saved values to review the current service. Reloading discards your draft.');
    error.currentRoute=latest;throw error;
   }
  }

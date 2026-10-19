@@ -196,7 +196,7 @@ func TestSharedMappingAndFailedRemoval(t *testing.T) {
 		mod.Admin().ServeHTTP(w, httptest.NewRequest("POST", "/remove-mapping", strings.NewReader(string(payload))))
 		return w
 	}
-	if w := remove(2); w.Code != 400 || !strings.Contains(w.Body.String(), "another domain") {
+	if w := remove(2); w.Code != 400 || !strings.Contains(w.Body.String(), "Another domain") {
 		t.Fatal(w.Code, w.Body.String())
 	}
 	if err := m.Delete(context.Background(), 2, other.ID); err != nil {
@@ -205,7 +205,7 @@ func TestSharedMappingAndFailedRemoval(t *testing.T) {
 	b.mu.Lock()
 	b.failUnpublish = true
 	b.mu.Unlock()
-	if w := remove(3); w.Code != 400 || !strings.Contains(w.Body.String(), "removal pending") {
+	if w := remove(3); w.Code != 400 || !strings.Contains(w.Body.String(), "Removal is pending") {
 		t.Fatal(w.Code, w.Body.String())
 	}
 	rev, routes := m.Snapshot()

@@ -146,7 +146,7 @@ func (m *Module) openAdministration(ctx context.Context, peer protocol.PeerConte
 			return nil, ctx.Err()
 		}
 	}
-	return nil, errors.New("administration state changed; try again")
+	return nil, errors.New("The administration state changed. Try again.")
 }
 func (m *Module) openAdministrationAttempt(ctx context.Context, peer protocol.PeerContext, o protocol.OpenRequest) (net.Conn, error) {
 

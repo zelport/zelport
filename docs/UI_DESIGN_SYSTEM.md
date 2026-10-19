@@ -81,6 +81,12 @@ Errors belong to the affected view or form. Pending controls prevent duplicate
 submission. Refresh stays in the same navigation position across tabs, disabled
 with an explanation where it has no useful action.
 
+User-facing errors state the problem first and put recovery guidance in a
+separate sentence. Do not use semicolons, en dashes or em dashes as sentence
+separators. Hyphens remain appropriate inside compound terms, command-line flags
+and other code notation. Keep raw external diagnostics visually separate from
+authored guidance because Zelport does not control their wording.
+
 Persistent configuration warnings use the compact shared notice treatment: a
 plain-language heading, a restrained amber marker, and technical identifiers in
 monospace. They remain distinct from red operational errors and purple remote

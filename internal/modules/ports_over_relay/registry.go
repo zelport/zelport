@@ -92,7 +92,7 @@ func (m *Module) Catalog(ctx context.Context) (protocol.Record, error) {
 }
 func (m *Module) acceptRecord(r protocol.Record, raw []byte) error {
 	if r.Version != protocol.Version {
-		return fmt.Errorf("unsupported relay catalog version %d; create a fresh Ports over Relay configuration", r.Version)
+		return fmt.Errorf("Unsupported relay catalog version %d. Create a fresh Ports over Relay configuration.", r.Version)
 	}
 	key := r.Group + "/" + r.DeviceID
 	digest := protocol.Digest(raw)
@@ -170,7 +170,7 @@ func (m *Module) Open(ctx context.Context, peer protocol.PeerContext, o protocol
 	route := l.Route()
 	if m.Host.ListenerAuthority(route.Domain) != o.Authority {
 		l.Close()
-		return nil, errors.New("service authority changed; refresh catalog")
+		return nil, errors.New("The service authority changed. Refresh the relay catalog.")
 	}
 	a, b := net.Pipe()
 	if _, e = l.Track(a); e != nil {
@@ -240,7 +240,7 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, route featur
 	c := m.client
 	m.mu.Unlock()
 	if c == nil || m.validateOffer(ref) != nil {
-		feature.Status(w, r, 503, "Relay service unavailable", "The import is preserved; reconnect or refresh the catalog.")
+		feature.Status(w, r, 503, "Relay service unavailable", "The import is preserved. Reconnect or refresh the relay catalog.")
 		return
 	}
 	var authority string

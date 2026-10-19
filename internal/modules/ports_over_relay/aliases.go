@@ -144,7 +144,7 @@ func resolveAdmin(s Settings, status client.Status, label string) (AdminTarget, 
 		return AdminTarget{}, errors.New("unknown administration alias")
 	}
 	if len(owners) > 1 {
-		return AdminTarget{Hostname: label}, errors.New("hostname alias conflicts; use a UUID address")
+		return AdminTarget{Hostname: label}, errors.New("The hostname alias conflicts with another device. Use a UUID address.")
 	}
 	p := owners[0]
 	t := AdminTarget{Import: protocol.Import{Group: group, DeviceID: p.DeviceID, ProviderKey: p.PublicKey, ServiceID: p.AdminServiceID}, Hostname: p.Hostname}

@@ -77,7 +77,7 @@ func (m *Module) ValidateRoute(r feature.Route) error {
 				return errors.New("a route cannot change its sandbox identity")
 			}
 			if previous.Deleting && !s.Deleting {
-				return errors.New("route removal is pending; finish removing it first")
+				return errors.New("Route removal is pending. Finish removing it first.")
 			}
 		}
 		if previous == nil {
@@ -90,7 +90,7 @@ func (m *Module) ValidateRoute(r feature.Route) error {
 			}
 			m.mu.RUnlock()
 			if !found {
-				return errors.New("sandbox not found; refresh the list")
+				return errors.New("The sandbox was not found. Refresh the list.")
 			}
 		}
 	}
@@ -198,7 +198,7 @@ func (m *Module) view(r feature.Route) (feature.Summary, *sbx.Port) {
 	var s Settings
 	feature.Decode(r.Settings, &s)
 	if s.Deleting {
-		return feature.Summary{State: "waiting", Detail: "Removal pending; retry removal."}, nil
+		return feature.Summary{State: "waiting", Detail: "Removal is pending. Try removing the route again."}, nil
 	}
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -358,7 +358,7 @@ func (m *Module) remove(ctx context.Context, snap feature.Snapshot, r feature.Ro
 		var v Settings
 		feature.Decode(other.Settings, &v)
 		if other.ID != r.ID && s.SandboxID == v.SandboxID && s.SandboxPort == v.SandboxPort {
-			return errors.New("another domain uses this sandbox port; remove that route first")
+			return errors.New("Another domain uses this sandbox port. Remove that route first.")
 		}
 	}
 	boxes, e := m.Backend.List(ctx)
@@ -404,7 +404,7 @@ func (m *Module) remove(ctx context.Context, snap feature.Snapshot, r feature.Ro
 	}
 	if target != nil {
 		if e = m.Backend.Unpublish(ctx, s.SandboxID, *target); e != nil {
-			return fmt.Errorf("removal pending; retry: %w", e)
+			return fmt.Errorf("Removal is pending. The retry failed: %w", e)
 		}
 	}
 	_, e = m.Host.Commit(ctx, snap.Revision, feature.CommitOptions{}, func(d *feature.Draft) error {

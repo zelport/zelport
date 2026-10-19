@@ -49,7 +49,7 @@ export function mount(ctx) {
   clearSecret();
   const credentialRevision=dirty?revision:ctx.ui.state().revision,d=el('dialog','relay-token-dialog'),f=el('form'),heading=dialogHeader('Change relay access token',d);dialog=d;
 
-  const description=el('p','muted',current.require_access_token===false?'Changing the stored token disconnects current clients. Access remains open; clients should continue without a token. The E2E secret is unchanged.':'Changing the token disconnects all relay clients. Update each client with the new token to reconnect. The E2E secret is unchanged.');
+  const description=el('p','muted',current.require_access_token===false?'Changing the stored token disconnects current clients. Access remains open. Clients should continue without a token. The E2E secret is unchanged.':'Changing the token disconnects all relay clients. Update each client with the new token to reconnect. The E2E secret is unchanged.');
   const mode=picker('New token',[{value:'generate',label:'Generate a new token'},{value:'replace',label:'Use an existing token'}],'',{placeholder:'Choose token action…'});
   const replacement=adornedField('New access token','','password');replacement.input.autocomplete='new-password';replacement.input.spellcheck=false;replacement.wrap.hidden=true;
   mode.onchange=()=>{replacement.wrap.hidden=mode.value!=='replace';replacement.input.required=mode.value==='replace';confirm.disabled=!mode.value;if(mode.value==='replace')replacement.input.focus();};

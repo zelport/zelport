@@ -96,7 +96,7 @@ func (m *Module) Admin() http.Handler {
 			switch req.Action {
 			case "generate":
 				if s.DeviceID != "" {
-					err = errors.New("E2E secret already exists; reveal it or replace it explicitly")
+					err = errors.New("An E2E secret already exists. Reveal it or explicitly replace it.")
 					break
 				}
 				s, err = newIdentity()

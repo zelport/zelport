@@ -40,7 +40,7 @@ func load(path string) (configuration, bool, error) {
 		return c, false, e
 	}
 	if c.Version != 1 {
-		return c, false, fmt.Errorf("unsupported configuration version %d; create a fresh version 1 configuration", c.Version)
+		return c, false, fmt.Errorf("Unsupported configuration version %d. Create a fresh version 1 configuration.", c.Version)
 	}
 	if c.Modules == nil {
 		c.Modules = map[string]json.RawMessage{}

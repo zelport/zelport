@@ -322,7 +322,7 @@ func (m *Manager) acquire(ctx context.Context, id string, rev *uint64, export bo
 		return nil, feature.ErrNotFound
 	}
 	if m.modules[route.Module] == nil {
-		return nil, fmt.Errorf("module %q is not included in this build; configuration is preserved", route.Module)
+		return nil, fmt.Errorf("Module %q is not included in this build. Its configuration is preserved.", route.Module)
 	}
 	if export && !m.modules[route.Module].Descriptor().Exportable {
 		return nil, feature.ErrNotFound

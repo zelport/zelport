@@ -198,7 +198,7 @@ func (c Client) podman(ctx context.Context, inv *Inventory) error {
 	// A URI override can refer to a remote host whose published ports are not local.
 	if c.env("CONTAINER_HOST") != "" {
 		inv.Connection = fingerprint(c.Engine, "CONTAINER_HOST", c.env("CONTAINER_HOST"))
-		return errors.New("CONTAINER_HOST overrides are not supported; use a local Podman connection")
+		return errors.New("CONTAINER_HOST overrides are not supported. Use a local Podman connection.")
 	}
 	b, err := c.call(ctx, "system", "connection", "list", "--format", "json")
 	if err != nil {

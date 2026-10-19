@@ -175,7 +175,7 @@ function renderUnsupportedModules(){
   const heading=ui.el('strong',null,missing.length===1?'Configured module unavailable':'Configured modules unavailable'),detail=ui.el('p');
   detail.append(ui.el('span',null,'This build does not include '));
   missing.forEach((id,index)=>{if(index)detail.append(ui.el('span',null,index===missing.length-1?' and ':', '));detail.append(ui.el('code',null,id));});
-  detail.append(ui.el('span',null,missing.length===1?'. Its configuration is preserved, but related services are inactive.':'. Their configurations are preserved, but related services are inactive.'));
+  detail.append(ui.el('span',null,missing.length===1?'. Its configuration is preserved, but related functionality is inactive.':'. Their configurations are preserved, but related functionality is inactive.'));
   content.append(heading,detail);notice.append(icon,content);
  });
 }

@@ -138,7 +138,7 @@ func (c Client) publish(ctx context.Context, id string, port int, allowStart boo
 	for _, box := range boxes {
 		if box.ID == id {
 			if !allowStart && box.Status != "running" {
-				return errors.New("sandbox stopped before port publication; start it explicitly")
+				return errors.New("The sandbox stopped before the port was published. Start it explicitly.")
 			}
 			if strings.HasPrefix(box.Name, "-") {
 				return errors.New("invalid sandbox name")

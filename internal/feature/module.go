@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var ErrConflict = errors.New("configuration changed or domain already in use; refresh and retry")
+var ErrConflict = errors.New("Configuration changed or the domain is already in use. Refresh and try again.")
 var ErrNotFound = errors.New("route or module not found")
 var ErrClosed = errors.New("service is no longer available")
 

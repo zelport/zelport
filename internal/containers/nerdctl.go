@@ -30,7 +30,7 @@ func (c Client) nerdctlInfo(ctx context.Context, prefix []string) (nerdctlInfo, 
 func (c Client) nerdctl(ctx context.Context, inv *Inventory) error {
 	// VM wrappers report guest ports. They cannot establish host reachability.
 	if c.platform() != "linux" {
-		return errors.New("nerdctl discovery currently requires native Linux; VM wrapper port forwarding is not verified")
+		return errors.New("nerdctl discovery currently requires native Linux. Port forwarding through VM wrappers has not been verified.")
 	}
 	inv.RuntimeStatus = "unavailable"
 	info, err := c.nerdctlInfo(ctx, nil)

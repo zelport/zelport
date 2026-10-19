@@ -42,7 +42,7 @@ func runWithRuntime(newContext func() (context.Context, context.CancelFunc), ope
 	started := time.Now()
 	port := flag.Int("port", 8080, "HTTP reverse proxy and administration port")
 	config := flag.String("config", "", "configuration file (default: XDG config on macOS/Linux, native user config directory elsewhere)")
-	allowRoot := flag.Bool("allow-root", os.Getenv(allowRootEnv) == "1", "allow running as root (env: ZELPORT_ALLOW_ROOT=1; warns on startup)")
+	allowRoot := flag.Bool("allow-root", os.Getenv(allowRootEnv) == "1", "allow running as root (env: ZELPORT_ALLOW_ROOT=1). Always warns on startup")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -51,7 +51,7 @@ func runWithRuntime(newContext func() (context.Context, context.CancelFunc), ope
 		return err
 	}
 	if flag.NArg() != 0 {
-		return errors.New("unexpected arguments; use zelport --help")
+		return errors.New("Unexpected arguments. Use zelport --help.")
 	}
 	if *showVersion {
 		fmt.Printf("zelport %s (built %s)\n", version, builtAt)

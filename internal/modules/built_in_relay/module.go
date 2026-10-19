@@ -44,7 +44,7 @@ func settings(raw json.RawMessage) (Settings, error) {
 	if s.BindAddress != "" {
 		addr, err := netip.ParseAddr(s.BindAddress)
 		if err != nil || addr.IsUnspecified() || addr.IsMulticast() {
-			return s, errors.New("bind address must be a local IP address; leave blank for all interfaces")
+			return s, errors.New("The bind address must be a local IP address. Leave it blank to listen on all interfaces.")
 		}
 	}
 	if s.AccessToken != "" {
@@ -176,7 +176,7 @@ func (m *Module) save(ctx context.Context, revision uint64, next Settings) error
 		candidate, err = prepare(next)
 		if err != nil {
 			if m.runtime != nil && old.Port == next.Port {
-				return errors.New("cannot reserve the new bind address; disable relay before changing overlapping listeners: " + err.Error())
+				return errors.New("The new bind address cannot be reserved. Disable the relay before changing overlapping listeners. Details: " + err.Error())
 			}
 			return err
 		}

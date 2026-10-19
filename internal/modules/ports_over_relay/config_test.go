@@ -101,7 +101,7 @@ func TestRelayProtocolVersionIsRequiredForEstablishedState(t *testing.T) {
 		invalid = append(invalid, body)
 	}
 	for _, body := range invalid {
-		if err := mod.ValidateSettings(body); err == nil || err.Error() != "relay protocol_version must be 1; create a fresh Ports over Relay configuration" {
+		if err := mod.ValidateSettings(body); err == nil || err.Error() != "Relay protocol_version must be 1. Create a fresh Ports over Relay configuration." {
 			t.Fatalf("unexpected validation result for %s: %v", body, err)
 		}
 	}
