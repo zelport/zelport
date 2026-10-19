@@ -47,6 +47,7 @@ release_id=$(gh api --method POST "repos/$GH_REPO/releases" \
   -f tag_name="$GITHUB_REF_NAME" \
   -f name="Zelport App $GITHUB_REF_NAME" \
   -F draft=true \
+  -F generate_release_notes=true \
   --jq .id)
 test -n "$release_id"
 gh release upload "$GITHUB_REF_NAME" "${assets[@]}"

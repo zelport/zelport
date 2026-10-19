@@ -107,6 +107,7 @@ class ReleasePublicationWorkflowTest(unittest.TestCase):
         self.assertLess(preflight, create)
         self.assertIn('refusing to replace existing release', publish)
         self.assertIn('-F draft=true', publish)
+        self.assertIn('-F generate_release_notes=true', publish)
         self.assertIn('/git/ref/tags/$GITHUB_REF_NAME', publish)
 
     def test_draft_is_downloaded_and_verified_before_becoming_public(self):
