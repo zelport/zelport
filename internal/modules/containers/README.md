@@ -7,17 +7,13 @@ or publish ports.
 
 ## CLI and runtime status
 
-The **Containers** header button opens an information panel with separate CLI and
-runtime results for each backend. Failures with a detected CLI offer expandable
-**Technical details**. Missing optional executables are neutral. Runtime failures
-are warnings, or errors when configured services depend on that engine.
+The **Containers** information panel reports CLI and runtime status per backend.
+Missing optional executables are neutral; runtime failures become errors when a
+configured service depends on that engine.
 
-Executables are resolved from the Zelport process PATH on each scan. Each engine
-has its own bounded scan; an absent or slow backend does not block the others.
-An `info` response verifies runtime access before listing containers. A successful
-runtime probe does not prove container application health. A later inventory
-failure leaves runtime status available and reports the discovery error separately.
-Failed scans retain last-known containers only for the same connection identity.
+Executables are resolved from the Zelport process PATH. Backends scan
+independently, verify runtime access before discovery, and retain last-known
+containers only for the same connection identity.
 
 Docker uses the configured local Unix socket/context. Podman supports native Linux,
 local sockets and locally managed Podman machines. CLI commands use structured JSON.
@@ -65,25 +61,17 @@ added, and this backend is excluded from builds without `containers`.
 
 ## Shared engines and UI stability
 
-Two healthy inventories with the same canonical local socket and full container ID
-share one displayed group. Both route references still match that group; adding a
-new service uses its first backend. This is presentation deduplication, not failover
-or identity migration. Unknown socket relationships, names alone and stale sources
-are not deduplicated.
-
-Status rows and resource lists render independently. Unchanged polls and revision
-updates preserve DOM nodes, open details, selection and form drafts. Updated state
-is still supplied to editors even when no render is needed.
+Healthy inventories with the same canonical local socket and full container ID
+share one displayed group without changing route identity. This is presentation
+deduplication, not failover or identity migration.
 
 ## Verification
 
-Adapter tests cover missing CLIs, runtime versus discovery failures, namespace and
-UUID isolation, changed-runtime rejection, port parsing, and last-known inventory
-recovery. Frontend tests cover the three status rows, severity, proven duplicate
-sources and unchanged-poll retention. A live Podman scan is opt-in:
+Run the opt-in live Podman scan with:
 
 ```sh
 ZELPORT_CONTAINER_LIVE=1 go test ./internal/containers -run TestLiveReadOnly -v
 ```
 
-Synthetic nerdctl fixtures do not constitute a live containerd/VM integration test.
+The remaining adapter and frontend coverage uses controlled fixtures; nerdctl
+fixtures are not a live containerd or VM integration test.

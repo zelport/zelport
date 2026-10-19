@@ -6,21 +6,10 @@ Zelport App is a local HTTP reverse proxy with browser-based administration.
 It gives local services stable `*.localhost` names through one loopback
 listener, normally `http://localhost:8080`.
 
-The standard Zelport App contains the complete registered service-capability
-set:
-
-- Docker Sandboxes;
-- Containers;
-- Local Ports;
-- Remote HTTP;
-- Ports over SSH;
-- Ports over Relay;
-- Built-in Relay.
-
-Docker, Podman, `sbx`, system SSH, Homebrew and systemd are supported external
-tools. They are not bundled with Zelport App and are required only for the
-capability that uses them. Modules are internal code boundaries, not product
-editions that users select when installing Zelport.
+The standard build contains every capability described under
+[Service behavior](#service-behavior). Docker, Podman, `sbx` and system SSH are
+optional external tools for the capabilities that use them. Modules are internal
+code boundaries, not product editions.
 
 ## Install
 
@@ -54,16 +43,9 @@ module-boundary checks; it is not a separately distributed product.
 
 ## Release verification
 
-The [release workflow](.github/workflows/release.yml) builds the archives for
-every platform in its release matrix once. It then executes each packaged
-binary on a matching standard GitHub-hosted runner and verifies startup, the
-standard module composition, Local Ports proxying, Local Integration, Built-in
-Relay, Ports over Relay and graceful shutdown. A stable tag is published only
-after every native job passes, and publication uses the exact tested archives
-without rebuilding them.
-
-Homebrew and Zelport Installer automation consume these immutable App release
-assets. They verify their own installation paths but never rebuild Zelport App.
+The [release workflow](.github/workflows/release.yml) exercises every packaged
+binary on its native platform and publishes the exact tested archives. Homebrew
+and Zelport Installer consume those immutable assets without rebuilding them.
 
 Useful flags:
 
@@ -73,29 +55,8 @@ Useful flags:
   macOS/Linux, and the native per-user configuration directory on Windows.
 - `--version`: print the version and exit.
 
-The configuration schema is exactly version `1`. A missing file is created as a
-valid empty configuration. Any other version, unknown field or invalid module
-setting is rejected; Zelport does not import or rewrite an earlier schema.
-
-```json
-{
-  "version": 1,
-  "revision": 1,
-  "modules": {},
-  "routes": [
-    {
-      "id": "82958650-fb63-43c1-903b-f3b6f89b1667",
-      "module": "local_ports",
-      "domain": "example.localhost",
-      "settings": {"aux_port": 3000}
-    }
-  ]
-}
-```
-
-Use the administration UI to create and edit routes. Configuration writes are
-atomic and owner-only. Route UUIDs survive edits, and concurrent changes are
-rejected instead of silently overwriting one another.
+See [Configuration](docs/CONFIGURATION.md) for the schema, example and
+persistence guarantees.
 
 ## Service behavior
 
@@ -124,19 +85,9 @@ returns 503, and an unreachable HTTP backend returns 502.
 ## Relay
 
 [Zelport Relay](https://github.com/zelport/zelport-relay) is the standalone
-relay server. Built-in Relay is the same server embedded in Zelport App. Ports
-over Relay is a service source that acts as a relay client. These roles are
-independent even when they run in one executable.
-
-Relay Protocol v1 uses `/v1/ws` and the `zelport-relay/v1` cryptographic
-namespace. A group is one mutually trusted administration boundary: members can
-administer one another through authenticated relay sessions. Use a separate
-group when that trust is not appropriate. Start with fresh identities,
-credentials and relay configuration; no earlier schema or protocol is imported.
-
-See [Ports over Relay](PORTS_OVER_RELAY.md) for the operating model and
-[Relay Protocol v1](docs/ports-over-relay-v1.md) for the normative technical
-contract.
+server; Built-in Relay embeds it, while Ports over Relay is a client service
+source. See [Ports over Relay](PORTS_OVER_RELAY.md) for the trust model and
+[Relay Protocol v1](docs/ports-over-relay-v1.md) for the normative contract.
 
 ## Architecture and operations
 

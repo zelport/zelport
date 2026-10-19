@@ -35,25 +35,6 @@ Set `VERSION` to the numeric SemVer being prepared, without a `v` prefix.
 make release-ready VERSION="$VERSION"
 ```
 
-To reproduce the packaging inputs separately, also set `REVIEWED_COMMIT` to the
-exact reviewed commit, generate the source archive with the matching versioned
-prefix, then generate the recipe from those bytes:
-
-```sh
-: "${VERSION:?set VERSION to numeric SemVer without v}"
-: "${REVIEWED_COMMIT:?set REVIEWED_COMMIT to the reviewed commit}"
-git archive --format=tar.gz --prefix="zelport-${VERSION}/" \
-  --output="bin/arch/zelport_${VERSION}_source.tar.gz" "$REVIEWED_COMMIT"
-python3 contrib/archlinux/prepare.py \
-  --version "$VERSION" \
-  --source-archive "bin/arch/zelport_${VERSION}_source.tar.gz" \
-  --output "bin/arch/${VERSION}"
-```
-
-The generator accepts stable numeric SemVer only, verifies required source files,
-rejects local module versions and `replace` directives, and records the measured
-archive SHA-256. It refuses to overwrite an existing output directory.
-
 In the generated directory, run:
 
 ```sh
@@ -65,4 +46,5 @@ makepkg --cleanbuild --syncdeps
 Copy only the generated `PKGBUILD` and `.SRCINFO` back to this directory after
 validation. Do not use `SKIP`, replace a published source asset, or submit the
 package to an external catalog without a separate decision. See
-[`VERIFICATION.md`](VERIFICATION.md) for the current validation scope.
+[`VERIFICATION.md`](VERIFICATION.md) for manual reproduction and the current
+validation scope.

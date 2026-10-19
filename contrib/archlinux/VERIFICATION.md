@@ -24,3 +24,23 @@ Not yet verified:
 - a native aarch64 Arch build or runtime;
 - installation into a persistent Arch host; and
 - external package-catalog submission.
+
+## Reproducing recipe inputs
+
+Set `VERSION` to numeric SemVer without `v` and `REVIEWED_COMMIT` to the exact
+reviewed commit:
+
+```sh
+: "${VERSION:?set VERSION to numeric SemVer without v}"
+: "${REVIEWED_COMMIT:?set REVIEWED_COMMIT to the reviewed commit}"
+git archive --format=tar.gz --prefix="zelport-${VERSION}/" \
+  --output="bin/arch/zelport_${VERSION}_source.tar.gz" "$REVIEWED_COMMIT"
+python3 contrib/archlinux/prepare.py \
+  --version "$VERSION" \
+  --source-archive "bin/arch/zelport_${VERSION}_source.tar.gz" \
+  --output "bin/arch/${VERSION}"
+```
+
+The generator accepts stable numeric SemVer, verifies required source files,
+rejects local module versions and `replace` directives, records the archive
+SHA-256, and refuses to overwrite its output directory.
