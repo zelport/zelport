@@ -1,6 +1,6 @@
 pkgbase = zelport
 	pkgdesc = Local HTTP reverse proxy with named localhost addresses and encrypted relay connections
-	pkgver = 0.10.0
+	pkgver = 0.10.1
 	pkgrel = 1
 	url = https://github.com/zelport/zelport
 	arch = x86_64
@@ -19,7 +19,7 @@ pkgbase = zelport
 	optdepends = nerdctl: containerd discovery
 	options = !debug
 	options = !strip
-	source = zelport-0.10.0.tar.gz::https://github.com/zelport/zelport/releases/download/v0.10.0/zelport_0.10.0_source.tar.gz
-	sha256sums = 4d72e6e1e668dde3d08f64193b11a085a44a12b8aad43e7a81ec4a3087533484
+	source = zelport-0.10.1.tar.gz::https://github.com/zelport/zelport/releases/download/v0.10.1/zelport_0.10.1_source.tar.gz
+	sha256sums = 69cd869e041c98e282eee607bf41a8d7f0fb714bf7fb52de93d83d718d2360df
 
 pkgname = zelport

@@ -1,8 +1,8 @@
 # Maintainer: Zelport project (https://github.com/zelport)
 # Generate with contrib/archlinux/prepare.py.
 pkgname=zelport
-pkgver=0.10.0
-_upstream_version=0.10.0
+pkgver=0.10.1
+_upstream_version=0.10.1
 pkgrel=1
 pkgdesc='Local HTTP reverse proxy with named localhost addresses and encrypted relay connections'
 arch=('x86_64' 'aarch64')
@@ -17,7 +17,7 @@ optdepends=('systemd: user service management'
             'nerdctl: containerd discovery')
 options=('!debug' '!strip')
 source=("zelport-${_upstream_version}.tar.gz::https://github.com/zelport/zelport/releases/download/v${_upstream_version}/zelport_${_upstream_version}_source.tar.gz")
-sha256sums=('4d72e6e1e668dde3d08f64193b11a085a44a12b8aad43e7a81ec4a3087533484')
+sha256sums=('69cd869e041c98e282eee607bf41a8d7f0fb714bf7fb52de93d83d718d2360df')
 
 prepare() {
   cd "$srcdir/zelport-$_upstream_version"
