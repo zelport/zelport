@@ -1,7 +1,7 @@
 # Arch Linux package
 
 This directory owns the source package for Zelport App. The package compiles the
-standard seven-module `zelport` executable and installs its systemd user unit.
+complete standard `zelport` executable and installs its systemd user unit.
 Docker, Podman, nerdctl, OpenSSH and `sbx` remain third-party tools that are only
 needed when their corresponding integrations are used.
 
@@ -26,19 +26,28 @@ the service before removing the package.
 
 ## Prepare a release recipe
 
-`make release-ready VERSION=0.10.0` verifies and generates the immutable source
-archive, `PKGBUILD`, and `.SRCINFO` together with the binary release assets. To
-reproduce the packaging inputs separately, generate the source archive from the
-reviewed commit with the exact `zelport-0.10.0/` prefix, then generate the recipe
-from those bytes:
+Set `VERSION` to the numeric SemVer being prepared, without a `v` prefix.
+`make release-ready` verifies and generates the immutable source archive,
+`PKGBUILD`, and `.SRCINFO` together with the binary release assets:
 
 ```sh
-git archive --format=tar.gz --prefix=zelport-0.10.0/ \
-  --output=bin/arch/zelport_0.10.0_source.tar.gz <reviewed-commit>
+: "${VERSION:?set VERSION to numeric SemVer without v}"
+make release-ready VERSION="$VERSION"
+```
+
+To reproduce the packaging inputs separately, also set `REVIEWED_COMMIT` to the
+exact reviewed commit, generate the source archive with the matching versioned
+prefix, then generate the recipe from those bytes:
+
+```sh
+: "${VERSION:?set VERSION to numeric SemVer without v}"
+: "${REVIEWED_COMMIT:?set REVIEWED_COMMIT to the reviewed commit}"
+git archive --format=tar.gz --prefix="zelport-${VERSION}/" \
+  --output="bin/arch/zelport_${VERSION}_source.tar.gz" "$REVIEWED_COMMIT"
 python3 contrib/archlinux/prepare.py \
-  --version 0.10.0 \
-  --source-archive bin/arch/zelport_0.10.0_source.tar.gz \
-  --output bin/arch/0.10.0
+  --version "$VERSION" \
+  --source-archive "bin/arch/zelport_${VERSION}_source.tar.gz" \
+  --output "bin/arch/${VERSION}"
 ```
 
 The generator accepts stable numeric SemVer only, verifies required source files,

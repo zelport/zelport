@@ -8,9 +8,11 @@ with the core.
 
 ## Discovery and service lifecycle
 
-Discovery runs every 15 seconds and after configuration changes. The refresh
-icon on the module tab requests discovery immediately. The adapter invokes `sbx`
-with direct arguments, without a shell, and a default 20-second command timeout.
+Discovery runs periodically and after configuration changes. The refresh icon
+on the module tab requests discovery immediately. The adapter invokes `sbx`
+with direct arguments, without a shell, and enforces a bounded command timeout.
+The [module descriptor](module.go) and
+[adapter defaults](../../sbx/client.go) are authoritative for those timings.
 
 A **Sandbox port** is the application port inside the sandbox. An **Aux port** is
 its intermediate host mapping. Applications must listen on an interface reachable
@@ -49,11 +51,11 @@ JSON does not guarantee a stable schema across CLI releases. The
 [{"id": "sandbox-id", "name": "project", "status": "running"}]
 ```
 
-The envelope was verified with `sbx v0.47.0`; the top-level array and port listing
-were verified with installed `sbx v0.48.0` on 2026-10-13. Port listings are arrays
-of objects with `host_ip`, `host_port`, `sandbox_port` and `protocol` fields.
-Additional JSON fields are ignored. This is support for known formats, not a
-promise of compatibility with every future `sbx` release.
+The checked-in fixtures and adapter tests are authoritative for the accepted
+list and port representations. Port listings are arrays of objects with
+`host_ip`, `host_port`, `sandbox_port` and `protocol` fields. Additional JSON
+fields are ignored. This is support for tested formats, not a promise of
+compatibility with every future `sbx` release.
 
 Empty arrays are valid inventories. Missing or null inventories, malformed JSON,
 missing sandbox IDs/names/statuses and duplicate IDs are rejected. Unrecognized
