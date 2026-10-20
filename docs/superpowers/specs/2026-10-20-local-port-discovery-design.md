@@ -36,10 +36,13 @@ The list omits Zelport App's own public listener because selecting it would crea
 a rejected self-target. It may include a port already referenced by another route;
 multiple domains may intentionally address the same backend.
 
-An empty result says `No listening ports found.` A discovery failure is shown
-inside the disclosure and leaves manual entry usable. The control supports pointer
-and keyboard opening, arrows, Home/End, Escape, outside dismissal, and focus return
-through the existing shared disclosure primitive.
+An empty result says `No listening ports found.` A discovery failure is shown only
+inside the disclosure as the non-blocking message `Listening ports couldn't be
+detected. Enter the Aux port manually.` Manual entry and form submission remain
+usable, and the refresh action offers a retry. Loading uses the shared spinner.
+The control supports pointer and keyboard opening, arrows, Home/End, Escape,
+outside dismissal, and focus return through the existing shared disclosure
+primitive.
 
 ## Discovery boundary
 

@@ -17,6 +17,7 @@
 - The release targets remain macOS and Linux on arm64 and amd64 with `CGO_ENABLED=0`.
 - Project builds, tests, and runtimes run only in Docker Sandbox `zelport-tests.sbx`, never on the macOS host.
 - The UI warning text is exactly `The port listens on non-loopback interfaces too.`
+- Discovery failure text is exactly `Listening ports couldn't be detected. Enter the Aux port manually.` and must never disable manual entry or submission.
 - Existing unrelated working-tree changes are preserved and excluded from feature commits.
 
 ## Review Focus
@@ -186,7 +187,7 @@ Commit only `module.go` and `module_test.go` with message `feat(local-ports): ex
 
 - [ ] **Step 1: Write failing UI tests**
 
-Prove manual entry remains unchanged, first opening performs one GET, repeated opening uses the loaded result, refresh performs another GET, selection updates only the input, unknown processes remain visible, non-loopback rows carry the exact tooltip, failures leave the input usable, and closing the dialog aborts discovery, ignores late results, and disposes the menu.
+Prove manual entry remains unchanged, first opening performs one GET, repeated opening uses the loaded result, refresh performs another GET, selection updates only the input, unknown processes remain visible, non-loopback rows carry the exact tooltip, loading uses the shared spinner, failures show the exact non-blocking message while leaving input and submission usable, and closing the dialog aborts discovery, ignores late results, and disposes the menu.
 
 - [ ] **Step 2: Run the UI test and verify RED**
 
