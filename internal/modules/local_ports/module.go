@@ -1,14 +1,18 @@
 package local_ports
 
 import (
+	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"github.com/zelport/zelport/internal/feature"
 	"github.com/zelport/zelport/internal/modulekit"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 //go:embed assets/*
@@ -17,11 +21,18 @@ var assets embed.FS
 type Settings struct {
 	AuxPort int `json:"aux_port"`
 }
-type Module struct{ modulekit.Base }
+type Module struct {
+	modulekit.Base
+	scanner listenerScanner
+}
 
 func New() feature.Module {
+	return newModule(newListenerScanner())
+}
+
+func newModule(scanner listenerScanner) *Module {
 	files, _ := fs.Sub(assets, "assets")
-	m := &Module{}
+	m := &Module{scanner: scanner}
 	m.Desc = feature.Descriptor{Maturity: feature.Stable, ID: "local_ports", Name: "Local Ports", TabID: "local", Order: 30, Exportable: true, Assets: files}
 	m.Summary = func(r feature.Route) feature.Summary {
 		var s Settings
@@ -29,6 +40,47 @@ func New() feature.Module {
 		return feature.Summary{State: "configured", Target: fmt.Sprintf("Aux port %d", s.AuxPort)}
 	}
 	return m
+}
+
+func (m *Module) Admin() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/listeners" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		listeners, err := discoverListeners(ctx, m.scanner, authorityPort(m.Host))
+		w.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Listening ports couldn't be detected. Enter the Aux port manually."})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"listeners": listeners})
+	})
+}
+
+func authorityPort(host feature.Host) int {
+	if host == nil {
+		return 0
+	}
+	authority := host.ListenerAuthority("localhost")
+	if authority == "localhost" {
+		return 80
+	}
+	_, port, err := net.SplitHostPort(authority)
+	if err != nil {
+		return 0
+	}
+	value, _ := strconv.Atoi(port)
+	return value
 }
 func (m *Module) ValidateRoute(r feature.Route) error {
 	var s Settings
