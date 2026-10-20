@@ -4,6 +4,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as ui from '../internal/web/assets/ui.js';
 import {mount as relayMount} from '../internal/modules/ports_over_relay/assets/module.js';
+test('initial boot hides the incomplete shell and delays an accessible spinner',()=>{
+ const html=readFileSync(new URL('../internal/web/assets/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8');
+ assert.match(html,/<body data-view="loading">/);
+ assert.match(app,/bootStatus\.id='boot-status'/);
+ assert.match(app,/bootStatus\.setAttribute\('role','status'\)/);
+ assert.match(app,/bootStatus\.setAttribute\('aria-label','Loading Zelport'\)/);
+ assert.match(app,/spinner\.className='boot-spinner'/);
+ assert.match(css,/body\[data-view=loading\]\s+\.shell\s*\{[^}]*visibility:hidden/);
+ assert.match(css,/body\[data-view=loading\]\s+#boot-status\s*\{[^}]*animation:[^;}]*250ms/);
+ assert.match(css,/\.boot-spinner[^}]*animation:none/);
+});
 class Node {
  constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={};this.textContent='';this.className='';this.events={};}
  get lastElementChild(){return this.children.at(-1);}

@@ -281,3 +281,15 @@ dialog .dialog-actions{position:static}
 .connection-diagnostic pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:inherit;padding:10px;border-radius:var(--radius-control);background:var(--bg)}
 .connection-details{margin:16px 0}
 @media(max-width:720px){header{height:auto;min-height:80px;flex-wrap:wrap;gap:12px;padding:16px 0}.connection-status{flex-basis:100%;margin-left:0;justify-content:flex-start}}
+body[data-view=loading] .shell{visibility:hidden}
+body[data-view=loading] #boot-status{
+ position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:var(--bg);
+ opacity:0;pointer-events:none;animation:boot-status-appear 1ms linear 250ms forwards;
+}
+.boot-spinner{
+ display:block;width:1.5rem;height:1.5rem;border:2px solid var(--line);
+ border-top-color:var(--accent);border-radius:50%;animation:boot-spinner-rotate .75s linear infinite;
+}
+@keyframes boot-status-appear{to{opacity:1}}
+@keyframes boot-spinner-rotate{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.boot-spinner{animation:none}}

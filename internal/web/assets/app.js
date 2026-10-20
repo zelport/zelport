@@ -227,7 +227,13 @@ function addAvailability(settings){
  settings.append(section.root);
 }
 function tab(id,label){const b=ui.button(label,()=>{navigate(id);refreshVisible();},'');b.id=`tab-${id}`;b.dataset.navigationLabel=label;b.className='navigation-item';b.setAttribute('aria-controls',`panel-${id}`);$('tabs').append(b);return b;}
+function showBootStatus(){
+ if(!document.body)return null;
+ const bootStatus=ui.el('div','boot-status');bootStatus.id='boot-status';bootStatus.setAttribute('role','status');bootStatus.setAttribute('aria-label','Loading Zelport');
+ const spinner=ui.el('span');spinner.className='boot-spinner';spinner.setAttribute('aria-hidden','true');bootStatus.append(spinner);document.body.prepend(bootStatus);document.body.setAttribute('aria-busy','true');return bootStatus;
+}
 async function init(){
+ const bootStatus=showBootStatus();
  state=await api('/api/state');tab('dashboard','Dashboard');
  fallbackToolbar=ui.el('div','module-toolbar');
  fallbackRefresh=ui.refreshControl('Refresh services',async()=>{if(fallbackRefreshing)return;fallbackRefreshing=true;fallbackRefresh.disabled=true;fallbackRefresh.setAttribute('aria-busy','true');try{await refreshVisible();}finally{fallbackRefreshing=false;fallbackRefresh.setAttribute('aria-busy','false');renderRefreshControl();}});
@@ -247,6 +253,6 @@ async function init(){
  }
  addAvailability(settings);
  tab('settings','Settings');render();navigate(location.hash.slice(1),false);
- navigation=ui.serviceNavigation($('tabs'));
+ navigation=ui.serviceNavigation($('tabs'));if(bootStatus){document.body.dataset.view='ready';document.body.setAttribute('aria-busy','false');bootStatus.remove();}
 }
-window.addEventListener('popstate',()=>navigate(location.hash.slice(1),false));window.addEventListener('hashchange',()=>navigate(location.hash.slice(1),false));document.addEventListener('visibilitychange',()=>{schedule();if(!document.hidden)refreshVisible();});window.addEventListener('focus',()=>{if(state)refreshVisible();});window.addEventListener('pagehide',()=>{clearTimeout(timer);navigation?.dispose();for(const m of modules.values()){m.controller.abort();m.instance?.dispose();}});init().catch(e=>message(e.message));
+window.addEventListener('popstate',()=>navigate(location.hash.slice(1),false));window.addEventListener('hashchange',()=>navigate(location.hash.slice(1),false));document.addEventListener('visibilitychange',()=>{schedule();if(!document.hidden)refreshVisible();});window.addEventListener('focus',()=>{if(state)refreshVisible();});window.addEventListener('pagehide',()=>{clearTimeout(timer);navigation?.dispose();for(const m of modules.values()){m.controller.abort();m.instance?.dispose();}});init().catch(e=>{if(document.body){document.body.dataset.view='error';document.body.setAttribute('aria-busy','false');document.getElementById('boot-status')?.remove();}message(e.message);});

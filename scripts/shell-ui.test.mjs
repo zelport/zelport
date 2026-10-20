@@ -9,7 +9,7 @@ function shell(){
  const elements=new Map(),dialogs=[];
  const element=id=>{if(!elements.has(id))elements.set(id,{hidden:false,textContent:'',setAttribute(){},removeAttribute(){},querySelector(){return element('fallback')},querySelectorAll(){return []}});return elements.get(id)};
  const context={document:{getElementById:element,body:element('body'),hidden:false,addEventListener(){},querySelectorAll(){return dialogs}},window:{addEventListener(){}},location:{hash:''},history:{pushState(){},replaceState(){}},clearTimeout(){},setTimeout(){},ui:{setText,renderChanged,el(){return {append(){}}}}};
- const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace("import * as ui from './ui.js';",'').replace('init().catch(e=>message(e.message));','');
+ const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace("import * as ui from './ui.js';",'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
  runInNewContext(source+'\nglobalThis.shell={setRefreshControls(toolbar,button){fallbackToolbar=toolbar;fallbackRefresh=button},navigate,message,mutate,refreshVisible,setRefresh(fn){refresh=fn},renderAvailability,renderHeaderStatus,addModule(m){modules.set(m.descriptor.id,m)},setState(s){state=s},active(){return active}};',context);
  context.shell.setRefresh(async()=>{});
  return {...context.shell,dialogs,error:element('error'),settings:element('panel-settings')};
