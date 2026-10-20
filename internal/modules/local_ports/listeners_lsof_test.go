@@ -11,6 +11,30 @@ import (
 	"testing"
 )
 
+type commandExitError struct{ code int }
+
+func (err commandExitError) Error() string { return "command failed" }
+func (err commandExitError) ExitCode() int { return err.code }
+
+func TestLsofScannerTreatsNoMatchesAsEmptyInventory(t *testing.T) {
+	scanner := lsofScanner{
+		stat:     func(string) error { return nil },
+		lookPath: func(string) (string, error) { return "", os.ErrNotExist },
+		run: func(_ context.Context, _ string, _ []string, _, _ io.Writer) error {
+			return commandExitError{code: 1}
+		},
+		maxOutput: 1024,
+	}
+
+	got, err := scanner.Scan(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("listeners = %#v, want empty inventory", got)
+	}
+}
+
 func TestLsofScannerUsesSystemPathAndFieldArguments(t *testing.T) {
 	var path string
 	var args []string

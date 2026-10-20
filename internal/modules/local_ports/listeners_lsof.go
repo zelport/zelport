@@ -44,7 +44,7 @@ func (b *limitedBuffer) Write(p []byte) (int, error) {
 
 func (b *limitedBuffer) Bytes() []byte { return b.buffer.Bytes() }
 
-func discoveryFailure(error) error {
+func discoveryFailure(_ error) error {
 	return fmt.Errorf("%w", ErrListenerDiscovery)
 }
 
@@ -92,6 +92,10 @@ func (s lsofScanner) Scan(ctx context.Context) ([]rawListener, error) {
 	if err := s.run(ctx, path, []string{"-nP", "-iTCP", "-sTCP:LISTEN", "-F0pcn"}, stdout, stderr); err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr
+		}
+		var exitErr interface{ ExitCode() int }
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 && len(stdout.Bytes()) == 0 {
+			return []rawListener{}, nil
 		}
 		return nil, discoveryFailure(err)
 	}
