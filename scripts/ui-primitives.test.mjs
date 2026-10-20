@@ -4,6 +4,8 @@ import * as ui from '../internal/web/assets/ui.js';
 class Node {
  constructor(tag='div'){this.tag=tag;this.children=[];this.dataset={};this.attrs={};this.events={};}
  append(...nodes){for(const node of nodes){this.children.push(node);node.parentElement=this;}}
+ prepend(...nodes){for(const node of [...nodes].reverse()){this.children.unshift(node);node.parentElement=this;}}
+ replaceChildren(...nodes){this.children=[];this.append(...nodes);}
  setAttribute(k,v){this.attrs[k]=v;}
  getAttribute(k){return this.attrs[k];}
  addEventListener(k,fn){this.events[k]=fn;}
@@ -13,6 +15,8 @@ class Node {
  remove(){this.removed=true;}
  showModal(){this.open=true;}
  close(){this.open=false;this.events.close?.();}
+ querySelectorAll(){return [];}
+ get childElementCount(){return this.children.length;}
 }
 function setup(){
  const listeners=new Map();globalThis.document={body:new Node('body'),activeElement:null,createElement:t=>new Node(t),createElementNS:(_,t)=>new Node(t),addEventListener:(k,fn)=>listeners.set(k,fn),removeEventListener:k=>listeners.delete(k)};return listeners;
@@ -67,6 +71,16 @@ test('route edits accept unrelated revisions but reject changed and removed serv
  assert.throws(()=>ui.routeEditRevision(original,state),e=>e.currentRoute.editor.aux_port===4000&&/changed/.test(e.message));
  state.states.local_ports.routes=[];
  assert.throws(()=>ui.routeEditRevision(original,state),/removed/);
+});
+
+test('service dialogs dispose field resources exactly once when closed',()=>{
+ setup();let disposed=0;const controller=new AbortController(),panel=new Node(),state={port:8080,revision:0,states:{}};
+ const view=ui.serviceModule({moduleId:'local_ports',panel,signal:controller.signal,ui:{...ui,state:()=>state},api:async()=>{},mutate:async work=>work()},{
+  emptyState:{kind:'not-configured',message:'No local ports yet.',actionLabel:'+ Add service'},
+  fields(){return {element:new Node(),read:()=>({}),dispose(){disposed++;}};}
+ });
+ view.render({routes:[],data:{}});view.edit();const dialog=document.body.children.at(-1);dialog.close();dialog.close();
+ assert.equal(disposed,1);
 });
 
 test('security tooltips close on scroll and resize instead of covering unrelated content',()=>{

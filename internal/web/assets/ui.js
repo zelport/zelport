@@ -171,7 +171,8 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
   input.pattern='[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?)*';
   input.maxLength=243;input.value=route?.domain.replace(/\.localhost$/,'')||suggest(group?.name||'service');
   form.append(label,domain);
-  const fields=definition.fields(route?.editor||{},group,current);form.append(fields.element);
+  const fields=definition.fields(route?.editor||{},group,current);form.append(fields.element);let fieldsDisposed=false;
+  const disposeFields=()=>{if(fieldsDisposed)return;fieldsDisposed=true;fields.dispose?.();};
   const {error,actions,save}=formActions(d,{submit:'Save service',draft:true,form});
   let changedRoute=null;
   const reload=button('Reload saved values',()=>{if(changedRoute)edit(changedRoute,group);});
@@ -193,7 +194,7 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
     error.textContent=e.message;changedRoute=e.currentRoute||null;reload.hidden=!changedRoute;
    }finally{save.disabled=false;}
   });
-  d.append(form);showDialog(d,{signal:ctx.signal,initialFocus:input,onClose(){if(dialog===d)dialog=null;}});
+  d.append(form);showDialog(d,{signal:ctx.signal,initialFocus:input,onClose(){disposeFields();if(dialog===d)dialog=null;}});
  }
  function suggest(value){let base=value.toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'')||'service';base=base.slice(0,50);const used=new Set(Object.values(getState().states).flatMap(s=>(s.routes||[]).map(r=>r.domain)));let name=base,n=2;while(used.has(name+'.localhost'))name=`${base}-${n++}`;return name;}
  function row(route){const box=el('div','service'),name=el('div'),address=serviceURL(getState(),route),link=el(address?'a':'span',null,route.domain);if(address){link.href=address;link.target='_blank';link.rel='noopener';}name.append(link);if(!address)name.append(el('span','small muted','Not connected on this device'));if(route.summary.detail&&route.module!=='remote_http')name.append(el('span','small route-error',route.summary.detail));const actions=el('div','service-actions');actions.append(button('Edit',()=>edit(route)),button('Remove',()=>remove(route),'text-button'));for(const action of definition.routeActions?.(route)||[])actions.append(button(action.label,action.run));const target=el('div','target-address');target.append(el('span',null,route.summary.target));if(route.module==='remote_http'&&route.summary.detail)target.append(warningIndicator(route.summary.detail).root);box.append(name,target,actions);return box;}
