@@ -3,8 +3,10 @@ package local_ports
 import (
 	"context"
 	"errors"
+	"net"
 	"net/netip"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -52,6 +54,36 @@ func TestDiscoverListenersReturnsScannerFailure(t *testing.T) {
 	if !errors.Is(got, want) {
 		t.Fatalf("error = %v, want %v", got, want)
 	}
+}
+
+func TestNativeScannerFindsLoopbackListener(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	_, portText, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	listeners, err := discoverListeners(context.Background(), newListenerScanner(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, found := range listeners {
+		if found.Port == port {
+			if found.ListensBeyondLoopback {
+				t.Fatalf("loopback listener %d marked beyond loopback", port)
+			}
+			return
+		}
+	}
+	t.Fatalf("loopback listener %d not found in %#v", port, listeners)
 }
 
 func TestParseProcListeners(t *testing.T) {
