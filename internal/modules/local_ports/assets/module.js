@@ -38,7 +38,7 @@ function sandboxDescription(sandbox,hostPort,status){
 }
 function localPortDescription(processes=[]){
  const plural=processes.length>1,names=processes.length?processes.map(process=>process.name||'Unknown process').join(', '):'Unknown process',pids=processes.map(process=>process.pid).filter(Boolean);
- return `Kind: Local process\n${plural?'Processes':'Process'}: ${names}\n${pids.length>1?'PIDs':'PID'}: ${pids.length?pids.join(', '):'Unknown'}`;
+ return `Kind: Generic process\n${plural?'Processes':'Process'}: ${names}\n${pids.length>1?'PIDs':'PID'}: ${pids.length?pids.join(', '):'Unknown'}`;
 }
 function unknownSourceDescription(status=''){
  const details={

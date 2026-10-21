@@ -78,7 +78,7 @@ test('listener inventory loads immediately and only its explicit action fills th
  const rows=allByClass(picker.menu,'listener-option');assert.deepEqual(rows.map(row=>row.dataset.port),['8080','9000','9100','9200']);
  const shortProcess=byClass(rows[0],'listener-process');assert.equal(shortProcess.textContent,'web');assert.equal(byClass(shortProcess,'text-tooltip'),undefined);assert.equal(rows[0].getAttribute('aria-label'),'Port 8080: web');
  const localInfo=byClass(rows[0],'local-port-indicator');assert.ok(localInfo,'a direct host listener has a dedicated local-port indicator');
- const localTip=byClass(localInfo,'local-port-tooltip');assert.equal(localTip.textContent,'Kind: Local process\nProcess: web\nPID: 42');
+ const localTip=byClass(localInfo,'local-port-tooltip');assert.equal(localTip.textContent,'Kind: Generic process\nProcess: web\nPID: 42');
  const warning=byClass(rows[0],'service-warning'),choose=byClass(rows[0],'listener-use-port'),actionOrder=localInfo.parentElement.children;
  assert.deepEqual([warning,localInfo,choose].map(node=>actionOrder.indexOf(node)),[0,1,2],'warning precedes the kind indicator, which is immediately before Choose');
  const containerProcess=byClass(rows[1],'listener-process');assert.equal(containerProcess.textContent,'zelport-fixture-two-…');assert.equal(containerProcess.getAttribute('aria-label'),'zelport-fixture-two-ports');
