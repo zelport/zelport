@@ -2,6 +2,7 @@ package local_ports
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/netip"
@@ -38,13 +39,28 @@ func TestDiscoverListenersNormalizesScopeProcessesAndOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Listener{
-		{Port: 3000, Processes: []ProcessIdentity{{PID: 30, Name: "server"}}, ListensBeyondLoopback: true},
-		{Port: 4000, Processes: []ProcessIdentity{}},
-		{Port: 5000, Processes: []ProcessIdentity{{PID: 50, Name: "mixed"}}, ListensBeyondLoopback: true},
-		{Port: 8080, Processes: []ProcessIdentity{{PID: 10, Name: "alpha"}, {PID: 20, Name: "zeta"}}},
+		{Port: 3000, Processes: []ProcessIdentity{{PID: 30, Name: "server"}}, Bindings: []ListenerBinding{{Address: netip.IPv4Unspecified(), Protocol: "tcp"}, {Address: netip.IPv6Unspecified(), Protocol: "tcp"}}, ListensBeyondLoopback: true},
+		{Port: 4000, Processes: []ProcessIdentity{}, Bindings: []ListenerBinding{{Address: netip.MustParseAddr("127.0.0.1"), Protocol: "tcp"}}},
+		{Port: 5000, Processes: []ProcessIdentity{{PID: 50, Name: "mixed"}}, Bindings: []ListenerBinding{{Address: netip.MustParseAddr("127.0.0.1"), Protocol: "tcp"}, {Address: netip.MustParseAddr("192.168.1.20"), Protocol: "tcp"}}, ListensBeyondLoopback: true},
+		{Port: 8080, Processes: []ProcessIdentity{{PID: 10, Name: "alpha"}, {PID: 20, Name: "zeta"}}, Bindings: []ListenerBinding{{Address: netip.MustParseAddr("127.0.0.1"), Protocol: "tcp"}, {Address: netip.IPv6Loopback(), Protocol: "tcp"}}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("listeners:\n got: %#v\nwant: %#v", got, want)
+	}
+}
+
+func TestListenerBindingsStayInternal(t *testing.T) {
+	listener := Listener{
+		Port:     8080,
+		Bindings: []ListenerBinding{{Address: netip.MustParseAddr("127.0.0.1"), Protocol: "tcp"}},
+	}
+
+	encoded, err := json.Marshal(listener)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "127.0.0.1") || strings.Contains(string(encoded), "bindings") {
+		t.Fatalf("internal bindings leaked into JSON: %s", encoded)
 	}
 }
 

@@ -11,10 +11,41 @@ type ProcessIdentity struct {
 	Name string `json:"name,omitempty"`
 }
 
+// ListenerBinding is retained for source attribution, but is deliberately not
+// part of the public Local Ports response.
+type ListenerBinding struct {
+	Address  netip.Addr `json:"-"`
+	Protocol string     `json:"-"`
+}
+
 type Listener struct {
-	Port                  int               `json:"port"`
-	Processes             []ProcessIdentity `json:"processes"`
-	ListensBeyondLoopback bool              `json:"listens_beyond_loopback"`
+	Port                  int                 `json:"port"`
+	Processes             []ProcessIdentity   `json:"processes"`
+	Bindings              []ListenerBinding   `json:"-"`
+	Containers            []ContainerIdentity `json:"containers,omitempty"`
+	Sandboxes             []SandboxIdentity   `json:"sandboxes,omitempty"`
+	Kind                  string              `json:"kind,omitempty"`
+	SourceStatus          string              `json:"source_status,omitempty"`
+	ListensBeyondLoopback bool                `json:"listens_beyond_loopback"`
+}
+
+// ContainerIdentity describes a published local mapping without making Local
+// Ports depend on the Containers feature module.
+type ContainerIdentity struct {
+	Name          string `json:"name"`
+	Engine        string `json:"engine"`
+	CLI           string `json:"cli"`
+	Runtime       string `json:"runtime"`
+	ContainerPort int    `json:"container_port"`
+	Protocol      string `json:"protocol"`
+}
+
+// SandboxIdentity describes a published Docker Sandbox mapping without making
+// Local Ports depend on the Docker Sandboxes feature module.
+type SandboxIdentity struct {
+	Name        string `json:"name"`
+	SandboxPort int    `json:"sandbox_port"`
+	Protocol    string `json:"protocol"`
 }
 
 type rawListener struct {
@@ -41,6 +72,7 @@ func discoverListeners(ctx context.Context, scanner listenerScanner, excludedPor
 		candidate bool
 		beyond    bool
 		processes map[ProcessIdentity]struct{}
+		bindings  map[ListenerBinding]struct{}
 	}
 	groups := make(map[int]*group)
 	for _, record := range records {
@@ -49,9 +81,13 @@ func discoverListeners(ctx context.Context, scanner listenerScanner, excludedPor
 		}
 		current := groups[record.Port]
 		if current == nil {
-			current = &group{processes: make(map[ProcessIdentity]struct{})}
+			current = &group{
+				processes: make(map[ProcessIdentity]struct{}),
+				bindings:  make(map[ListenerBinding]struct{}),
+			}
 			groups[record.Port] = current
 		}
+		current.bindings[ListenerBinding{Address: record.Address, Protocol: "tcp"}] = struct{}{}
 		if record.Address.IsLoopback() || record.Address.IsUnspecified() {
 			current.candidate = true
 		}
@@ -78,7 +114,17 @@ func discoverListeners(ctx context.Context, scanner listenerScanner, excludedPor
 			}
 			return processes[i].PID < processes[j].PID
 		})
-		listeners = append(listeners, Listener{Port: port, Processes: processes, ListensBeyondLoopback: current.beyond})
+		bindings := make([]ListenerBinding, 0, len(current.bindings))
+		for binding := range current.bindings {
+			bindings = append(bindings, binding)
+		}
+		sort.Slice(bindings, func(i, j int) bool {
+			if bindings[i].Address != bindings[j].Address {
+				return bindings[i].Address.Compare(bindings[j].Address) < 0
+			}
+			return bindings[i].Protocol < bindings[j].Protocol
+		})
+		listeners = append(listeners, Listener{Port: port, Processes: processes, Bindings: bindings, ListensBeyondLoopback: current.beyond})
 	}
 	sort.Slice(listeners, func(i, j int) bool { return listeners[i].Port < listeners[j].Port })
 	return listeners, nil
