@@ -4,9 +4,11 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/zelport/zelport/internal/feature"
 	"github.com/zelport/zelport/internal/modulekit"
+	"github.com/zelport/zelport/internal/portorigin"
 	"io/fs"
 	"net"
 	"net/http"
@@ -24,15 +26,40 @@ type Settings struct {
 type Module struct {
 	modulekit.Base
 	scanner listenerScanner
+	catalog attributionCatalog
 }
+
+type attributionCatalog interface {
+	Start(context.Context, time.Duration)
+	Snapshot() portorigin.Snapshot
+	RequestRefresh() <-chan struct{}
+	Close() error
+}
+
+type emptyAttributionCatalog struct{}
+
+func (emptyAttributionCatalog) Start(context.Context, time.Duration) {}
+func (emptyAttributionCatalog) Snapshot() portorigin.Snapshot {
+	return portorigin.Snapshot{Health: portorigin.Ready}
+}
+func (emptyAttributionCatalog) RequestRefresh() <-chan struct{} {
+	done := make(chan struct{})
+	close(done)
+	return done
+}
+func (emptyAttributionCatalog) Close() error { return nil }
 
 func New() feature.Module {
-	return newModule(newListenerScanner())
+	return newModule(newListenerScanner(), portorigin.NewDefaultCatalog())
 }
 
-func newModule(scanner listenerScanner) *Module {
+func newModule(scanner listenerScanner, catalogs ...attributionCatalog) *Module {
 	files, _ := fs.Sub(assets, "assets")
-	m := &Module{scanner: scanner}
+	catalog := attributionCatalog(emptyAttributionCatalog{})
+	if len(catalogs) > 0 && catalogs[0] != nil {
+		catalog = catalogs[0]
+	}
+	m := &Module{scanner: scanner, catalog: catalog}
 	m.Desc = feature.Descriptor{Maturity: feature.Stable, ID: "local_ports", Name: "Local Ports", TabID: "local", Order: 30, Exportable: true, Assets: files}
 	m.Summary = func(r feature.Route) feature.Summary {
 		var s Settings
@@ -42,8 +69,54 @@ func newModule(scanner listenerScanner) *Module {
 	return m
 }
 
+func (m *Module) Start(ctx context.Context, host feature.Host) error {
+	if err := m.Base.Start(ctx, host); err != nil {
+		return err
+	}
+	m.catalog.Start(ctx, 15*time.Second)
+	return nil
+}
+
+func (m *Module) Close() error {
+	return errors.Join(m.catalog.Close(), m.Base.Close())
+}
+
+type attributionMetadata struct {
+	AttributionHealth     string     `json:"attribution_health"`
+	AttributionGeneration uint64     `json:"attribution_generation"`
+	AttributionUpdatedAt  *time.Time `json:"attribution_updated_at,omitempty"`
+}
+
+func metadata(snapshot portorigin.Snapshot) attributionMetadata {
+	health := string(snapshot.Health)
+	if health == "" {
+		health = SourceRefreshing
+	}
+	result := attributionMetadata{AttributionHealth: health, AttributionGeneration: snapshot.Generation}
+	if !snapshot.UpdatedAt.IsZero() {
+		updated := snapshot.UpdatedAt
+		result.AttributionUpdatedAt = &updated
+	}
+	return result
+}
+
 func (m *Module) Admin() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/listeners/refresh" {
+			if r.Method != http.MethodPost {
+				w.Header().Set("Allow", http.MethodPost)
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			w.Header().Set("Cache-Control", "no-store")
+			select {
+			case <-m.catalog.RequestRefresh():
+				modulekit.JSON(w, metadata(m.catalog.Snapshot()))
+			case <-r.Context().Done():
+				return
+			}
+			return
+		}
 		if r.URL.Path != "/listeners" {
 			http.NotFound(w, r)
 			return
@@ -57,13 +130,19 @@ func (m *Module) Admin() http.Handler {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 		listeners, err := discoverListeners(ctx, m.scanner, authorityPort(m.Host))
+		cancel()
 		w.Header().Set("Content-Type", "application/json")
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Listening ports couldn't be detected. Enter the Aux port manually."})
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"listeners": listeners})
+		snapshot := m.catalog.Snapshot()
+		response := struct {
+			attributionMetadata
+			Listeners []Listener `json:"listeners"`
+		}{attributionMetadata: metadata(snapshot), Listeners: attributeListeners(listeners, snapshot)}
+		_ = json.NewEncoder(w).Encode(response)
 	})
 }
 

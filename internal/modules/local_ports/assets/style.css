@@ -1,13 +1,16 @@
 /* Module styles are scoped by the module panel. */
-.listener-picker-menu{margin-top:6px;max-height:min(260px,40dvh)}
+.listener-picker-menu{margin-top:6px;max-height:min(260px,40dvh);overflow-y:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;overscroll-behavior:contain}
 .listener-picker-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 8px;border-bottom:1px solid var(--line)}
 .listener-picker-header strong{font-size:var(--text-help);font-weight:600;color:var(--muted)}
 .listener-picker-refresh{width:32px;height:32px;min-height:32px;padding:0;background:transparent;border:0;color:var(--muted)}
-.listener-option{display:grid;grid-template-columns:56px minmax(0,1fr) auto;align-items:center;gap:10px;min-height:42px;padding:8px 10px;border-radius:4px;cursor:pointer}
-.listener-option:hover,.listener-option:focus-visible{background:var(--accent-soft);color:var(--accent);outline:none}
+.listener-option{display:grid;grid-template-columns:56px minmax(0,1fr) auto;align-items:center;gap:10px;min-height:42px;padding:8px 10px}
+.listener-option+.listener-option{border-top:1px solid var(--line)}
 .listener-port{font-variant-numeric:tabular-nums}
 .listener-process{min-width:0;color:var(--muted);font-size:var(--text-help);overflow-wrap:anywhere}
-.listener-option .service-warning{margin-left:0}
+.listener-option-actions{display:flex;align-items:center;gap:4px}.listener-option .service-warning{margin-left:0}
+.unknown-source-indicator{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;color:var(--muted)}
+.unknown-source-glyph{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.listener-use-port{width:32px;height:32px;min-height:32px;padding:0}
 .listener-picker-state{display:flex;min-height:64px;align-items:center;justify-content:center;padding:12px;color:var(--muted);font-size:var(--text-help);text-align:center}
 .listener-picker-state-warning{color:var(--warning)}
-@media(pointer:coarse){.listener-picker-refresh{width:44px;height:44px;min-height:44px}.listener-option{min-height:48px}}
+@media(pointer:coarse){.listener-picker-refresh{width:44px;height:44px;min-height:44px}.listener-use-port{height:44px;min-height:44px}.listener-option{min-height:48px}}
