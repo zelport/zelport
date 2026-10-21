@@ -27,6 +27,8 @@ they do not define user-facing editions.
 - `internal/web` owns protected administration and the browser shell.
 - `internal/containers`, `internal/sbx` and `internal/sshpipe` isolate external
   tool adapters.
+- `internal/portorigin` owns the feature-neutral, cached view used to attribute
+  host listeners without importing one feature module from another.
 - `internal/relay/integration` verifies App, SDK and relay behavior together.
 
 The SDK and relay are separately buildable sibling modules. Production source
@@ -73,6 +75,15 @@ Local, remote, container, sandbox and SSH sources adapt external services to the
 same route/lease model. Adapters report tool and discovery failures without
 silently deleting the last usable inventory. External tools remain optional
 runtime dependencies of their respective sources and are never bundled.
+
+Local Ports reads container and sandbox attribution from an asynchronously
+refreshed shared snapshot; an administration request never starts or waits for
+an external runtime CLI. A listener is classified as a local process only after
+a complete successful discovery finds no matching published mapping. Positive
+last-known mappings retain their kind while stale, whereas incomplete negative
+evidence is reported as unknown. Address family, bind scope and protocol are
+part of correlation, and competing runtime identities remain ambiguous rather
+than being guessed.
 
 Ports over Relay owns client identity, encrypted catalogs, peer sessions,
 imports and remote administration. Built-in Relay owns relay listeners and
