@@ -141,8 +141,8 @@ func TestParseProcListenersIPv6(t *testing.T) {
 }
 
 func TestParseLsofListeners(t *testing.T) {
-	fixture := "p101\x00cweb\x00n*:3000\x00n127.0.0.1:8080\x00\n" +
-		"p202\x00n[::1]:4000\x00n[::]:5000\x00ninvalid\x00\n"
+	fixture := "p101\x00cweb\x00tIPv4\x00n*:3000\x00n127.0.0.1:8080\x00\n" +
+		"p202\x00tIPv6\x00n*:5000\x00n[::1]:4000\x00ninvalid\x00\n"
 	got, err := parseLsofListeners(strings.NewReader(fixture))
 	if err != nil {
 		t.Fatal(err)
@@ -150,8 +150,8 @@ func TestParseLsofListeners(t *testing.T) {
 	want := []rawListener{
 		{Address: netip.IPv4Unspecified(), Port: 3000, PID: 101, Process: "web"},
 		{Address: netip.MustParseAddr("127.0.0.1"), Port: 8080, PID: 101, Process: "web"},
-		{Address: netip.IPv6Loopback(), Port: 4000, PID: 202},
 		{Address: netip.IPv6Unspecified(), Port: 5000, PID: 202},
+		{Address: netip.IPv6Loopback(), Port: 4000, PID: 202},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("listeners:\n got: %#v\nwant: %#v", got, want)

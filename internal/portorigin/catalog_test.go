@@ -240,3 +240,55 @@ func TestCatalogCloseCancelsBlockedProviders(t *testing.T) {
 		t.Fatal("provider did not observe cancellation")
 	}
 }
+
+func TestCatalogBoundsWholeProviderRefresh(t *testing.T) {
+	catalog := NewCatalog(nil, sandboxStub{
+		info: func(context.Context) sbx.CLIInfo { return sbx.CLIInfo{Status: "found", Version: "test"} },
+		list: func(ctx context.Context) ([]sbx.Sandbox, error) {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		},
+	})
+	catalog.providerTimeout = 20 * time.Millisecond
+	catalog.Start(context.Background(), time.Hour)
+	defer catalog.Close()
+	waitFor(t, func() bool { return catalog.Snapshot().Generation == 1 })
+	if got := catalog.Snapshot().Health; got != Degraded {
+		t.Fatalf("health = %q, want degraded", got)
+	}
+}
+
+func TestCatalogRejectsMalformedSandboxRefreshAndFiltersNonLocalBindings(t *testing.T) {
+	var malformed atomic.Bool
+	provider := sandboxStub{
+		info: func(context.Context) sbx.CLIInfo { return sbx.CLIInfo{Status: "found", Version: "test"} },
+		list: func(context.Context) ([]sbx.Sandbox, error) {
+			return []sbx.Sandbox{{ID: "sandbox", Name: "workspace", Status: "running"}}, nil
+		},
+		ports: func(context.Context, string) ([]sbx.Port, error) {
+			if malformed.Load() {
+				return []sbx.Port{{HostIP: "127.0.0.1", PublishedIP: "127.0.0.1", HostPort: 0, SandboxPort: 3000, Protocol: "tcp"}}, nil
+			}
+			return []sbx.Port{
+				{HostIP: "127.0.0.1", PublishedIP: "127.0.0.1", HostPort: 49152, SandboxPort: 3000, Protocol: "tcp"},
+				{HostIP: "192.168.1.20", PublishedIP: "192.168.1.20", HostPort: 49153, SandboxPort: 3000, Protocol: "tcp"},
+			}, nil
+		},
+	}
+	catalog := NewCatalog(nil, provider)
+	catalog.Start(context.Background(), time.Hour)
+	defer catalog.Close()
+	waitFor(t, func() bool { return catalog.Snapshot().Generation == 1 })
+	first := catalog.Snapshot()
+	if len(first.Sandboxes) != 1 || len(first.Sandboxes[0].Ports) != 1 || first.Sandboxes[0].Ports[0].HostPort != 49152 {
+		t.Fatalf("filtered sandbox snapshot = %#v", first.Sandboxes)
+	}
+	verified := first.SandboxesUpdatedAt
+
+	malformed.Store(true)
+	waitDone(t, catalog.RequestRefresh())
+	stale := catalog.Snapshot()
+	if stale.Health != Stale || !stale.SandboxesStale || !stale.SandboxesUpdatedAt.Equal(verified) || len(stale.Sandboxes[0].Ports) != 1 || stale.Sandboxes[0].Ports[0].HostPort != 49152 {
+		t.Fatalf("stale sandbox snapshot = %+v", stale)
+	}
+}

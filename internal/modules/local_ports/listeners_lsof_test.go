@@ -66,7 +66,7 @@ func TestLsofScannerUsesSystemPathAndFieldArguments(t *testing.T) {
 	if path != "/usr/sbin/lsof" || lookedUp {
 		t.Fatalf("path = %q, PATH lookup = %v", path, lookedUp)
 	}
-	wantArgs := []string{"-nP", "-iTCP", "-sTCP:LISTEN", "-F0pcn"}
+	wantArgs := []string{"-nP", "-iTCP", "-sTCP:LISTEN", "-F0pctn"}
 	if !reflect.DeepEqual(args, wantArgs) {
 		t.Fatalf("args = %#v, want %#v", args, wantArgs)
 	}

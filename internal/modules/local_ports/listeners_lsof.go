@@ -89,7 +89,7 @@ func (s lsofScanner) Scan(ctx context.Context) ([]rawListener, error) {
 	}
 	stdout := &limitedBuffer{remaining: limit}
 	stderr := &limitedBuffer{remaining: 32 << 10}
-	if err := s.run(ctx, path, []string{"-nP", "-iTCP", "-sTCP:LISTEN", "-F0pcn"}, stdout, stderr); err != nil {
+	if err := s.run(ctx, path, []string{"-nP", "-iTCP", "-sTCP:LISTEN", "-F0pctn"}, stdout, stderr); err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr
 		}
@@ -113,6 +113,7 @@ func parseLsofListeners(r io.Reader) ([]rawListener, error) {
 	var listeners []rawListener
 	var pid int
 	var process string
+	var ipv6 bool
 	for scanner.Scan() {
 		field := strings.TrimLeft(scanner.Text(), "\r\n")
 		if len(field) < 2 {
@@ -128,10 +129,13 @@ func parseLsofListeners(r io.Reader) ([]rawListener, error) {
 			}
 			pid = value
 			process = ""
+			ipv6 = false
 		case 'c':
 			process = field[1:]
+		case 't':
+			ipv6 = field[1:] == "IPv6"
 		case 'n':
-			address, port, ok := parseLsofEndpoint(field[1:])
+			address, port, ok := parseLsofEndpoint(field[1:], ipv6)
 			if ok {
 				listeners = append(listeners, rawListener{Address: address, Port: port, PID: pid, Process: process})
 			}
@@ -153,11 +157,15 @@ func splitNUL(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
-func parseLsofEndpoint(value string) (netip.Addr, int, bool) {
+func parseLsofEndpoint(value string, ipv6 bool) (netip.Addr, int, bool) {
 	value = strings.TrimSuffix(value, " (LISTEN)")
 	if strings.HasPrefix(value, "*:") {
 		port, err := strconv.Atoi(strings.TrimPrefix(value, "*:"))
-		return netip.IPv4Unspecified(), port, err == nil && port > 0 && port <= 65535
+		address := netip.IPv4Unspecified()
+		if ipv6 {
+			address = netip.IPv6Unspecified()
+		}
+		return address, port, err == nil && port > 0 && port <= 65535
 	}
 	host, portText, err := net.SplitHostPort(value)
 	if err != nil {

@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/zelport/zelport/internal/containers"
 	"github.com/zelport/zelport/internal/portorigin"
-	"github.com/zelport/zelport/internal/sbx"
 )
 
 const (
@@ -28,14 +28,18 @@ const (
 type containerMatch struct {
 	identity ContainerIdentity
 	key      string
+	origin   string
 	rank     int
+	ipv6     bool
 	stale    bool
 }
 
 type sandboxMatch struct {
 	identity SandboxIdentity
 	key      string
+	origin   string
 	rank     int
+	ipv6     bool
 }
 
 func attributeListeners(listeners []Listener, snapshot portorigin.Snapshot) []Listener {
@@ -46,14 +50,14 @@ func attributeListeners(listeners []Listener, snapshot portorigin.Snapshot) []Li
 		listener.Containers = nil
 		listener.Sandboxes = nil
 
-		sandboxes := matchingSandboxes(listener, snapshot.Sandboxes)
+		sandboxes := matchingSandboxes(listener, snapshot)
 		if len(sandboxes) > 0 {
 			if len(sandboxes) > 1 {
 				listener.Kind = KindUnknown
 				listener.SourceStatus = SourceAmbiguous
 			} else {
 				listener.Kind = KindDockerSandbox
-				listener.SourceStatus = positiveStatus(snapshot.Health, false)
+				listener.SourceStatus = positiveStatus(snapshot.SandboxesStale)
 				listener.Sandboxes = []SandboxIdentity{sandboxes[0].identity}
 			}
 			result[i] = listener
@@ -67,7 +71,7 @@ func attributeListeners(listeners []Listener, snapshot portorigin.Snapshot) []Li
 				listener.SourceStatus = SourceAmbiguous
 			} else {
 				listener.Kind = KindContainer
-				listener.SourceStatus = positiveStatus(snapshot.Health, containers[0].stale)
+				listener.SourceStatus = positiveStatus(containers[0].stale)
 				listener.Containers = []ContainerIdentity{containers[0].identity}
 			}
 			result[i] = listener
@@ -81,9 +85,8 @@ func attributeListeners(listeners []Listener, snapshot portorigin.Snapshot) []Li
 }
 
 func matchingContainers(listener Listener, inventories []containers.Inventory) []containerMatch {
-	matches := make([]containerMatch, 0)
-	bestRank := 0
-	seen := make(map[string]struct{})
+	candidates := make([]containerMatch, 0)
+	bestRank := make(map[bool]int)
 	for _, inventory := range inventories {
 		for _, container := range inventory.Containers {
 			if container.Status != "" && container.Status != "running" {
@@ -98,43 +101,61 @@ func matchingContainers(listener Listener, inventories []containers.Inventory) [
 					continue
 				}
 				rank := bindingRank(listener.Bindings, binding, port.Protocol)
-				if rank == 0 || rank < bestRank {
+				family := binding.Is6()
+				if rank == 0 || rank < bestRank[family] {
 					continue
 				}
-				if rank > bestRank {
-					matches = matches[:0]
-					clear(seen)
-					bestRank = rank
+				if rank > bestRank[family] {
+					bestRank[family] = rank
 				}
 				fingerprint := inventory.Endpoint + "\x00" + inventory.Connection + "\x00" + inventory.Namespace
 				key := fmt.Sprintf("%s\x00%s\x00%s\x00%d\x00%d\x00%s", fingerprint, container.ID, binding, port.HostPort, port.ContainerPort, normalizedProtocol(port.Protocol))
-				if _, exists := seen[key]; exists {
-					continue
-				}
-				seen[key] = struct{}{}
+				origin := fmt.Sprintf("%s\x00%s\x00%d\x00%s", fingerprint, container.ID, port.ContainerPort, normalizedProtocol(port.Protocol))
 				cli := inventory.Engine
 				if inventory.CLIPath != "" {
 					cli = filepath.Base(inventory.CLIPath)
 				}
-				matches = append(matches, containerMatch{
+				var verifiedAt *time.Time
+				if !inventory.UpdatedAt.IsZero() {
+					updated := inventory.UpdatedAt
+					verifiedAt = &updated
+				}
+				candidates = append(candidates, containerMatch{
 					identity: ContainerIdentity{
 						Name: container.Name, Engine: inventory.Engine, CLI: cli, Runtime: inventory.RuntimeStatus,
-						ContainerPort: port.ContainerPort, Protocol: normalizedProtocol(port.Protocol),
+						ContainerPort: port.ContainerPort, Protocol: normalizedProtocol(port.Protocol), VerifiedAt: verifiedAt,
 					},
-					key: key, rank: rank, stale: inventory.Stale,
+					key: key, origin: origin, rank: rank, ipv6: family, stale: inventory.Stale,
 				})
 			}
 		}
 	}
-	sort.Slice(matches, func(i, j int) bool { return matches[i].key < matches[j].key })
+	matches := make([]containerMatch, 0, len(candidates))
+	seenMappings := make(map[string]struct{})
+	byOrigin := make(map[string]int)
+	for _, candidate := range candidates {
+		if candidate.rank != bestRank[candidate.ipv6] {
+			continue
+		}
+		if _, exists := seenMappings[candidate.key]; exists {
+			continue
+		}
+		seenMappings[candidate.key] = struct{}{}
+		if index, exists := byOrigin[candidate.origin]; exists {
+			matches[index].stale = matches[index].stale && candidate.stale
+			continue
+		}
+		byOrigin[candidate.origin] = len(matches)
+		matches = append(matches, candidate)
+	}
+	sort.Slice(matches, func(i, j int) bool { return matches[i].origin < matches[j].origin })
 	return matches
 }
 
-func matchingSandboxes(listener Listener, boxes []sbx.Sandbox) []sandboxMatch {
-	matches := make([]sandboxMatch, 0)
-	bestRank := 0
-	seen := make(map[string]struct{})
-	for _, box := range boxes {
+func matchingSandboxes(listener Listener, snapshot portorigin.Snapshot) []sandboxMatch {
+	candidates := make([]sandboxMatch, 0)
+	bestRank := make(map[bool]int)
+	for _, box := range snapshot.Sandboxes {
 		if box.Status != "" && box.Status != "running" {
 			continue
 		}
@@ -147,26 +168,44 @@ func matchingSandboxes(listener Listener, boxes []sbx.Sandbox) []sandboxMatch {
 				continue
 			}
 			rank := bindingRank(listener.Bindings, binding, port.Protocol)
-			if rank == 0 || rank < bestRank {
+			family := binding.Is6()
+			if rank == 0 || rank < bestRank[family] {
 				continue
 			}
-			if rank > bestRank {
-				matches = matches[:0]
-				clear(seen)
-				bestRank = rank
+			if rank > bestRank[family] {
+				bestRank[family] = rank
 			}
 			key := fmt.Sprintf("%s\x00%s\x00%d\x00%d\x00%d\x00%s", box.ID, binding, port.HostPort, port.SandboxPort, rank, normalizedProtocol(port.Protocol))
-			if _, exists := seen[key]; exists {
-				continue
+			origin := fmt.Sprintf("%s\x00%d\x00%s", box.ID, port.SandboxPort, normalizedProtocol(port.Protocol))
+			var verifiedAt *time.Time
+			if !snapshot.SandboxesUpdatedAt.IsZero() {
+				updated := snapshot.SandboxesUpdatedAt
+				verifiedAt = &updated
 			}
-			seen[key] = struct{}{}
-			matches = append(matches, sandboxMatch{
-				identity: SandboxIdentity{Name: box.Name, SandboxPort: port.SandboxPort, Protocol: normalizedProtocol(port.Protocol)},
-				key:      key, rank: rank,
+			candidates = append(candidates, sandboxMatch{
+				identity: SandboxIdentity{Name: box.Name, SandboxPort: port.SandboxPort, Protocol: normalizedProtocol(port.Protocol), VerifiedAt: verifiedAt},
+				key:      key, origin: origin, rank: rank, ipv6: family,
 			})
 		}
 	}
-	sort.Slice(matches, func(i, j int) bool { return matches[i].key < matches[j].key })
+	matches := make([]sandboxMatch, 0, len(candidates))
+	seenMappings := make(map[string]struct{})
+	seenOrigins := make(map[string]struct{})
+	for _, candidate := range candidates {
+		if candidate.rank != bestRank[candidate.ipv6] {
+			continue
+		}
+		if _, exists := seenMappings[candidate.key]; exists {
+			continue
+		}
+		seenMappings[candidate.key] = struct{}{}
+		if _, exists := seenOrigins[candidate.origin]; exists {
+			continue
+		}
+		seenOrigins[candidate.origin] = struct{}{}
+		matches = append(matches, candidate)
+	}
+	sort.Slice(matches, func(i, j int) bool { return matches[i].origin < matches[j].origin })
 	return matches
 }
 
@@ -212,8 +251,8 @@ func normalizedProtocol(protocol string) string {
 	}
 }
 
-func positiveStatus(health portorigin.Health, explicitlyStale bool) string {
-	if explicitlyStale || health == portorigin.Stale {
+func positiveStatus(stale bool) string {
+	if stale {
 		return SourceStale
 	}
 	return SourceReady

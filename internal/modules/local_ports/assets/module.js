@@ -25,12 +25,16 @@ function sourceLabel(listener){
  return {process:processLabels(listener.processes),container:null,sandbox:null,local:true};
 }
 function titleCase(value=''){return value?`${value.slice(0,1).toUpperCase()}${value.slice(1)}`:'';}
-function containerDescription(container,hostPort){
- const runtime=titleCase(container.engine)||'Unknown',status=container.runtime?` (${String(container.runtime).toLowerCase()})`:'';
- return `Kind: Container\nContainer: ${container.name}\nMapping: ${container.container_port}/${container.protocol} → localhost:${hostPort}\nCLI: ${container.cli||'Unknown'}\nRuntime: ${runtime}${status}`;
+function freshnessDescription(status,verifiedAt){
+ if(status!=='stale')return '';
+ return `\nStatus: Stale${verifiedAt?`\nLast verified: ${verifiedAt}`:''}`;
 }
-function sandboxDescription(sandbox,hostPort){
- return `Kind: Docker Sandbox\nSandbox: ${sandbox.name}\nMapping: ${sandbox.sandbox_port}/${sandbox.protocol} → localhost:${hostPort}\nCLI: sbx\nRuntime: Docker Sandbox`;
+function containerDescription(container,hostPort,status){
+ const runtime=titleCase(container.engine)||'Unknown',runtimeStatus=container.runtime?` (${String(container.runtime).toLowerCase()})`:'';
+ return `Kind: Container\nContainer: ${container.name}\nMapping: ${container.container_port}/${container.protocol} → localhost:${hostPort}\nCLI: ${container.cli||'Unknown'}\nRuntime: ${runtime}${runtimeStatus}${freshnessDescription(status,container.verified_at)}`;
+}
+function sandboxDescription(sandbox,hostPort,status){
+ return `Kind: Docker Sandbox\nSandbox: ${sandbox.name}\nMapping: ${sandbox.sandbox_port}/${sandbox.protocol} → localhost:${hostPort}\nCLI: sbx\nRuntime: Docker Sandbox${freshnessDescription(status,sandbox.verified_at)}`;
 }
 function localPortDescription(processes=[]){
  const plural=processes.length>1,names=processes.length?processes.map(process=>process.name||'Unknown process').join(', '):'Unknown process',pids=processes.map(process=>process.pid).filter(Boolean);
@@ -75,8 +79,8 @@ export function listenerPicker(ctx,port){
    const {process,container,sandbox,local,unknown}=sourceLabel(listener),row=el('div','listener-option'),actions=el('div','listener-option-actions'),processNode=process.truncated?textTooltip(process.text,process.full,'listener-process').root:el('span','listener-process',process.text);row.dataset.port=String(listener.port);row.setAttribute('role','listitem');row.setAttribute('aria-label',`Port ${listener.port}: ${process.full}`);
    row.append(el('strong','listener-port',String(listener.port)),processNode);
    if(listener.listens_beyond_loopback)actions.append(warningIndicator(nonLoopbackWarning).root);
-   if(sandbox)actions.append(sandboxIndicator(sandboxDescription(sandbox,listener.port)).root);
-   else if(container)actions.append(containerIndicator(containerDescription(container,listener.port)).root);
+   if(sandbox)actions.append(sandboxIndicator(sandboxDescription(sandbox,listener.port,listener.source_status)).root);
+   else if(container)actions.append(containerIndicator(containerDescription(container,listener.port,listener.source_status)).root);
    else if(local)actions.append(localPortIndicator(localPortDescription(listener.processes)).root);
    else if(unknown){const info=textTooltip('',unknownSourceDescription(listener.source_status),'unknown-source-indicator');info.root.prepend(icon('localPort',{className:'unknown-source-glyph'}));info.tip.className+=' unknown-source-tooltip';actions.append(info.root);}
    const use=adornmentButton(`Choose port ${listener.port}`,'arrowUp',()=>usePort(listener.port));use.className+=' listener-use-port';actions.append(use);row.append(actions);menu.append(row);

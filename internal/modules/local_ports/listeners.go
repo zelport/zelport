@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/netip"
 	"sort"
+	"time"
 )
 
 type ProcessIdentity struct {
@@ -32,20 +33,22 @@ type Listener struct {
 // ContainerIdentity describes a published local mapping without making Local
 // Ports depend on the Containers feature module.
 type ContainerIdentity struct {
-	Name          string `json:"name"`
-	Engine        string `json:"engine"`
-	CLI           string `json:"cli"`
-	Runtime       string `json:"runtime"`
-	ContainerPort int    `json:"container_port"`
-	Protocol      string `json:"protocol"`
+	Name          string     `json:"name"`
+	Engine        string     `json:"engine"`
+	CLI           string     `json:"cli"`
+	Runtime       string     `json:"runtime"`
+	ContainerPort int        `json:"container_port"`
+	Protocol      string     `json:"protocol"`
+	VerifiedAt    *time.Time `json:"verified_at,omitempty"`
 }
 
 // SandboxIdentity describes a published Docker Sandbox mapping without making
 // Local Ports depend on the Docker Sandboxes feature module.
 type SandboxIdentity struct {
-	Name        string `json:"name"`
-	SandboxPort int    `json:"sandbox_port"`
-	Protocol    string `json:"protocol"`
+	Name        string     `json:"name"`
+	SandboxPort int        `json:"sandbox_port"`
+	Protocol    string     `json:"protocol"`
+	VerifiedAt  *time.Time `json:"verified_at,omitempty"`
 }
 
 type rawListener struct {

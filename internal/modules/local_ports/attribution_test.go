@@ -3,6 +3,7 @@ package local_ports
 import (
 	"net/netip"
 	"testing"
+	"time"
 
 	"github.com/zelport/zelport/internal/containers"
 	"github.com/zelport/zelport/internal/portorigin"
@@ -91,6 +92,19 @@ func TestAttributeListenersUsesExactBindingBeforeWildcardAndKeepsFamiliesSeparat
 	}
 }
 
+func TestAttributeListenersKeepsBestMatchPerAddressFamily(t *testing.T) {
+	listener := testListener(8080, "127.0.0.1", "::")
+	snapshot := portorigin.Snapshot{Health: portorigin.Ready, Containers: []containers.Inventory{
+		testInventory("podman", "machine", "v4-id", "ipv4", "127.0.0.1", 8080, 80),
+		testInventory("docker", "local", "v6-id", "ipv6", "::", 8080, 80),
+	}}
+
+	got := attributeListeners([]Listener{listener}, snapshot)[0]
+	if got.Kind != KindUnknown || got.SourceStatus != SourceAmbiguous {
+		t.Fatalf("dual-stack competing attribution = %#v", got)
+	}
+}
+
 func TestAttributeListenersDeduplicatesAliasesButRejectsDistinctRuntimes(t *testing.T) {
 	listener := testListener(8080, "127.0.0.1")
 	duplicate := testInventory("docker", "local", "same-id", "web", "127.0.0.1", 8080, 80)
@@ -135,8 +149,27 @@ func TestAttributeListenersHealthAwareNegativeAndPositiveResults(t *testing.T) {
 
 	stale := testInventory("podman", "machine", "id", "web", "127.0.0.1", 8080, 80)
 	stale.Stale = true
+	stale.UpdatedAt = time.Unix(100, 0).UTC()
 	got := attributeListeners([]Listener{listener}, portorigin.Snapshot{Health: portorigin.Stale, Containers: []containers.Inventory{stale}})[0]
-	if got.Kind != KindContainer || got.SourceStatus != SourceStale || len(got.Containers) != 1 {
+	if got.Kind != KindContainer || got.SourceStatus != SourceStale || len(got.Containers) != 1 || got.Containers[0].VerifiedAt == nil || !got.Containers[0].VerifiedAt.Equal(stale.UpdatedAt) {
 		t.Fatalf("positive stale attribution = %#v", got)
+	}
+
+	current := stale
+	current.Stale = false
+	got = attributeListeners([]Listener{listener}, portorigin.Snapshot{Health: portorigin.Stale, Containers: []containers.Inventory{current}})[0]
+	if got.Kind != KindContainer || got.SourceStatus != SourceReady {
+		t.Fatalf("unrelated provider failure tainted current match = %#v", got)
+	}
+
+	verified := time.Unix(200, 0).UTC()
+	got = attributeListeners([]Listener{testListener(49152, "127.0.0.1")}, portorigin.Snapshot{
+		Health: portorigin.Stale, SandboxesStale: true, SandboxesUpdatedAt: verified,
+		Sandboxes: []sbx.Sandbox{{ID: "sandbox", Name: "workspace", Status: "running", Ports: []sbx.Port{{
+			HostIP: "127.0.0.1", PublishedIP: "127.0.0.1", HostPort: 49152, SandboxPort: 3000, Protocol: "tcp",
+		}}}},
+	})[0]
+	if got.Kind != KindDockerSandbox || got.SourceStatus != SourceStale || got.Sandboxes[0].VerifiedAt == nil || !got.Sandboxes[0].VerifiedAt.Equal(verified) {
+		t.Fatalf("stale sandbox attribution = %#v", got)
 	}
 }

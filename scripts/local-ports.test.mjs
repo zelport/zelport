@@ -142,12 +142,13 @@ test('background refresh preserves rows and selection until the completed snapsh
 test('unknown kind is explained only for unconfirmed attribution while stale positive evidence keeps its kind',async()=>{
  const {picker}=createPicker(async()=>({attribution_health:'stale',listeners:[
   {port:7000,kind:'unknown',source_status:'degraded',processes:[{pid:7,name:'proxy'}],listens_beyond_loopback:false},
-  {port:8000,kind:'container',source_status:'stale',processes:[],containers:[{name:'cached',engine:'podman',cli:'podman',runtime:'available',container_port:80,protocol:'tcp'}],listens_beyond_loopback:false}
+  {port:8000,kind:'container',source_status:'stale',processes:[],containers:[{name:'cached',engine:'podman',cli:'podman',runtime:'available',container_port:80,protocol:'tcp',verified_at:'2026-10-21T10:00:00Z'}],listens_beyond_loopback:false}
  ]}));
  await flush();
  const rows=allByClass(picker.menu,'listener-option'),unknown=byClass(rows[0],'unknown-source-indicator');
  assert.ok(unknown);assert.equal(byClass(unknown,'unknown-source-tooltip').textContent,'Kind: Unknown source\nStatus: Discovery is temporarily unavailable.');
- assert.equal(byClass(rows[1],'unknown-source-indicator'),undefined);assert.ok(byClass(rows[1],'container-indicator'));
+ assert.equal(byClass(rows[1],'unknown-source-indicator'),undefined);const container=byClass(rows[1],'container-indicator');assert.ok(container);
+ assert.equal(byClass(container,'container-tooltip').textContent,'Kind: Container\nContainer: cached\nMapping: 80/tcp → localhost:8000\nCLI: podman\nRuntime: Podman (available)\nStatus: Stale\nLast verified: 2026-10-21T10:00:00Z');
  picker.dispose();
 });
 

@@ -4,6 +4,7 @@ package portorigin
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -21,11 +22,13 @@ const (
 )
 
 type Snapshot struct {
-	Containers []containers.Inventory
-	Sandboxes  []sbx.Sandbox
-	Health     Health
-	Generation uint64
-	UpdatedAt  time.Time
+	Containers         []containers.Inventory
+	Sandboxes          []sbx.Sandbox
+	SandboxesStale     bool
+	SandboxesUpdatedAt time.Time
+	Health             Health
+	Generation         uint64
+	UpdatedAt          time.Time
 }
 
 type ContainerProvider interface {
@@ -50,6 +53,7 @@ type sandboxState struct {
 	hasGood   bool
 	failed    bool
 	installed bool
+	updatedAt time.Time
 }
 
 type Catalog struct {
@@ -69,6 +73,7 @@ type Catalog struct {
 	wg                 sync.WaitGroup
 	started            bool
 	closed             bool
+	providerTimeout    time.Duration
 }
 
 func NewCatalog(containerProviders []ContainerProvider, sandboxProvider SandboxProvider) *Catalog {
@@ -78,6 +83,7 @@ func NewCatalog(containerProviders []ContainerProvider, sandboxProvider SandboxP
 		sandboxProvider:    sandboxProvider,
 		containers:         make([]containerState, len(providers)),
 		health:             Refreshing,
+		providerTimeout:    10 * time.Second,
 	}
 }
 
@@ -158,14 +164,18 @@ func (c *Catalog) refresh(ctx context.Context) {
 		wg.Add(1)
 		go func(index int, provider ContainerProvider) {
 			defer wg.Done()
-			c.commitContainer(index, provider.Scan(ctx))
+			providerCtx, cancel := context.WithTimeout(ctx, c.providerTimeout)
+			defer cancel()
+			c.commitContainer(index, provider.Scan(providerCtx))
 		}(i, provider)
 	}
 	if c.sandboxProvider != nil {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			boxes, installed, err := scanSandboxes(ctx, c.sandboxProvider)
+			providerCtx, cancel := context.WithTimeout(ctx, c.providerTimeout)
+			defer cancel()
+			boxes, installed, err := scanSandboxes(providerCtx, c.sandboxProvider)
 			c.commitSandboxes(boxes, installed, err)
 		}()
 	}
@@ -230,9 +240,41 @@ func scanSandboxes(ctx context.Context, provider SandboxProvider) ([]sbx.Sandbox
 		if err != nil {
 			return nil, true, err
 		}
-		boxes[i].Ports = append([]sbx.Port{}, ports...)
+		ports, err = localSandboxPorts(ports)
+		if err != nil {
+			return nil, true, err
+		}
+		boxes[i].Ports = ports
 	}
 	return boxes, true, nil
+}
+
+func localSandboxPorts(ports []sbx.Port) ([]sbx.Port, error) {
+	result := make([]sbx.Port, 0, len(ports))
+	for _, port := range ports {
+		binding, ok := port.Binding()
+		if !ok || port.HostPort < 1 || port.HostPort > 65535 || port.SandboxPort < 1 || port.SandboxPort > 65535 {
+			return nil, fmt.Errorf("invalid sandbox port mapping")
+		}
+		switch port.Protocol {
+		case "tcp":
+		case "tcp4":
+			if !binding.Is4() {
+				return nil, fmt.Errorf("invalid sandbox TCP4 binding")
+			}
+		case "tcp6":
+			if !binding.Is6() {
+				return nil, fmt.Errorf("invalid sandbox TCP6 binding")
+			}
+		default:
+			return nil, fmt.Errorf("invalid sandbox port protocol")
+		}
+		if !binding.IsLoopback() && !binding.IsUnspecified() {
+			continue
+		}
+		result = append(result, port)
+	}
+	return result, nil
 }
 
 type textError string
@@ -254,7 +296,8 @@ func (c *Catalog) commitSandboxes(boxes []sbx.Sandbox, installed bool, err error
 	if err == nil {
 		c.sandbox.boxes = cloneSandboxes(boxes)
 		c.sandbox.hasGood = true
-		c.updatedAt = time.Now()
+		c.sandbox.updatedAt = time.Now()
+		c.updatedAt = c.sandbox.updatedAt
 	}
 	c.health = c.healthLocked()
 }
@@ -289,11 +332,13 @@ func (c *Catalog) Snapshot() Snapshot {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	result := Snapshot{
-		Containers: make([]containers.Inventory, 0, len(c.containers)),
-		Sandboxes:  cloneSandboxes(c.sandbox.boxes),
-		Health:     c.health,
-		Generation: c.generation,
-		UpdatedAt:  c.updatedAt,
+		Containers:         make([]containers.Inventory, 0, len(c.containers)),
+		Sandboxes:          cloneSandboxes(c.sandbox.boxes),
+		SandboxesStale:     c.sandbox.failed && c.sandbox.hasGood,
+		SandboxesUpdatedAt: c.sandbox.updatedAt,
+		Health:             c.health,
+		Generation:         c.generation,
+		UpdatedAt:          c.updatedAt,
 	}
 	for _, source := range c.containers {
 		if source.inventory.Engine != "" {
