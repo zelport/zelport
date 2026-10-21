@@ -137,6 +137,9 @@ func (c Client) Ports(ctx context.Context, id string) ([]Port, error) {
 	if err = json.Unmarshal(b, &ports); err != nil {
 		return nil, fmt.Errorf("invalid sbx ports JSON: %w", err)
 	}
+	if ports == nil {
+		return nil, errors.New("invalid sbx ports JSON: expected an array")
+	}
 	for i := range ports {
 		if ports[i].PublishedIP == "" {
 			ports[i].PublishedIP = ports[i].HostIP

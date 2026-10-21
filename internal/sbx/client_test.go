@@ -34,6 +34,18 @@ func TestPortBindingCompatibilityWithoutPublishedIP(t *testing.T) {
 	}
 }
 
+func TestPortsRejectsNullInventory(t *testing.T) {
+	c := Client{Run: func(_ context.Context, args ...string) ([]byte, error) {
+		if args[0] == "ls" {
+			return []byte(`[{"id":"box-id","name":"box","status":"running"}]`), nil
+		}
+		return []byte(`null`), nil
+	}}
+	if _, err := c.Ports(context.Background(), "box-id"); err == nil {
+		t.Fatal("accepted null port inventory")
+	}
+}
+
 func TestRealWireFormat(t *testing.T) {
 	c := Client{Run: func(_ context.Context, args ...string) ([]byte, error) {
 		if args[0] == "ls" {
