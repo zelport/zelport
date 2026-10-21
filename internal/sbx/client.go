@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -16,9 +17,19 @@ import (
 
 type Port struct {
 	HostIP      string `json:"host_ip"`
+	PublishedIP string `json:"published_ip,omitempty"`
 	HostPort    int    `json:"host_port"`
 	SandboxPort int    `json:"sandbox_port"`
 	Protocol    string `json:"protocol"`
+}
+
+func (p Port) Binding() (netip.Addr, bool) {
+	value := p.PublishedIP
+	if value == "" {
+		value = p.HostIP
+	}
+	ip, err := netip.ParseAddr(value)
+	return ip, err == nil
 }
 
 func (p Port) Usable() bool {
@@ -27,7 +38,11 @@ func (p Port) Usable() bool {
 }
 func (p Port) Address() string { return net.JoinHostPort(p.HostIP, strconv.Itoa(p.HostPort)) }
 func (p Port) Spec() string {
-	return p.Address() + ":" + strconv.Itoa(p.SandboxPort) + "/" + p.Protocol
+	host := p.HostIP
+	if binding, ok := p.Binding(); ok {
+		host = binding.String()
+	}
+	return net.JoinHostPort(host, strconv.Itoa(p.HostPort)) + ":" + strconv.Itoa(p.SandboxPort) + "/" + p.Protocol
 }
 
 type Sandbox struct {
@@ -121,6 +136,20 @@ func (c Client) Ports(ctx context.Context, id string) ([]Port, error) {
 	var ports []Port
 	if err = json.Unmarshal(b, &ports); err != nil {
 		return nil, fmt.Errorf("invalid sbx ports JSON: %w", err)
+	}
+	for i := range ports {
+		if ports[i].PublishedIP == "" {
+			ports[i].PublishedIP = ports[i].HostIP
+			if ports[i].PublishedIP == "" {
+				ports[i].PublishedIP = "0.0.0.0"
+			}
+		}
+		switch ports[i].HostIP {
+		case "", "0.0.0.0":
+			ports[i].HostIP = "127.0.0.1"
+		case "::":
+			ports[i].HostIP = "::1"
+		}
 	}
 	return ports, nil
 }

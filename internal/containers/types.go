@@ -4,6 +4,7 @@ package containers
 import (
 	"context"
 	"net"
+	"net/netip"
 	"strconv"
 	"sync"
 	"time"
@@ -11,9 +12,19 @@ import (
 
 type Port struct {
 	HostIP        string `json:"host_ip"`
+	PublishedIP   string `json:"published_ip,omitempty"`
 	HostPort      int    `json:"host_port"`
 	ContainerPort int    `json:"container_port"`
 	Protocol      string `json:"protocol"`
+}
+
+func (p Port) Binding() (netip.Addr, bool) {
+	value := p.PublishedIP
+	if value == "" {
+		value = p.HostIP
+	}
+	ip, err := netip.ParseAddr(value)
+	return ip, err == nil
 }
 
 func (p Port) Usable() bool {

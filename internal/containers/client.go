@@ -312,6 +312,12 @@ func cleanPorts(ports []Port) []Port {
 	seen := map[Port]bool{}
 	out := []Port{}
 	for _, p := range ports {
+		if p.PublishedIP == "" {
+			p.PublishedIP = p.HostIP
+			if p.PublishedIP == "" {
+				p.PublishedIP = "0.0.0.0"
+			}
+		}
 		p.HostIP = loopback(p.HostIP)
 		if p.Usable() && !seen[p] {
 			seen[p] = true
@@ -367,7 +373,7 @@ func parseDocker(data []byte) ([]Container, error) {
 			inside, _ := strconv.Atoi(port)
 			for _, binding := range bindings {
 				outside, _ := strconv.Atoi(binding.HostPort)
-				box.Ports = append(box.Ports, Port{binding.HostIP, outside, inside, proto})
+				box.Ports = append(box.Ports, Port{HostIP: binding.HostIP, HostPort: outside, ContainerPort: inside, Protocol: proto})
 			}
 		}
 		box.Ports = cleanPorts(box.Ports)
@@ -411,7 +417,7 @@ func parsePodman(data []byte) ([]Container, error) {
 				continue
 			}
 			for n := 0; n < count; n++ {
-				box.Ports = append(box.Ports, Port{p.HostIP, p.HostPort + n, p.ContainerPort + n, p.Protocol})
+				box.Ports = append(box.Ports, Port{HostIP: p.HostIP, HostPort: p.HostPort + n, ContainerPort: p.ContainerPort + n, Protocol: p.Protocol})
 			}
 		}
 		box.Ports = cleanPorts(box.Ports)

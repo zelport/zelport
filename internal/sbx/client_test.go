@@ -9,6 +9,31 @@ import (
 	"time"
 )
 
+func TestPortBindingPreservesPublishedScope(t *testing.T) {
+	c := Client{Run: func(_ context.Context, args ...string) ([]byte, error) {
+		if args[0] == "ls" {
+			return []byte(`[{"id":"box-id","name":"box","status":"running"}]`), nil
+		}
+		return []byte(`[{"host_ip":"0.0.0.0","host_port":49152,"sandbox_port":8080,"protocol":"tcp4"}]`), nil
+	}}
+	ports, err := c.Ports(context.Background(), "box-id")
+	if err != nil || len(ports) != 1 {
+		t.Fatalf("ports = %+v, error = %v", ports, err)
+	}
+	binding, ok := ports[0].Binding()
+	if !ok || binding.String() != "0.0.0.0" || ports[0].HostIP != "127.0.0.1" || ports[0].Address() != "127.0.0.1:49152" {
+		t.Fatalf("port = %+v, binding = %v, %v", ports[0], binding, ok)
+	}
+}
+
+func TestPortBindingCompatibilityWithoutPublishedIP(t *testing.T) {
+	port := Port{HostIP: "::1", HostPort: 49152, SandboxPort: 8080, Protocol: "tcp6"}
+	binding, ok := port.Binding()
+	if !ok || binding.String() != "::1" || port.Address() != "[::1]:49152" {
+		t.Fatalf("legacy port = %+v, binding = %v, %v", port, binding, ok)
+	}
+}
+
 func TestRealWireFormat(t *testing.T) {
 	c := Client{Run: func(_ context.Context, args ...string) ([]byte, error) {
 		if args[0] == "ls" {

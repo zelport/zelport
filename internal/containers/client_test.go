@@ -2,12 +2,46 @@ package containers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestPortBindingPreservesPublishedScope(t *testing.T) {
+	for _, tc := range []struct {
+		name, published, dial string
+	}{
+		{"IPv4 loopback", "127.0.0.1", "127.0.0.1"},
+		{"IPv4 wildcard", "0.0.0.0", "127.0.0.1"},
+		{"IPv6 loopback", "::1", "::1"},
+		{"IPv6 wildcard", "::", "::1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ports := cleanPorts([]Port{{HostIP: tc.published, HostPort: 8080, ContainerPort: 80, Protocol: "tcp"}})
+			if len(ports) != 1 || ports[0].HostIP != tc.dial || ports[0].Address() == "" {
+				t.Fatalf("normalized ports = %+v", ports)
+			}
+			binding, ok := ports[0].Binding()
+			if !ok || binding.String() != tc.published {
+				t.Fatalf("binding = %v, %v; want %s", binding, ok, tc.published)
+			}
+		})
+	}
+}
+
+func TestPortBindingCompatibilityWithoutPublishedIP(t *testing.T) {
+	var port Port
+	if err := json.Unmarshal([]byte(`{"host_ip":"127.0.0.1","host_port":8080,"container_port":80,"protocol":"tcp"}`), &port); err != nil {
+		t.Fatal(err)
+	}
+	binding, ok := port.Binding()
+	if !ok || binding.String() != "127.0.0.1" || port.Address() != "127.0.0.1:8080" {
+		t.Fatalf("legacy port = %+v, binding = %v, %v", port, binding, ok)
+	}
+}
 
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
