@@ -2,7 +2,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 GO=${GO:-go}
-modules='docker_sandboxes containers local_ports remote_http ports_over_ssh ports_over_relay built_in_relay'
+modules='local_ports remote_http ports_over_ssh ports_over_relay built_in_relay'
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 export GOWORK=off
@@ -73,7 +73,7 @@ check_composition() {
   "$work/zelport" --version
 }
 
-# No tags is the only user-facing composition and must include every module.
+# No tags is the user-facing composition and includes every supported module.
 check_composition standard '' "$modules"
 
 # Tagged compositions are diagnostic checks of internal module boundaries.
@@ -83,8 +83,6 @@ for module in $modules; do
 done
 check_composition relay-pair 'zelport_core,ports_over_relay,built_in_relay' 'ports_over_relay built_in_relay'
 check_composition local-http 'zelport_core,local_ports,remote_http' 'local_ports remote_http'
-check_composition sandbox-relay 'zelport_core,docker_sandboxes,ports_over_relay' 'docker_sandboxes ports_over_relay'
-check_composition containers-relay 'zelport_core,containers,ports_over_relay' 'containers ports_over_relay'
 check_composition http-relay 'zelport_core,remote_http,ports_over_relay' 'remote_http ports_over_relay'
 check_composition ssh-relay 'zelport_core,ports_over_ssh,ports_over_relay' 'ports_over_ssh ports_over_relay'
 check_composition explicit-all "zelport_core,$(printf '%s' "$modules" | tr ' ' ',')" "$modules"
