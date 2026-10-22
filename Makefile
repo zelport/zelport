@@ -10,7 +10,7 @@ VERSION_LDFLAGS = $(EXTRA_LDFLAGS) -X main.version=$(BUILD_VERSION) -X 'main.bui
 RELEASE_DIR ?= dist/$(BUILD_VERSION)
 
 .DEFAULT_GOAL := check
-.PHONY: help check verify release-ready test vet build build-core check-modules check-packaging release release-assets verify-release-assets verify-published-release
+.PHONY: help check verify release-ready test test-browser vet build build-core check-modules check-packaging release release-assets verify-release-assets verify-published-release
 
 help:
 	@printf '%s\n' 'make check' 'make verify' 'make build' 'make release-ready VERSION=vX.Y.Z' 'make verify-published-release VERSION=vX.Y.Z'
@@ -39,8 +39,11 @@ verify-release-assets:
 verify-published-release:
 	$(PYTHON) scripts/verify_published_release.py --repository zelport/zelport --version '$(BUILD_VERSION)'
 
-test:
+test: test-browser
 	GOWORK=off $(GO) test -race ./...
+
+test-browser:
+	node --test scripts/*.test.mjs
 
 vet:
 	GOWORK=off $(GO) vet ./...

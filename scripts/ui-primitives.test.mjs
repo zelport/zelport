@@ -60,8 +60,8 @@ test('empty states share one semantic shell across configuration, results and av
  setup();
  const states=[
   {kind:'not-configured',message:'No local ports yet. Add a domain and an Aux port.',action:{label:'+ Add service',run(){}}},
-  {kind:'no-results',message:'No containers found.'},
-  {kind:'unavailable',message:'Docker Sandboxes unavailable.'}
+  {kind:'no-results',message:'No services found.'},
+  {kind:'unavailable',message:'Development server unavailable.'}
  ];
  for(const spec of states){
   const card=ui.emptyState(spec),[message,...actions]=card.children;

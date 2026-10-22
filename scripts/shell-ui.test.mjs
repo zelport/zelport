@@ -7,12 +7,12 @@ import assert from 'node:assert/strict';
 // Exercise the production shell with only its DOM and network boundaries stubbed.
 function shell(){
  const elements=new Map(),dialogs=[];
- const element=id=>{if(!elements.has(id))elements.set(id,{hidden:false,textContent:'',setAttribute(){},removeAttribute(){},querySelector(){return element('fallback')},querySelectorAll(){return []}});return elements.get(id)};
+ const element=id=>{if(!elements.has(id))elements.set(id,{hidden:false,textContent:'',children:[],setAttribute(){},removeAttribute(){},append(...children){for(const child of children){if(child.parentElement)child.parentElement.children=child.parentElement.children.filter(item=>item!==child);this.children.push(child);child.parentElement=this;}},querySelector(){return element('fallback')},querySelectorAll(){return []}});return elements.get(id)};
  const context={document:{getElementById:element,body:element('body'),hidden:false,addEventListener(){},querySelectorAll(){return dialogs}},window:{addEventListener(){}},location:{hash:''},history:{pushState(){},replaceState(){}},clearTimeout(){},setTimeout(){},ui:{setText,renderChanged,el(){return {append(){}}}}};
  const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace("import * as ui from './ui.js';",'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
  runInNewContext(source+'\nglobalThis.shell={setRefreshControls(toolbar,button){fallbackToolbar=toolbar;fallbackRefresh=button},navigate,message,mutate,refreshVisible,setRefresh(fn){refresh=fn},renderAvailability,renderHeaderStatus,addModule(m){modules.set(m.descriptor.id,m)},setState(s){state=s},active(){return active}};',context);
  context.shell.setRefresh(async()=>{});
- return {...context.shell,dialogs,error:element('error'),settings:element('panel-settings')};
+ return {...context.shell,dialogs,error:element('error'),settings:element('panel-settings'),moduleActions:element('module-actions'),moduleHeading:element('module-heading')};
 }
 
 test('errors remain on their originating tab and return when it is selected again',()=>{
@@ -88,6 +88,16 @@ test('header popover content is retained until its displayed lines change',()=>{
  rows=[{label:'Relay',value:'localhost:8091'}];s.renderHeaderStatus();assert.equal(draws,2);
 });
 
+test('module status and runtime module popovers share one visual shell',()=>{
+ const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8');
+ assert.match(app,/ui\.el\('div','header-popover connection-popover'\)/);
+ assert.match(app,/ui\.el\('div','header-popover runtime-modules-popover'\)/);
+ const shell=css.match(/\.header-popover\{([^}]+)\}/)?.[1]||'';
+ for(const rule of ['position:fixed','width:min(340px,calc(100vw - 32px))','padding:var(--panel-padding)','border-radius:var(--radius-panel)','box-shadow:var(--shadow)'])assert.ok(shell.includes(rule),rule);
+ assert.doesNotMatch(css,/\.connection-popover\{position:|\.runtime-modules-popover\{position:/);
+});
+
 test('successful refresh clears a restart error on every tab',async()=>{
  const s=shell();s.navigate('settings');s.setRefresh(async()=>{throw Error('Failed to fetch')});
  await s.refreshVisible();assert.equal(s.error.hidden,false);
@@ -102,18 +112,22 @@ test('recovery preserves a form error even when it matches the refresh error',as
 });
 
 
-test('navigation keeps one refresh control and disables the fallback outside Dashboard',()=>{
- const s=shell(),toolbar={hidden:false},button={setAttribute(){}};
+test('fallback Refresh is shown only on the Dashboard',()=>{
+ const node=()=>({hidden:false,children:[],append(...children){for(const child of children){if(child.parentElement)child.parentElement.children=child.parentElement.children.filter(item=>item!==child);this.children.push(child);child.parentElement=this;}},prepend(...children){this.append(...children);for(const child of children){this.children=this.children.filter(item=>item!==child);this.children.unshift(child);}},querySelector(selector){return this.children.find(child=>selector==='.refresh-icon'&&child.className?.includes('refresh-icon'))||null;}});
+ const s=shell(),toolbar=node(),button={className:'module-action-icon refresh-icon',setAttribute(){}};toolbar.append(button);
  s.setRefreshControls(toolbar,button);
  s.navigate('dashboard');assert.equal(toolbar.hidden,false);assert.equal(button.disabled,false);
- s.navigate('settings');assert.equal(toolbar.hidden,false);assert.equal(button.disabled,true);
- assert.match(toolbar.title,/settings/);
- const moduleToolbar={hidden:true,querySelector(){return {}}};
+ s.navigate('settings');assert.equal(toolbar.hidden,true);assert.equal(button.parentElement,toolbar);
+ const moduleToolbar=node(),moduleRefresh={className:'module-action-icon refresh-icon'};moduleToolbar.append(moduleRefresh);
  s.addModule({descriptor:{id:'discovery',tab_id:'discovery'},panel:{},toolbar:moduleToolbar});
- s.navigate('discovery');assert.equal(toolbar.hidden,true);assert.equal(moduleToolbar.hidden,false);
- s.addModule({descriptor:{id:'static',tab_id:'static'},panel:{},toolbar:{querySelector(){return null}}});
- s.navigate('static');assert.equal(toolbar.hidden,false);assert.equal(button.disabled,true);
- assert.equal(toolbar.title,'Nothing to refresh');
+ s.navigate('discovery');assert.equal(toolbar.hidden,true);assert.equal(moduleToolbar.hidden,false);assert.equal(moduleToolbar.parentElement,s.moduleActions);assert.equal(s.moduleHeading.hidden,false);
+ const staticToolbar=node(),add={className:'module-action-icon module-add-icon'};staticToolbar.append(add);
+ s.addModule({descriptor:{id:'static',tab_id:'static'},panel:{},toolbar:staticToolbar});
+ s.navigate('static');assert.equal(toolbar.hidden,true);assert.equal(button.disabled,true);assert.equal(staticToolbar.parentElement,s.moduleActions);
+ assert.equal(button.parentElement,toolbar);assert.deepEqual(staticToolbar.children,[add]);
+ assert.equal(button.title,'Nothing to refresh');
+ s.navigate('static');assert.equal(button.parentElement,toolbar);assert.deepEqual(staticToolbar.children,[add]);
+ s.navigate('dashboard');assert.equal(button.parentElement,toolbar);assert.deepEqual(toolbar.children,[button]);assert.equal(s.moduleHeading.hidden,true);
 });
 
 test('changing views closes open dialogs, but polling the same view preserves them',()=>{
@@ -123,7 +137,7 @@ test('changing views closes open dialogs, but polling the same view preserves th
 });
 test('enabling a module refreshes the header action label without a reload',()=>{
  const s=shell(),indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return false}},status:{dataset:{}},settings:{textContent:'Open settings'},details:{querySelectorAll(){return []},replaceChildren(){}}};
- s.addModule({descriptor:{id:'containers'},headerStatus(){return {status:'Available',tone:'ok',action:'Open module',rows:[]}},indicator});
- s.setState({states:{containers:{}},module_availability:{containers:{enabled:true}}});s.renderHeaderStatus();
+ s.addModule({descriptor:{id:'local_ports'},headerStatus(){return {status:'Available',tone:'ok',action:'Open module',rows:[]}},indicator});
+ s.setState({states:{local_ports:{}},module_availability:{local_ports:{enabled:true}}});s.renderHeaderStatus();
  assert.equal(indicator.settings.textContent,'Open module');
 });

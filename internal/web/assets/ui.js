@@ -109,7 +109,7 @@ export function noListenerIndicator(description=''){
  root.append(trigger,tip);setText(tip,description);root.hidden=!description;
  return {root,update:text=>{setText(tip,text);root.hidden=!text;if(!text)tooltip.close();},...tooltip};
 }
-export function serviceURL(state,route){if(route.summary?.state==='unsupported')return null;return state.remote_admin?state.remote_admin.service_links?.[route.id]||null:`http://${route.domain}:${state.port}`;}
+export function serviceURL(state,route){return state.remote_admin?state.remote_admin.service_links?.[route.id]||null:`http://${route.domain}:${state.port}`;}
 export function el(tag,className,text){const n=document.createElement(tag);if(className)n.className=className;if(text!==undefined)n.textContent=text;return n;}
 // The shell queries these stable IDs while navigating between module panels.
 export function moduleHeading(title){
@@ -345,6 +345,22 @@ export function showDialog(dialog,{initialFocus,onClose=()=>{},signal}={}){
   for(let node=event.target.parentElement;node&&node!==dialog;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;
  },true);
  document.body.append(dialog);dialog.showModal();initialFocus?.focus();return dialog;
+}
+export function serviceLocationDialog({options,trigger,signal}={}){
+ const dialog=el('dialog','service-location-dialog'),choices=el('div','service-location-options');
+ dialog.append(dialogHeader('Where does the service run?',dialog),choices);
+ let initialFocus;
+ for(const option of options||[]){
+  const choice=el('div','service-location-choice'),action=button(option.label,()=>{
+   if(!option.available)return;
+   dialog.close();option.run();
+  },'secondary');
+  action.disabled=!option.available;
+  choice.append(action);
+  if(!option.available)choice.append(el('p','small muted',option.reason||'Not available in this build.'));
+  choices.append(choice);if(!initialFocus&&option.available)initialFocus=action;
+ }
+ return showDialog(dialog,{signal,initialFocus,onClose:()=>trigger?.focus()});
 }
 export function formActions(dialog,{submit='Save',className=''}={}){
  const actions=el('div','dialog-actions'),cancel=button('Cancel',()=>dialog.close()),save=el('button',className,submit),error=el('p','route-error');
