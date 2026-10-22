@@ -34,7 +34,7 @@ type Settings struct {
 }
 
 func settings(raw json.RawMessage) (Settings, error) {
-	s := Settings{Port: 8090, RequireAccessToken: true}
+	s := Settings{Port: 8090}
 	if err := feature.Decode(raw, &s); err != nil {
 		return s, err
 	}

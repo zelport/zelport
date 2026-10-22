@@ -230,7 +230,7 @@ func TestConcurrentEditsAndAdminProtection(t *testing.T) {
 
 func TestInvalidSettingsAndMissingModule(t *testing.T) {
 	mod, _, s := setup(t, filepath.Join(t.TempDir(), "config.json"))
-	for _, raw := range []string{`{"port":0}`, `{"port":65536}`, `{"port":-1}`, `{"bind_address":"example.com"}`, `{"bind_address":"0.0.0.0"}`, `{"bind_address":"224.0.0.1"}`, `{"enabled":true}`, `{"access_token":"bad"}`, `{"unknown":true}`} {
+	for _, raw := range []string{`{"port":0}`, `{"port":65536}`, `{"port":-1}`, `{"bind_address":"example.com"}`, `{"bind_address":"0.0.0.0"}`, `{"bind_address":"224.0.0.1"}`, `{"enabled":true,"require_access_token":true}`, `{"access_token":"bad"}`, `{"unknown":true}`} {
 		if mod.ValidateSettings(json.RawMessage(raw)) == nil {
 			t.Fatal("invalid settings accepted", raw)
 		}
@@ -257,6 +257,33 @@ func TestInvalidSettingsAndMissingModule(t *testing.T) {
 		if w.Code != 404 {
 			t.Fatal("excluded module exposed", path, w.Code)
 		}
+	}
+}
+
+func TestAccessTokenProtectionUsesOnlySavedValue(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		raw  string
+		want bool
+	}{
+		{"new settings", `{}`, false},
+		{"settings without field", `{"port":8090}`, false},
+		{"saved protection", `{"require_access_token":true}`, true},
+		{"saved open access", `{"require_access_token":false}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := settings(json.RawMessage(tc.raw))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if s.RequireAccessToken != tc.want {
+				t.Fatalf("RequireAccessToken = %t, want %t", s.RequireAccessToken, tc.want)
+			}
+		})
+	}
+	mod, _, _ := setup(t, filepath.Join(t.TempDir(), "config.json"))
+	if strings.Contains(string(mod.State().Data), `"require_access_token":true`) {
+		t.Fatal("new relay settings are protected by default")
 	}
 }
 
