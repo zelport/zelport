@@ -1,10 +1,14 @@
 import * as ui from './ui.js';
+import {createClient} from './client.js';
+import {createNavigation} from './navigation.js';
+import {createDashboard} from './dashboard.js';
+import {renderHeaderStatus as renderRuntimeHeaderStatus,renderAvailability as renderRuntimeAvailability} from './runtime.js';
 const $=id=>document.getElementById(id);
 
-let state, active='dashboard', pending, timer, busy=false;
+let state, active='dashboard', timer, client, composed=false;
 const modules=new Map(),messages=new Map(),refreshErrors=new Map(),availabilityControls=new Map();
 let availabilitySaving=false, fallbackToolbar, fallbackRefresh, fallbackRefreshing=false;
-let navigation,runtimeModules;
+let navigation,dashboard,runtimeModules;
 function renderRefreshControl(){
  if(!fallbackToolbar)return;
  if(fallbackRefresh.parentElement!==fallbackToolbar)fallbackToolbar.append(fallbackRefresh);
@@ -20,16 +24,9 @@ function message(text,owner=active){if(text)messages.set(owner,text);else messag
 // Read failures expire on recovery; mutation failures remain owned by their form/tab.
 function clearRefreshErrors(){refreshErrors.clear();renderMessage();}
 async function refreshVisible(){const owner=active;try{await refresh();clearRefreshErrors();}catch(e){refreshErrors.set(owner,e.message);renderMessage();}}
-async function api(path,options={}){
- if(!path.startsWith('/api/')||path.includes('://'))throw Error('Invalid API path');
- const method=options.method||'GET';const headers={...options.headers};
- if(!['GET','HEAD'].includes(method)){headers['X-CSRF-Token']=state?.csrf;headers['Content-Type']='application/json';}
- const response=await fetch(path,{...options,headers});const text=await response.text();let data;
- try{data=JSON.parse(text);}catch{data={error:text};}
- if(!response.ok){const error=Error(data.error||`Request failed (${response.status})`);error.status=response.status;throw error;}return data;
-}
-async function refresh(force=false){if(pending){if(!force)return pending;await pending.catch(()=>{});}pending=(async()=>{state=await api('/api/state');clearRefreshErrors();render();})().finally(()=>pending=null);return pending;}
-async function mutate(work,{reportError=true}={}){const owner=active;if(busy)throw Error('Another operation is in progress');busy=true;message('',owner);document.body.setAttribute('aria-busy','true');try{const result=await work();await refresh(true);return result;}catch(e){if(reportError)message(e.message,owner);await refresh(true).catch(()=>{});throw e;}finally{busy=false;document.body.removeAttribute('aria-busy');}}
+function api(path,options={}){return client.api(path,options);}
+function refresh(force=false){return client.refresh(force);}
+function mutate(work,options={}){return client.mutate(work,options);}
 function moduleVisible(m){return moduleEnabled(m)&&(m.descriptor.ui_placement==='settings'?active==='settings'&&(!m.accordion||m.accordion.open):m.descriptor.tab_id===active);}
 function navigate(id,push=true){
  const valid=id==='dashboard'||id==='settings'||[...modules.values()].some(m=>moduleEnabled(m)&&m.descriptor.ui_placement!=='settings'&&m.descriptor.tab_id===id);
@@ -54,7 +51,7 @@ function navigate(id,push=true){
  const currentModule=[...modules.values()].find(m=>m.descriptor.tab_id===active&&m.descriptor.ui_placement!=='settings');
  const heading=$('module-heading'),actions=$('module-actions'),title=$('module-title');heading.hidden=!currentModule;if(currentModule?.toolbar&&currentModule.toolbar.parentElement!==actions)actions.append(currentModule.toolbar);title.hidden=!currentModule;ui.renderChanged(title,[currentModule?.descriptor.name,currentModule?.descriptor.maturity],()=>{title.textContent=currentModule?.descriptor.name||'';title.removeAttribute('aria-label');if(currentModule?.descriptor.maturity==='experimental'){title.append(ui.experimentalBadge());title.setAttribute('aria-label',`${currentModule.descriptor.name} (Experimental)`);}});
  renderRefreshControl();
- navigation?.select();
+ navigation?.sync(active);
  schedule();
 }
 function schedule(){
@@ -85,103 +82,10 @@ function positionHeaderPopovers(){
 window.addEventListener('resize',positionHeaderPopovers);
 window.addEventListener('scroll',positionHeaderPopovers,true);
 
-// Keep popover nodes stable while polling so focus and open state survive updates.
-function renderHeaderStatus(){
- const host=$('connection-status');let visible=0;
- for(const m of modules.values()){
-  if(!m.headerStatus)continue;
-  const value=moduleEnabled(m)?m.headerStatus(state.states[m.descriptor.id]):null;
-  if(!m.indicator){
-   const wrap=ui.el('div','connection-indicator'),trigger=ui.el('button','connection-trigger',m.descriptor.name),popover=ui.el('div','header-popover connection-popover');
-   wrap.style.order=String(m.descriptor.order||0);
-   popover.id=`connection-${m.descriptor.id}`;popover.setAttribute('popover','auto');
-   popover.addEventListener('beforetoggle',event=>{if(event.newState==='open')requestAnimationFrame(positionHeaderPopovers);});
-   trigger.type='button';trigger.setAttribute('popovertarget',popover.id);
-   const heading=ui.el('strong',null,m.descriptor.name),status=ui.statusBadge(''),details=ui.el('div','connection-details');
-   const settings=ui.button(value?.action||'Open settings',()=>{popover.hidePopover();navigate(m.descriptor.ui_placement==='settings'?'settings':m.descriptor.tab_id);if(m.accordion)m.accordion.open=true;const target=m.accordion?.querySelector('summary')||m.tab;target?.focus();},'secondary');
-   const top=ui.el('div','connection-popover-heading');top.append(heading,status);const actions=ui.el('div','connection-popover-actions');actions.append(settings);popover.append(top,details,actions);wrap.append(trigger,popover);host.append(wrap);m.indicator={wrap,trigger,popover,status,details,settings};
-  }
-  const i=m.indicator;i.wrap.hidden=!value;
-  if(!value){if(i.popover.matches(':popover-open'))i.popover.hidePopover();continue;}
-  visible++;ui.setText(i.settings,value.action||'Open settings');i.trigger.dataset.tone=value.tone;i.trigger.title=`${m.descriptor.name}: ${value.status}`;i.trigger.setAttribute('aria-label',i.trigger.title);
-  ui.setText(i.status,value.status);i.status.dataset.tone=value.tone;ui.renderChanged(i.details,value.sections||value.rows,()=>{
-   const expanded=new Set([...i.details.querySelectorAll('details[open]')].map(d=>d.dataset.key));
-   i.details.replaceChildren(...(value.sections||[{rows:value.rows}]).map(section=>{
-   const group=ui.el('section','connection-section'),facts=ui.el('dl','connection-facts');
-   if(section.title)group.append(ui.el('h3',null,section.title));
-   for(const {label,value} of section.rows){const row=ui.el('div');row.append(ui.el('dt',null,label),ui.el('dd',null,value));facts.append(row);}
-   group.append(facts);
-   const disclosure=label=>{
-    const details=ui.el('details','connection-diagnostic');details.dataset.key=`${section.title||''}:${label}`;details.open=expanded.has(details.dataset.key);
-    details.append(ui.el('summary',null,label));details.addEventListener('toggle',positionHeaderPopovers);group.append(details);return details;
-   };
-   if(section.help){
-    const help=section.help,details=disclosure('How to fix');
-    details.append(ui.el('p',null,help.text),ui.el('pre',null,help.command),ui.el('p',null,help.after),ui.el('p',null,help.note));
-    const link=ui.el('a',null,help.linkLabel);link.href=help.url;link.target='_blank';link.rel='noopener noreferrer';details.append(link);
-   }
-   if(section.diagnostic)disclosure('Technical details').append(ui.el('pre',null,section.diagnostic));
-   return group;
-  }));
-  });
- }
- let fallback=host.querySelector('.local-label');if(!fallback){fallback=ui.el('span','local-label');host.prepend(fallback);}
- fallback.hidden=visible>0&&!state.remote_admin;ui.setText(fallback,state.remote_admin?'Remote · E2E':'Local');
- positionHeaderPopovers();
-}
-// Keep rows and cells attached when other services change during polling.
-const dashboardRows=new Map();
-let dashboardTable,dashboardBody,dashboardEmpty;
-function openAddService(trigger){
- const option=(label,id)=>{
-  const module=modules.get(id),available=!!module?.instance&&moduleEnabled(module);
-  const reason=!module?.instance?'Not included in this build.':'Turn on this module in Settings.';
-  return {label,available,reason,run(){if(!available)return;navigate(module.descriptor.tab_id);module.instance.edit();}};
- };
- return ui.serviceLocationDialog({trigger,options:[
-  option('This computer','local_ports'),
-  option('Development server','ports_over_ssh')
- ]});
-}
-function renderDashboardServices(){
- const routes=Object.values(state.states).flatMap(s=>s.routes||[]),host=$('dashboard-services');
- if(!dashboardTable){
-  const wrap=ui.el('div','dashboard-table-wrap');dashboardTable=ui.el('table','dashboard-table data-table');
-  const head=ui.el('tr'),thead=ui.el('thead');dashboardBody=ui.el('tbody');
-  for(const name of ['Domain','Source type','Data flow','Actions']){const cell=ui.el('th',null,name);cell.scope='col';head.append(cell);}
-  thead.append(head);dashboardTable.append(thead,dashboardBody);wrap.append(dashboardTable);dashboardEmpty=ui.el('div','empty');host.append(wrap,dashboardEmpty);
- }
- dashboardTable.parentElement.hidden=!routes.length;dashboardEmpty.hidden=!!routes.length;
- if(!routes.length)ui.setText(dashboardEmpty,state.modules.length?'No services configured yet.':'This build contains only the core. Add feature build tags to configure services.');
- const present=new Set(routes.map(r=>r.id));
- for(const [id,item]of dashboardRows)if(!present.has(id)){item.menu.dispose();item.row.remove();dashboardRows.delete(id);}
- for(const r of routes){
-  let item=dashboardRows.get(r.id);
-  if(!item){
-   const row=ui.el('tr'),domain=ui.el('td'),source=ui.el('td'),target=ui.el('td'),action=ui.el('td');
-   for(const [cell,label]of [[domain,'Domain'],[source,'Source type'],[target,'Data flow'],[action,'Actions']])cell.dataset.label=label;
-   const targetText=ui.el('span'),root=ui.el('div','resource-actions dashboard-actions'),trigger=ui.el('button','resource-menu-trigger','⋮'),menu=ui.el('div','resource-menu');
-   trigger.setAttribute('aria-label',`Actions for ${r.domain}`);trigger.setAttribute('aria-haspopup','menu');menu.setAttribute('role','menu');
-   root.append(trigger,menu);action.append(root);target.append(targetText);
-   item={row,domain,source,target,targetText,trigger,route:r,menu:ui.disclosureMenu(root,trigger,menu)};dashboardRows.set(r.id,item);
-   const edit=ui.button('Edit',()=>{item.menu.close(true);modules.get(item.route.module)?.instance?.edit(item.route);},'resource-menu-item');edit.setAttribute('role','menuitem');menu.append(edit);
-   row.append(domain,source,target,action);dashboardBody.append(row);
-  }
-  item.route=r;item.trigger.setAttribute('aria-label',`Actions for ${r.domain}`);
-  const address=ui.serviceURL(state,r),linked=!!address;
-  if(!item.link||item.linked!==linked){
-   item.link=ui.el(linked?'a':'span');item.linked=linked;item.domain.replaceChildren(item.link);
-   if(linked){item.link.target='_blank';item.link.rel='noopener';}
-   else item.domain.append(ui.el('span','small muted','Not connected on this device'));
-  }
-  ui.setText(item.link,r.domain);if(linked&&item.address!==address)item.link.href=address;item.address=address;
-  ui.setText(item.source,modules.get(r.module)?.descriptor.name||r.module);
-  ui.setText(item.targetText,r.summary.target||'');
- }
- // Preserve existing row order across snapshots; newly discovered services append.
-}
+function renderHeaderStatus(){renderRuntimeHeaderStatus({state,modules,moduleEnabled,navigate,ui,host:$('connection-status'),positionPopovers:positionHeaderPopovers});}
+function openAddService(trigger){return dashboard.openAddService(trigger);}
 function render(){if(!state)return;renderAvailability();renderHeaderStatus();const remote=$('remote-administration');remote.hidden=!state.remote_admin;if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
- renderDashboardServices();
+ dashboard.render(state);
  const rt=state.runtime,fields=[['Version',rt.version],['Hostname',rt.hostname],['Configuration',rt.config_display_path||rt.config_path],['Listeners',rt.listeners?.join(', ')],['Modules',state.modules.map(m=>m.name).join(', ')||'Core only']];
  for(const [label,value]of fields){let cell=[...$('runtime-info').children].find(c=>c.dataset.label===label);if(!cell){cell=ui.el('div',label==='Modules'?'runtime-modules':null);cell.dataset.label=label;cell.append(ui.el('dt',null,label),ui.el('dd'));$('runtime-info').append(cell);}if(label==='Modules')renderRuntimeModules(cell);else ui.setText(cell.lastElementChild,value);if(label==='Configuration')cell.lastElementChild.title=rt.config_path||'';}}
 function renderRuntimeModules(cell){
@@ -199,14 +103,8 @@ function renderRuntimeModules(cell){
  });
 }
 function renderAvailability(){
- for(const [id,row]of availabilityControls){
-  const a=state.module_availability?.[id];if(!a)continue;
-  row.input.checked=a.enabled;row.input.disabled=availabilitySaving||(a.enabled&&!a.can_disable);
-  ui.setText(row.reason,a.reason||`${a.services} configured service${a.services===1?'':'s'}`);
- }
- for(const m of modules.values())if(m.tab)m.tab.hidden=!moduleEnabled(m);
- const current=[...modules.values()].find(m=>m.descriptor.tab_id===active);
- if(current&&!moduleEnabled(current)){navigate('settings',false);history.replaceState(null,'','#settings');}
+ const before=active;renderRuntimeAvailability({state,modules,controls:availabilityControls,saving:availabilitySaving,active,navigate,ui});
+ if(before!==active&&active==='settings')history.replaceState(null,'','#settings');
 }
 function addAvailability(settings){
  const section=ui.accordion('Module UI availability');
@@ -235,7 +133,9 @@ function showBootStatus(){
 }
 async function init(){
  const bootStatus=showBootStatus();
- state=await api('/api/state');tab('dashboard','Dashboard');
+ client=createClient({owner:()=>active,onError:message,onState(next){state=next;clearRefreshErrors();if(composed)render();}});
+ state=await client.refresh();tab('dashboard','Dashboard');
+ dashboard=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui});
  const addService=$('add-service');addService.addEventListener('click',()=>openAddService(addService));
  ui.moduleHeading($('module-title'));
  fallbackToolbar=ui.el('div','module-toolbar');
@@ -255,7 +155,7 @@ async function init(){
   catch(e){panel.append(ui.el('p','route-error',`Module interface unavailable: ${e.message}`));}
  }
  addAvailability(settings);
- tab('settings','Settings');render();navigate(location.hash.slice(1),false);
- navigation=ui.serviceNavigation($('tabs'));if(bootStatus){document.body.dataset.view='ready';document.body.setAttribute('aria-busy','false');bootStatus.remove();}
+ tab('settings','Settings');composed=true;render();navigate(location.hash.slice(1),false);
+ navigation=createNavigation({tabs:$('tabs'),onNavigate:navigate});navigation.sync(active);if(bootStatus){document.body.dataset.view='ready';document.body.setAttribute('aria-busy','false');bootStatus.remove();}
 }
-window.addEventListener('popstate',()=>navigate(location.hash.slice(1),false));window.addEventListener('hashchange',()=>navigate(location.hash.slice(1),false));document.addEventListener('visibilitychange',()=>{schedule();if(!document.hidden)refreshVisible();});window.addEventListener('focus',()=>{if(state)refreshVisible();});window.addEventListener('pagehide',()=>{clearTimeout(timer);navigation?.dispose();for(const m of modules.values()){m.controller.abort();m.instance?.dispose();}});init().catch(e=>{if(document.body){document.body.dataset.view='error';document.body.setAttribute('aria-busy','false');document.getElementById('boot-status')?.remove();}message(e.message);});
+window.addEventListener('popstate',()=>navigate(location.hash.slice(1),false));window.addEventListener('hashchange',()=>navigate(location.hash.slice(1),false));document.addEventListener('visibilitychange',()=>{schedule();if(!document.hidden)refreshVisible();});window.addEventListener('focus',()=>{if(state)refreshVisible();});window.addEventListener('pagehide',()=>{clearTimeout(timer);navigation?.dispose();dashboard?.dispose();client?.dispose();for(const m of modules.values()){m.controller.abort();m.instance?.dispose();}});init().catch(e=>{if(document.body){document.body.dataset.view='error';document.body.setAttribute('aria-busy','false');document.getElementById('boot-status')?.remove();}message(e.message);});

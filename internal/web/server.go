@@ -17,6 +17,11 @@ import (
 
 //go:embed assets/*
 var assets embed.FS
+var coreAssets = map[string]bool{
+	"/": true, "/app.js": true, "/client.js": true, "/navigation.js": true, "/dashboard.js": true, "/runtime.js": true,
+	"/ui.js": true, "/ui-dom.js": true, "/ui-forms.js": true, "/ui-dialogs.js": true, "/ui-services.js": true,
+	"/app.css": true, "/favicon.svg": true, "/favicon-dark.svg": true,
+}
 
 type Server struct {
 	manager *app.Manager
@@ -189,7 +194,7 @@ func (s *Server) adminWithContext(w http.ResponseWriter, r *http.Request, origin
 		reply(w, 200, map[string]any{"revision": next})
 		return
 	}
-	if (r.Method == "GET" || r.Method == "HEAD") && (r.URL.Path == "/" || r.URL.Path == "/app.js" || r.URL.Path == "/ui.js" || r.URL.Path == "/app.css" || r.URL.Path == "/favicon.svg" || r.URL.Path == "/favicon-dark.svg") {
+	if (r.Method == "GET" || r.Method == "HEAD") && coreAssets[r.URL.Path] {
 		s.files.ServeHTTP(w, r)
 		return
 	}

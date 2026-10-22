@@ -3,15 +3,15 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {renderHeaderStatus as renderRuntimeHeaderStatus,renderAvailability as renderRuntimeAvailability} from '../internal/web/assets/runtime.js';
 
 // Exercise the production shell with only its DOM and network boundaries stubbed.
 function shell(){
  const elements=new Map(),dialogs=[];
  const element=id=>{if(!elements.has(id))elements.set(id,{hidden:false,textContent:'',children:[],setAttribute(){},removeAttribute(){},append(...children){for(const child of children){if(child.parentElement)child.parentElement.children=child.parentElement.children.filter(item=>item!==child);this.children.push(child);child.parentElement=this;}},querySelector(){return element('fallback')},querySelectorAll(){return []}});return elements.get(id)};
- const context={document:{getElementById:element,body:element('body'),hidden:false,addEventListener(){},querySelectorAll(){return dialogs}},window:{addEventListener(){}},location:{hash:''},history:{pushState(){},replaceState(){}},clearTimeout(){},setTimeout(){},ui:{setText,renderChanged,el(){return {append(){}}}}};
- const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace("import * as ui from './ui.js';",'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
- runInNewContext(source+'\nglobalThis.shell={setRefreshControls(toolbar,button){fallbackToolbar=toolbar;fallbackRefresh=button},navigate,message,mutate,refreshVisible,setRefresh(fn){refresh=fn},renderAvailability,renderHeaderStatus,addModule(m){modules.set(m.descriptor.id,m)},setState(s){state=s},active(){return active}};',context);
- context.shell.setRefresh(async()=>{});
+ const context={renderRuntimeHeaderStatus,renderRuntimeAvailability,document:{getElementById:element,body:element('body'),hidden:false,addEventListener(){},querySelectorAll(){return dialogs}},window:{addEventListener(){}},location:{hash:''},history:{pushState(){},replaceState(){}},clearTimeout(){},setTimeout(){},ui:{setText,renderChanged,el(){return {append(){}}}}};
+ const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
+ runInNewContext(source+`\nlet testRefresh=async()=>{};client={refresh:(force)=>testRefresh(force),mutate:async(work,{reportError=true}={})=>{const owner=active;message('',owner);try{const result=await work();await testRefresh(true);return result;}catch(e){if(reportError)message(e.message,owner);await testRefresh(true).catch(()=>{});throw e;}},state:()=>state};globalThis.shell={setRefreshControls(toolbar,button){fallbackToolbar=toolbar;fallbackRefresh=button},navigate,message,mutate,refreshVisible,setRefresh(fn){testRefresh=fn},renderAvailability,renderHeaderStatus,addModule(m){modules.set(m.descriptor.id,m)},setState(s){state=s},active(){return active}};`,context);
  return {...context.shell,dialogs,error:element('error'),settings:element('panel-settings'),moduleActions:element('module-actions'),moduleHeading:element('module-heading')};
 }
 
@@ -90,8 +90,9 @@ test('header popover content is retained until its displayed lines change',()=>{
 
 test('module status and runtime module popovers share one visual shell',()=>{
  const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8');
+ const runtime=readFileSync(new URL('../internal/web/assets/runtime.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8');
- assert.match(app,/ui\.el\('div','header-popover connection-popover'\)/);
+ assert.match(runtime,/ui\.el\('div','header-popover connection-popover'\)/);
  assert.match(app,/ui\.el\('div','header-popover runtime-modules-popover'\)/);
  const shell=css.match(/\.header-popover\{([^}]+)\}/)?.[1]||'';
  for(const rule of ['position:fixed','width:min(340px,calc(100vw - 32px))','padding:var(--panel-padding)','border-radius:var(--radius-panel)','box-shadow:var(--shadow)'])assert.ok(shell.includes(rule),rule);

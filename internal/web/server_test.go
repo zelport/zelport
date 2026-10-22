@@ -47,6 +47,11 @@ func TestCoreAndAbsentModuleAssets(t *testing.T) {
 	if w := request(s, "GET", "localhost:8080", "/api/state", "", nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"modules":[]`) || strings.Contains(w.Body.String(), "unsupported_modules") || strings.Contains(w.Body.String(), `"state":"unsupported"`) {
 		t.Fatal(w.Code, w.Body)
 	}
+	for _, path := range []string{"/app.js", "/client.js", "/navigation.js", "/dashboard.js", "/runtime.js", "/ui.js", "/ui-dom.js", "/ui-forms.js", "/ui-dialogs.js", "/ui-services.js"} {
+		if w := request(s, "GET", "localhost:8080", path, "", nil); w.Code != http.StatusOK {
+			t.Errorf("core asset %s returned %d", path, w.Code)
+		}
+	}
 }
 func TestModuleMutationSecurityAndConflict(t *testing.T) {
 	m, _ := app.New("", 8080, local_ports.New())

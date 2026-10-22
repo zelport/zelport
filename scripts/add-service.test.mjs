@@ -3,6 +3,7 @@ import {runInNewContext} from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as ui from '../internal/web/assets/ui.js';
+import {createDashboard} from '../internal/web/assets/dashboard.js';
 
 class Node {
  constructor(tag='div'){this.tag=tag;this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.attrs={};this.events={};this.disabled=false;this.hidden=false;this.textContent='';}
@@ -40,14 +41,11 @@ test('service location dialog offers the two approved choices and restores focus
 });
 
 test('shell maps service locations to their module forms and disables unavailable modules',()=>{
- const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8');let spec;
- const context={ui:{serviceLocationDialog:value=>{spec=value;return value}},document:{getElementById(){return null},addEventListener(){}},window:{addEventListener(){}},location:{hash:''},history:{},setTimeout(){},clearTimeout(){}};
- const source=app.replace("import * as ui from './ui.js';",'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
- runInNewContext(source+`\nglobalThis.testAPI={openAddService,add(id,enabled,edit){modules.set(id,{descriptor:{id,tab_id:id},instance:{edit}});state={module_availability:{...state?.module_availability,[id]:{enabled}}};},setNavigate(fn){navigate=fn}};`,context);
- let local=0,remote=0,navigated=[];context.testAPI.setNavigate(id=>navigated.push(id));
- context.testAPI.add('local_ports',true,()=>local++);
- context.testAPI.add('ports_over_ssh',false,()=>remote++);
- context.testAPI.openAddService({focus(){}});
+ let spec,local=0,remote=0;const navigated=[],state={module_availability:{local_ports:{enabled:true},ports_over_ssh:{enabled:false}}},modules=new Map([
+  ['local_ports',{descriptor:{id:'local_ports',tab_id:'local_ports'},instance:{edit:()=>local++}}],
+  ['ports_over_ssh',{descriptor:{id:'ports_over_ssh',tab_id:'ports_over_ssh'},instance:{edit:()=>remote++}}]
+ ]),dashboard=createDashboard({root:new Node(),modules,client:{state:()=>state},navigate:id=>navigated.push(id),ui:{serviceLocationDialog:value=>{spec=value;return value}}});
+ dashboard.openAddService({focus(){}});
  assert.equal(JSON.stringify(spec.options.map(option=>[option.label,option.available])),JSON.stringify([['This computer',true],['Development server',false]]));
  spec.options[0].run();assert.equal(local,1);assert.deepEqual(navigated,['local_ports']);
  spec.options[1].run();assert.equal(remote,0);

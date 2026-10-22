@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as ui from '../internal/web/assets/ui.js';
+const moduleUIContract=[
+ 'accordion','adornedField','adornmentButton','button','dialogHeader','disclosureMenu','el','emptyState',
+ 'experimentalBadge','field','formActions','icon','localPortIndicator','moduleHeading','noListenerIndicator',
+ 'numberStepperField','picker','refreshButton','refreshControl','renderChanged','routeEditRevision','serviceLocationDialog',
+ 'serviceModule','serviceNavigation','serviceTargetIndicator','serviceURL','setText','showDialog','statusBadge','statusTone',
+ 'switchField','textTooltip','warningIndicator'
+];
 class Node {
  constructor(tag='div'){this.tag=tag;this.children=[];this.dataset={};this.attrs={};this.events={};}
  append(...nodes){for(const node of nodes){node.parentElement?.children.splice(node.parentElement.children.indexOf(node),1);this.children.push(node);node.parentElement=this;}}
@@ -23,6 +30,9 @@ function setup(){
  const listeners=new Map();globalThis.document={body:new Node('body'),activeElement:null,createElement:t=>new Node(t),createElementNS:(_,t)=>new Node(t),addEventListener:(k,fn)=>listeners.set(k,fn),removeEventListener:k=>listeners.delete(k)};return listeners;
 }
 const key=k=>({key:k,preventDefault(){},stopPropagation(){this.stopped=true;}});
+test('UI facade exports every helper consumed by active modules',()=>{
+ for(const name of moduleUIContract)assert.equal(typeof ui[name],'function',name);
+});
 test('shared disclosure keeps pointer focus, selects the current option for keyboard, and releases outside listeners',()=>{
  const listeners=setup(),root=new Node(),trigger=new Node('button'),menu=new Node(),a=new Node('button'),hidden=new Node('button'),b=new Node('button');hidden.hidden=true;root.append(trigger,menu);menu.append(a,hidden,b);
  const control=ui.disclosureMenu(root,trigger,menu,{selected:n=>n===b});trigger.focus();trigger.events.click({detail:1,preventDefault(){}});
