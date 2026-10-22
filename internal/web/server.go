@@ -116,7 +116,7 @@ func (s *Server) adminWithContext(w http.ResponseWriter, r *http.Request, origin
 	switch {
 	case r.Method == "GET" && r.URL.Path == "/api/state":
 		rev, routes := s.manager.Snapshot()
-		states := s.manager.UnsupportedStates(rev, routes)
+		states := map[string]feature.State{}
 		for _, d := range s.manager.Descriptors() {
 			st := s.manager.Module(d.ID).State()
 			filtered := []feature.RouteView{}
@@ -135,7 +135,7 @@ func (s *Server) adminWithContext(w http.ResponseWriter, r *http.Request, origin
 			st.Routes = filtered
 			states[d.ID] = st
 		}
-		reply(w, 200, map[string]any{"revision": rev, "modules": s.manager.Descriptors(), "unsupported_modules": s.manager.UnsupportedModules(), "module_availability": s.manager.Availability(), "states": states, "runtime": s.runtime.current(), "csrf": token, "port": s.port, "remote_admin": remote})
+		reply(w, 200, map[string]any{"revision": rev, "modules": s.manager.Descriptors(), "module_availability": s.manager.Availability(), "states": states, "runtime": s.runtime.current(), "csrf": token, "port": s.port, "remote_admin": remote})
 		return
 	case r.Method == "PUT" && r.URL.Path == "/api/module-availability":
 		var body struct {

@@ -76,15 +76,5 @@ func (s *Server) serveIntegration(w http.ResponseWriter, r *http.Request, remote
 			v.Connections = append(v.Connections, provider.ConnectionSummaries()...)
 		}
 	}
-	for _, r := range routes {
-		if s.manager.Module(r.Module) != nil {
-			continue
-		}
-		url := "http://" + r.Domain
-		if s.port != 80 {
-			url += ":" + strconv.Itoa(s.port)
-		}
-		v.Services = append(v.Services, integrationService{ID: r.ID, Domain: r.Domain, SourceID: r.Module, SourceName: r.Module, State: "unsupported", URL: url})
-	}
 	reply(w, 200, v)
 }

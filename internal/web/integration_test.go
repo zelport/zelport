@@ -10,8 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -231,32 +229,5 @@ func TestIntegrationPathBelongsToApplicationOnServiceHost(t *testing.T) {
 	w := request(s, "GET", "app.localhost:8080", "/api/integration/v1/state", "", nil)
 	if w.Code != http.StatusAccepted || w.Body.String() != "application-owned response" {
 		t.Fatalf("application route intercepted: %d %s", w.Code, w.Body)
-	}
-}
-
-func TestUnsupportedConfigurationProjection(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "c.json")
-	raw := `{"version":1,"modules":{"missing":{"secret":"opaque-secret"}},"routes":[{"id":"b60d7e28-d39e-4ad4-9a36-50f9158f35cb","module":"missing","domain":"saved.localhost","settings":{"secret":"opaque-secret"}}]}`
-	if err := os.WriteFile(path, []byte(raw), 0600); err != nil {
-		t.Fatal(err)
-	}
-	m, err := app.New(path, 8080)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer m.Close()
-	s, _ := New(m, 8080)
-
-	for _, endpoint := range []string{"/api/state", "/api/integration/v1/state"} {
-		w := request(s, "GET", "localhost:8080", endpoint, "", nil)
-		if w.Code != 200 || strings.Contains(w.Body.String(), "opaque-secret") {
-			t.Fatal(w.Code, w.Body)
-		}
-		if !strings.Contains(w.Body.String(), `"state":"unsupported"`) || !strings.Contains(w.Body.String(), `"domain":"saved.localhost"`) {
-			t.Fatal(w.Body)
-		}
-		if endpoint == "/api/state" && !strings.Contains(w.Body.String(), `"unsupported_modules":["missing"]`) {
-			t.Fatal(w.Body)
-		}
 	}
 }

@@ -44,7 +44,7 @@ func TestCoreAndAbsentModuleAssets(t *testing.T) {
 			t.Fatal(host, w.Code)
 		}
 	}
-	if w := request(s, "GET", "localhost:8080", "/api/state", "", nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"modules":[]`) {
+	if w := request(s, "GET", "localhost:8080", "/api/state", "", nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"modules":[]`) || strings.Contains(w.Body.String(), "unsupported_modules") || strings.Contains(w.Body.String(), `"state":"unsupported"`) {
 		t.Fatal(w.Code, w.Body)
 	}
 }

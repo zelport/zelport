@@ -91,7 +91,7 @@ func (m *Manager) validate(c configuration) error {
 		}
 		mod := m.modules[id]
 		if mod == nil {
-			continue
+			return fmt.Errorf("module %q is not included in this build", id)
 		}
 		if e := mod.ValidateSettings(b); e != nil {
 			return fmt.Errorf("%s settings: %w", id, e)
@@ -102,6 +102,9 @@ func (m *Manager) validate(c configuration) error {
 		mod := m.modules[r.Module]
 		if !moduleID.MatchString(r.Module) {
 			return fmt.Errorf("invalid module ID %q", r.Module)
+		}
+		if mod == nil {
+			return fmt.Errorf("module %q is not included in this build", r.Module)
 		}
 		if !feature.ValidUUID(r.ID) {
 			return fmt.Errorf("route ID must be UUIDv4")
@@ -117,10 +120,8 @@ func (m *Manager) validate(c configuration) error {
 		}
 		ids[r.ID] = true
 		domains[r.Domain] = true
-		if mod != nil {
-			if e := mod.ValidateRoute(r); e != nil {
-				return e
-			}
+		if e := mod.ValidateRoute(r); e != nil {
+			return e
 		}
 	}
 	return nil
