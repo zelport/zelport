@@ -32,7 +32,7 @@ func (m *Module) ServeAdministration(w http.ResponseWriter, r *http.Request) boo
 		if target.Hostname == "" {
 			code = 404
 		}
-		feature.Status(w, r, code, "Administration unavailable", e.Error())
+		feature.StatusDiagnostic(w, r, code, "Administration unavailable", "Remote administration is unavailable.", e.Error())
 		return true
 	}
 	if !target.Available {
@@ -204,7 +204,7 @@ func (m *Module) openAdministrationAttempt(ctx context.Context, peer protocol.Pe
 			return
 		}
 		if e := dispatcher.DispatchAdministration(w, r, contextData); e != nil {
-			feature.Status(w, r, 503, "Administration unavailable", e.Error())
+			feature.StatusDiagnostic(w, r, 503, "Administration unavailable", "Remote administration is unavailable.", e.Error())
 		}
 	}), ConnState: func(_ net.Conn, state http.ConnState) {
 		if state == http.StateClosed {

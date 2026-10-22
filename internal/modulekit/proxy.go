@@ -82,7 +82,7 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 	}, ErrorHandler: o.Error}
 	if proxy.ErrorHandler == nil {
 		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, e error) {
-			feature.Status(w, r, 502, "Service unavailable", e.Error())
+			feature.StatusDiagnostic(w, r, 502, "Service unavailable", "The service could not be reached.", e.Error())
 		}
 	}
 	proxy.ServeHTTP(w, r)

@@ -75,7 +75,7 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if v.Domain == host {
 			l, e := m.acquire(r.Context(), v.ID, &revision, false, nil)
 			if e != nil {
-				feature.Status(w, r, 503, "Service unavailable", e.Error())
+				feature.StatusDiagnostic(w, r, 503, "Service unavailable", "The service is temporarily unavailable.", e.Error())
 				return
 			}
 			m.dispatch(w, r, l, true)

@@ -225,7 +225,7 @@ func (m *Module) middleware(next http.Handler) http.Handler {
 		}
 		trace, e := protocol.AdvanceTrace(r.Header.Get(protocol.TraceHeader), key, s.DeviceID, l.Route().ID, time.Now())
 		if e != nil {
-			feature.Status(w, r, 508, "Relay loop detected", e.Error())
+			feature.StatusDiagnostic(w, r, 508, "Relay loop detected", "The relay request could not be completed.", e.Error())
 			return
 		}
 		r = r.Clone(r.Context())
@@ -252,6 +252,6 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, route featur
 	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: authority}, modulekit.ProxyOptions{RewriteOrigin: ref.RewriteOrigin, Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return c.Open(ctx, ref.Import, protocol.OpenRequest{Kind: protocol.Application, ServiceID: ref.ServiceID, Authority: authority, Trace: r.Header.Get(protocol.TraceHeader)})
 	}, Error: func(w http.ResponseWriter, r *http.Request, e error) {
-		feature.Status(w, r, 503, "Relay service unavailable", e.Error())
+		feature.StatusDiagnostic(w, r, 503, "Relay service unavailable", "The relay connection could not be established.", e.Error())
 	}})
 }

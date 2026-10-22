@@ -62,7 +62,7 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 	feature.Decode(v.Settings, &s)
 	u, e := ParseRemoteURL(s.TargetURL)
 	if e != nil {
-		feature.Status(w, r, 503, "Invalid remote target", e.Error())
+		feature.StatusDiagnostic(w, r, 503, "Invalid remote target", "The remote service URL is invalid.", e.Error())
 		return
 	}
 	if modulekit.SelfTarget(u, m.Host.ListenerAuthority("localhost")) {
@@ -71,10 +71,12 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 	}
 	modulekit.Proxy(w, r, u, modulekit.ProxyOptions{ListenerAuthority: m.Host.ListenerAuthority("localhost"), SkipTLSVerify: s.SkipTLSVerify, RewriteOrigin: s.RewriteOrigin, Error: func(w http.ResponseWriter, r *http.Request, e error) {
 		title := "Remote service unavailable"
+		message := "The remote service could not be reached."
 		var cert *tls.CertificateVerificationError
 		if errors.As(e, &cert) {
 			title = "TLS certificate verification failed"
+			message = "The remote server's TLS certificate could not be verified."
 		}
-		feature.Status(w, r, 502, title, e.Error())
+		feature.StatusDiagnostic(w, r, 502, title, message, e.Error())
 	}})
 }

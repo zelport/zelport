@@ -14,7 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
+
+	diagclean "github.com/zelport/zelport/internal/diagnostic"
 )
 
 type Error struct {
@@ -187,12 +188,7 @@ func (d *diagnostic) Write(b []byte) (int, error) {
 func (d *diagnostic) String() string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	return strings.TrimSpace(strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) && r != '\n' && r != '\t' {
-			return -1
-		}
-		return r
-	}, string(d.b)))
+	return diagclean.Clean(string(d.b))
 }
 
 type conn struct {
