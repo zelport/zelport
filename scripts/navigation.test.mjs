@@ -57,11 +57,11 @@ test('pointer opening does not move focus into the Services menu',()=>{
 
  test('Services sorts display names and keyboard navigation follows that order',()=>{
  setup();const tabs=new Node(),dashboard=new Node(),settings=new Node();dashboard.id='tab-dashboard';settings.id='tab-settings';
- const names=['Remote HTTP','Ports over SSH','Containers','Ports over Relay','Local Ports','Docker Sandboxes'];
+ const names=['Remote HTTP','Ports over SSH','Ports over Relay','Local Ports'];
  const modules=names.map(name=>{const n=new Node();n.dataset.navigationLabel=name;n.textContent=name+'Experimental';return n;});
  tabs.append(dashboard,...modules,settings);const nav=ui.serviceNavigation(tabs);
- assert.deepEqual(nav.menu.children.map(n=>n.dataset.navigationLabel),['Containers','Docker Sandboxes','Local Ports','Ports over Relay','Ports over SSH','Remote HTTP']);
- nav.trigger.events.keydown({key:'ArrowDown',preventDefault(){}});assert.equal(document.activeElement,modules[2]);
- nav.menu.events.keydown({key:'ArrowDown',preventDefault(){}});assert.equal(document.activeElement,modules[5]);
+ assert.deepEqual(nav.menu.children.map(n=>n.dataset.navigationLabel),['Local Ports','Ports over Relay','Ports over SSH','Remote HTTP']);
+ nav.trigger.events.keydown({key:'ArrowDown',preventDefault(){}});assert.equal(document.activeElement,modules[3]);
+ nav.menu.events.keydown({key:'ArrowDown',preventDefault(){}});assert.equal(document.activeElement,modules[2]);
  assert.equal(tabs.children[0],dashboard);assert.equal(tabs.children.at(-1),settings);nav.dispose();
 });

@@ -7,14 +7,13 @@
 <style>.gallery{max-width:1100px;margin:auto;padding:24px 16px}.gallery>section{margin:24px 0}.gallery h2{margin-bottom:16px}.gallery-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}</style>
 <main class="gallery"><h1>Component gallery</h1><p>Isolated sample data. No application API calls.</p>
 <div class="gallery-controls"><button id="light" class="secondary">Light</button><button id="dark" class="secondary">Dark</button><button id="dialog" class="secondary">Open editor</button></div>
-<section><h2>Configuration notice</h2><div class="configuration-notice"><span class="configuration-notice-icon" aria-hidden="true">!</span><div class="configuration-notice-content"><strong>Configured module unavailable</strong><p>This build does not include <code>relay</code>. Its configuration is preserved, but related functionality is inactive.</p></div></div></section>
 <section><h2>Service table</h2><div class="dashboard-table-wrap"><table class="data-table"><thead><tr><th scope="col">Domain</th><th scope="col">Target</th><th scope="col">State</th><th scope="col">Actions</th></tr></thead><tbody id="table-body"></tbody></table></div></section>
 <section><h2>Module service list</h2><div class="local-service-list" id="services"></div></section>
 <section><details class="resource"><summary><strong>Resource accordion</strong><span class="badge status-badge" data-tone="ok">running</span></summary><div class="services" id="nested"></div></details></section>
 <section><details class="settings-accordion"><summary><span class="settings-accordion-title">Settings accordion</span></summary><div class="settings-accordion-content" id="settings"></div></details></section>
 <section><h2>Empty state</h2><div class="empty">No services configured yet.</div></section>
-<section><h2>Diagnostics</h2><div class="discovery-error"><details><summary>Docker discovery failed</summary><pre>Permission denied while connecting to the runtime socket.
-Raw CLI output stays selectable.</pre></details></div><div class="discovery-error"><details><summary>Podman discovery failed</summary><pre>Invalid inventory JSON.</pre></details></div></section>
+<section><h2>Diagnostics</h2><div class="discovery-error"><details><summary>SSH connection failed</summary><pre>Connection refused by the development server.
+Raw command output stays selectable.</pre></details></div></section>
 <section data-module="ports_over_relay"><h2>Catalog table</h2><div class="relay-provider"><table class="data-table relay-services-table"><thead><tr><th scope="col">Domain</th><th scope="col">Localhost port</th><th scope="col">Actions</th></tr></thead><tbody><tr><td data-label="Domain">long-catalog-service.example.localhost</td><td data-label="Localhost port">8080</td><td data-label="Actions"><button class="secondary" disabled>Import</button></td></tr></tbody></table></div></section>
 </main><script type="module">
 import * as ui from '../../internal/web/assets/ui.js';

@@ -14,9 +14,9 @@ class El {
  showModal(){this.open=true;}
  focus(){}
 }
-function harness(){
+function harness(initialData={},renderInitially=true){
  const all=[],fields={};
- let latest={revision:1,data:{enabled:true,port:8090,bind_address:'',has_token:true,status:{state:'Listening',clients:0,listeners:[]}}};
+ let latest={revision:1,data:{enabled:true,port:8090,bind_address:'',has_token:true,status:{state:'Listening',clients:0,listeners:[]},...initialData}};
  const ui={setText,renderChanged,statusTone,showDialog,dialogHeader:(title)=>new El('h2',title),
   el:(tag,cls,text)=>{const e=new El(tag,text);all.push(e);return e;},
   field:(label,value,type)=>{const wrap=new El('label'),input=new El('input');input.value=value;input.checked=value;wrap.append(input);return fields[label]={wrap,input};},
@@ -28,9 +28,20 @@ function harness(){
  ui.adornmentButton=(label,icon,fn)=>ui.button(label,fn);
  const ctx={ui,panel:new El('section'),moduleId:'relay',signal:new AbortController().signal};
  globalThis.document={body:new El('body')};
- const m=mount(ctx);m.render(latest);m.activate();
+ const m=mount(ctx);if(renderInitially)m.render(latest);m.activate();
  return {ctx,m,fields,all,form:all.find(e=>e.tag==='form'),render:(revision)=>{latest={...latest,revision};m.render(latest)}};
 }
+
+test('new relay settings render access-token protection off and save it explicitly',async()=>{
+ const unrendered=harness({},false);
+ assert.equal(unrendered.fields['Require access token'].input.checked,false);
+ unrendered.m.dispose();
+ const h=harness({enabled:false,has_token:false,require_access_token:false});
+ assert.equal(h.fields['Require access token'].input.checked,false);
+ let request;h.ctx.api=async(path,options)=>{request=JSON.parse(options.body);return {ok:true}};h.ctx.mutate=async work=>work();
+ await h.form.events.submit({preventDefault(){}});
+ assert.equal(request.require_access_token,false);
+});
 
 test('explicit reload replaces a conflicted revision without silently discarding drafts',async()=>{
  const h=harness(),revisions=[];
@@ -42,6 +53,11 @@ test('explicit reload replaces a conflicted revision without silently discarding
  assert.ok(reload,'a conflicted draft needs a recovery action');
  await reload.click();await h.form.events.submit({preventDefault(){}});
  assert.deepEqual(revisions,[1,2]);
+});
+
+test('built-in relay keeps ordinary edits free of an unsaved-changes status',()=>{
+ const h=harness();h.form.events.input({});
+ assert.equal(h.all.some(e=>e.textContent==='Unsaved changes'),false);
 });
 
 for(const lifecycle of ['deactivate','dispose'])test(`late token response does not expose a secret after ${lifecycle}`,async()=>{

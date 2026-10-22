@@ -1,4 +1,14 @@
 [data-module="ports_over_relay"] { min-width: 0; }
+.relay-view-nav{display:flex;gap:var(--space-4);border-bottom:1px solid var(--line);margin-bottom:var(--space-4)}
+.relay-view-button{padding:10px 2px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:var(--muted)}
+.relay-view-button:hover{color:var(--accent);filter:none}
+.relay-view-button[aria-current=page]{border-bottom-color:var(--accent);color:var(--accent)}
+.relay-view-button:focus-visible{outline-offset:2px}
+.relay-settings-panel{max-width:680px;padding:var(--panel-padding);border:1px solid var(--line);border-radius:var(--radius-panel);background:var(--surface)}
+.relay-configuration-view .relay-setup{max-width:680px}
+.relay-configuration-form h2{margin-bottom:var(--space-4)}
+.relay-configuration-form .relay-actions{justify-content:flex-end;margin-top:var(--space-4)}
+.relay-configuration-form .dialog-advanced{margin-top:var(--space-4)}
 [data-module="ports_over_relay"] .relay-setup,
 [data-module="ports_over_relay"] .relay-provider { padding: var(--panel-padding); margin: 0 0 var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-panel); }
 [data-module="ports_over_relay"] .relay-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
@@ -16,8 +26,8 @@
 .relay-settings-dialog{width:min(560px,calc(100vw - 32px))}
 .relay-settings-dialog .dialog-help{margin-top:8px}.relay-settings-dialog .dialog-advanced .form-field{margin-bottom:8px}
 @media(max-width:720px){
-
  .relay-section-header{flex-wrap:wrap}
+ .relay-settings-panel{padding:16px}
 }
 .relay-setup [role=status]:empty{display:none}
 

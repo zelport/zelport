@@ -5,8 +5,14 @@ import assert from 'node:assert/strict';
 function status(id){const source=readFileSync(new URL(`../internal/modules/${id}/assets/module.js`,import.meta.url),'utf8').replaceAll('export function','function');return runInNewContext(source+';typeof headerStatus === "function" ? headerStatus : undefined',{URL});}
 test('relay hosting is hidden when disabled and reports enabled runtime state',()=>{
  const get=status('built_in_relay');assert.equal(typeof get,'function');assert.equal(get({data:{enabled:false,status:{error:'Previous failure',listeners:['old:8090'],clients:3}}}),null);
- const s=get({data:{enabled:true,require_access_token:false,status:{state:'Listening',clients:2,listeners:['[::]:8090']}}});assert.equal(s.tone,'ok');assert.match(s.rows.map(r=>r.value).join(' '),/\[::\]:8090/);assert.match(s.rows.map(r=>r.value).join(' '),/2/);assert.match(s.rows.map(r=>r.value).join(' '),/Not required/);
+ const s=get({data:{enabled:true,require_access_token:false,status:{state:'Listening',clients:2,listeners:['[::]:8090']}}});assert.equal(s.tone,'ok');assert.match(s.sections[0].rows.map(r=>r.value).join(' '),/\[::\]:8090/);assert.match(s.sections[0].rows.map(r=>r.value).join(' '),/2/);assert.match(s.sections[0].rows.map(r=>r.value).join(' '),/Not required/);
  assert.equal(get({data:{enabled:true,status:{state:'Error',error:'Bind failed',listeners:[],clients:0}}}).tone,'error');
+});
+test('Built-in Relay diagnostics are disclosed separately from status facts',()=>{
+ const get=status('built_in_relay');
+ const result=get({data:{enabled:true,require_access_token:true,status:{state:'Error',error:'bind failed',listeners:[],clients:0}}});
+ assert.ok(!result.sections[0].rows.some(row=>row.label==='Error'));
+ assert.equal(result.sections[0].diagnostic,'bind failed');
 });
 test('client distinguishes connected, connecting and failed connections without exposing URL credentials',()=>{
  const get=status('ports_over_relay');assert.equal(typeof get,'function');

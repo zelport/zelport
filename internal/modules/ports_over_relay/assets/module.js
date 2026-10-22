@@ -8,19 +8,41 @@ export function headerStatus(state) {
  return {status:s.connected?'Connected':s.error?'Error · retrying':'Connecting',tone:s.connected?'ok':s.error?'error':'pending',rows};
 }
 export function mount(ctx) {
- const {el,button,field,serviceModule,renderChanged,adornedField,adornmentButton,dialogHeader,showDialog,formActions,statusBadge,refreshButton}=ctx.ui;
- let current,dialog,secretInput,secretReveal,secretFeedback,secretRevision,active=false,generation=0,refreshing=false;
- const routePanel=el('section'),setup=el('section','relay-setup'),catalog=el('section','relay-catalog'),administration=el('section','relay-administration');
- ctx.panel.append(setup,el('h2',null,'Imported services'),routePanel,administration,catalog);
+ const {el,button,field,serviceModule,renderChanged,adornedField,adornmentButton,statusBadge,refreshButton}=ctx.ui;
+ let current,settingsForm,settingsFields,settingsKey,settingsRevision,settingsDirty=false,settingsSaving=false,secretInput,secretReveal,secretFeedback,secretRevision,active=false,generation=0,refreshing=false;
+ const navigation=el('nav','relay-view-nav'),servicesView=el('section','relay-services-view'),configurationView=el('section','relay-configuration-view');
+ const routePanel=el('section'),setup=el('section','relay-setup'),catalog=el('section','relay-catalog'),administration=el('section','relay-administration'),settingsPanel=el('section','relay-settings-panel');
+ servicesView.append(el('h2',null,'Imported services'),routePanel,administration,catalog);
+ configurationView.append(setup,settingsPanel);configurationView.hidden=true;
+ const servicesButton=button('Services',()=>showView('services'),'relay-view-button'),configurationButton=button('Configuration',()=>showView('configuration'),'relay-view-button');
+ navigation.setAttribute('aria-label','Ports over Relay views');navigation.append(servicesButton,configurationButton);
+ ctx.panel.append(navigation,servicesView,configurationView);
  const api=path=>`/api/modules/${ctx.moduleId}/${path}`;
- const routes=serviceModule({...ctx,panel:routePanel},{add:false,empty:'No imported services yet. Available shared services can be imported below.',fields(settings){
+ const routes=serviceModule({...ctx,panel:routePanel},{
+  add:false,
+  routeMenu:true,
+  columns:['Service','Provider','Info','Actions'],
+  tableLabel:'Imported relay services',
+  serviceLabel:(route,state)=>`${route.domain}:${state.port}`,
+  targetLabel:route=>route.summary.target,
+  targetInfo:route=>`Provider device: ${route.editor?.device_id||route.summary.target}\nService ID: ${route.editor?.service_id||''}`,
+  rowIndicators:route=>route.summary.detail?[ctx.ui.warningIndicator(route.summary.detail).root]:[],
+  emptyState:{kind:'no-results',message:'No services imported yet.'},fields(settings){
   const element=el('div'),origin=field('Rewrite Origin',settings.rewrite_origin,'checkbox');
   element.append(el('p','small muted',`Provider ${settings.device_id} · Service ${settings.service_id}`),origin.wrap);
   return {element,read:()=>({...settings,rewrite_origin:origin.input.checked})};
  }});
+ function showView(view){
+  const configuration=view==='configuration';servicesView.hidden=configuration;configurationView.hidden=!configuration;
+  servicesButton.setAttribute('aria-current',configuration?'false':'page');configurationButton.setAttribute('aria-current',configuration?'page':'false');
+  refresh.hidden=configuration;
+  if(configuration&&!settingsForm&&current)configure();
+  if(!configuration)clearSecret();
+ }
+ function clearSettingsSecrets(){if(settingsFields){settingsFields.access.input.value='';settingsFields.group.input.value='';}}
+ function settingsSignature(data){return JSON.stringify([data.enabled,data.publish,data.relay_url,data.has_access_token]);}
  function configure(){
-  dialog?.close();const d=el('dialog','relay-settings-dialog'),form=el('form');dialog=d;
-  const data=current.data,revision=ctx.ui.state().revision;
+  const form=el('form','relay-configuration-form'),data=current.data;settingsRevision=ctx.ui.state().revision;
   const enabled=field('Connect to relay',data.enabled,'checkbox'),publish=field('Share all own services',data.publish,'checkbox'),url=field('Relay URL',data.relay_url),access=field('Relay access token','','password'),group=field('E2E secret','','password'),useAccess=field('Use access token',data.has_access_token,'checkbox');
   url.input.placeholder='wss://relay.example.com';access.input.autocomplete='off';group.input.autocomplete='off';
   const accessHint=el('p','small muted');
@@ -28,10 +50,11 @@ export function mount(ctx) {
   useAccess.input.addEventListener('change',updateAccess);updateAccess();
   const advanced=el('details','dialog-advanced');
   advanced.append(el('summary',null,'Access and encryption'),useAccess.wrap,access.wrap,accessHint,group.wrap,el('p','dialog-help','Leave blank to keep the existing E2E secret, or generate one on first setup. Use the same secret on your devices. Never share it with the relay.'));
-  form.append(dialogHeader('Relay settings',d),url.wrap,enabled.wrap,publish.wrap,el('p','dialog-help','Sharing includes current and future own services, excluding relay imports. Connected devices in the same E2E group always have full administration access.'),advanced);
-  const {error,actions,save}=formActions(d,{submit:'Save settings',draft:true,form});form.append(error,actions);
-  form.addEventListener('submit',async e=>{e.preventDefault();save.disabled=true;error.textContent='';try{await ctx.mutate(()=>ctx.api(api('settings'),{method:'PUT',body:JSON.stringify({revision,relay_url:url.input.value.trim(),access_token:useAccess.input.checked?access.input.value.trim():'',clear_access_token:!useAccess.input.checked,group_token:group.input.value.trim(),enabled:enabled.input.checked,publish:publish.input.checked})}),{reportError:false});d.close();}catch(e){error.textContent=e.message;}finally{save.disabled=false;}});
-  d.append(form);showDialog(d,{signal:ctx.signal,initialFocus:url.input,onClose(){access.input.value='';group.input.value='';if(dialog===d)dialog=null;}});
+  const actions=el('div','relay-actions'),save=el('button','primary','Save settings'),discard=button('Discard changes',()=>{if(settingsSaving)return;settingsDirty=false;clearSettingsSecrets();configure();}),error=el('p','route-error');save.type='submit';error.setAttribute('role','alert');
+  actions.append(discard,save);form.append(el('h2',null,'Configuration'),url.wrap,enabled.wrap,publish.wrap,el('p','dialog-help','Sharing includes current and future own services, excluding relay imports. Connected devices in the same E2E group always have full administration access.'),advanced,error,actions);
+  form.addEventListener('input',()=>{settingsDirty=true;});
+  form.addEventListener('submit',async e=>{e.preventDefault();if(settingsSaving)return;settingsSaving=true;save.disabled=discard.disabled=true;error.textContent='';try{await ctx.mutate(()=>ctx.api(api('settings'),{method:'PUT',body:JSON.stringify({revision:settingsRevision,relay_url:url.input.value.trim(),access_token:useAccess.input.checked?access.input.value.trim():'',clear_access_token:!useAccess.input.checked,group_token:group.input.value.trim(),enabled:enabled.input.checked,publish:publish.input.checked})}),{reportError:false});settingsDirty=false;clearSettingsSecrets();configure();}catch(e){if(e.status===409){settingsRevision=ctx.ui.state().revision;error.textContent='Settings changed elsewhere. Review your draft, then Save again to apply it to the latest settings, or Discard changes.';}else error.textContent=e.message;}finally{settingsSaving=false;save.disabled=discard.disabled=false;}});
+  settingsPanel.replaceChildren(form);settingsForm=form;settingsFields={access,group};settingsKey=settingsSignature(data);
  }
  function clearSecret(){generation++;if(secretInput){secretInput.value='';secretInput.type='password';}if(secretReveal){const label=current?.data.has_identity?'Reveal E2E secret':'Create E2E secret';secretReveal.setAttribute('aria-label',label);secretReveal.title=label;}if(secretFeedback)ctx.ui.setText(secretFeedback,'');}
  async function credentials(copy=false){
@@ -45,14 +68,15 @@ export function mount(ctx) {
  async function refreshCatalog(){if(refreshing)return;refreshing=true;refresh.disabled=true;try{await ctx.mutate(()=>ctx.api(api('refresh'),{method:'POST',body:'{}'}));}finally{refreshing=false;refresh.disabled=false;}}
  const refresh=refreshButton('Refresh catalog',refreshCatalog);ctx.toolbar?.append(refresh);
  function render(state){current=state;if(secretInput?.value&&secretRevision!==ctx.ui.state().revision)clearSecret();routes.render(state);const d=state.data||{},status=d.status||{records:[]};renderChanged(setup,{identity:d.has_identity,enabled:d.enabled,publish:d.publish,connected:status.connected,error:status.error},()=>{
-  if(secretInput?.value)clearSecret();setup.replaceChildren();const actions=el('div','relay-actions'),header=el('div','relay-section-header');
+  if(secretInput?.value)clearSecret();setup.replaceChildren();const header=el('div','relay-section-header');
   const label=status.connected?'Connected':d.enabled?(status.error?'Error':'Connecting'):'Disconnected';
   header.append(el('h2',null,'Relay connection'),statusBadge(label));
-  actions.append(button('Settings',configure));
   const reveal=adornmentButton(d.has_identity?'Reveal E2E secret':'Create E2E secret','eye',()=>{if(secretInput.value){clearSecret();return;}return credentials();}),copy=adornmentButton('Copy E2E secret','copy',()=>credentials(true));copy.disabled=!d.has_identity;secretReveal=reveal;secretFeedback=el('p','small muted');secretFeedback.setAttribute('role','status');
   const secret=adornedField('E2E secret','','password',{actions:[reveal,copy]});secretInput=secret.input;secretInput.readOnly=true;secretInput.autocomplete='off';secretInput.spellcheck=false;secretInput.placeholder=d.has_identity?'Secret hidden':'Create a secret to connect your devices';
-  setup.append(header,el('p','small muted',d.publish?'Sharing own application services':'Application sharing disabled'),secret.wrap,secretFeedback,actions);if(status.error)setup.append(el('p','route-error',status.error));
+  setup.append(header,el('p','small muted',d.publish?'Sharing own application services':'Application sharing disabled'),secret.wrap,secretFeedback);if(status.error)setup.append(el('p','route-error',status.error));
  });
+  if(settingsForm&&!settingsDirty&&!settingsSaving&&settingsKey!==settingsSignature(d))configure();
+  else if(settingsForm&&settingsDirty&&settingsKey===settingsSignature(d))settingsRevision=ctx.ui.state().revision;
   renderChanged(administration,{remote:!!ctx.ui.state().remote_admin,peers:d.administration_peers},()=>{administration.replaceChildren();
   if(!ctx.ui.state().remote_admin){
    administration.append(el('h2',null,'Zelport administration'));
@@ -68,7 +92,7 @@ export function mount(ctx) {
   });
   const providers=(status.records||[]).filter(r=>r.device_id!==d.device_id&&r.publish&&r.services.some(s=>s.kind==='application'));
   renderChanged(catalog,{providers:providers.map(p=>({group:p.group,device_id:p.device_id,hostname:p.hostname,port:p.port,public_key:p.public_key,services:p.services,expired:p.expires_at*1000<=Date.now()})),connected:status.connected,imports:(state.routes||[]).map(r=>r.editor)},()=>{catalog.replaceChildren(el('h2',null,'Shared services'));
-  if(!providers.length)catalog.append(el('p','muted','No shared services available.'));
+  if(!providers.length)catalog.append(ctx.ui.emptyState({kind:'no-results',message:'No shared services available.'}));
   for(const provider of providers){
    const section=el('section','relay-provider'),heading=el('h3',null,`${provider.hostname} · ${provider.device_id.slice(0,8)}`);
    heading.id=`relay-provider-${provider.device_id}`;
@@ -88,5 +112,6 @@ export function mount(ctx) {
   }
   });
  }
- return {render,edit:routes.edit,activate(){active=true;},deactivate(){active=false;clearSecret();dialog?.close();},dispose(){active=false;clearSecret();refresh.remove();routes.dispose();dialog?.close();dialog?.remove();}};
+ showView('services');
+ return {render,edit:routes.edit,activate(){active=true;},deactivate(){active=false;clearSecret();},dispose(){active=false;clearSecret();clearSettingsSecrets();refresh.remove();routes.dispose();}};
 }

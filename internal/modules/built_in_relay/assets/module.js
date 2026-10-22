@@ -3,23 +3,21 @@ export function headerStatus(state) {
  const d=state?.data;if(!d)return null;
  if(!d.enabled)return null;
  const s=d.status||{},label=s.state||'Stopped';
- return {status:label,tone:label==='Listening'?'ok':label==='Error'?'error':label==='Stopped'?'neutral':'pending',rows:[
+ return {status:label,tone:label==='Listening'?'ok':label==='Error'?'error':label==='Stopped'?'neutral':'pending',sections:[{rows:[
   {label:'Listeners',value:(s.listeners||[]).join('\n')||'None'},
   {label:'Clients',value:String(s.clients||0)},
-  {label:'Access token',value:d.require_access_token===false?'Not required':'Required'},
-  ...(s.error?[{label:'Error',value:s.error}]:[])
- ]};
+  {label:'Access token',value:d.require_access_token===false?'Not required':'Required'}
+ ],diagnostic:s.error||''}]};
 }
 export function mount(ctx) {
  const {el,field,button,adornedField,adornmentButton,dialogHeader,showDialog,statusTone,picker}=ctx.ui;
  const form=el('form','relay-settings'),enabled=field('Enable relay',false,'checkbox');
- const requireToken=field('Require access token',true,'checkbox');
+ const requireToken=field('Require access token',false,'checkbox');
  const accessMode=el('span','badge relay-open-access','Access token not required'),accessWarning=el('p','small relay-access-warning','Anyone who can reach this relay can connect and consume its capacity. Your E2E secret still protects your group’s communication. Changing this setting disconnects current clients.');
  const port=adornedField('Port',8090,'number'),bind=adornedField('Bind address','');
  const network=el('div','relay-network'),status=el('span','badge'),listeners=el('p','small muted'),error=el('p','route-error'),actions=el('div','relay-actions');
  let current,revision,dirty=false,saving=false,dialog,active=false,disposed=false,generation=0,edits=0,secretRevision;
  port.input.min='1';port.input.max='65535';port.input.required=true;bind.input.placeholder='All interfaces';
- const draft=el('span','draft-notice','Unsaved changes');draft.hidden=true;draft.setAttribute('role','status');
  const feedback=el('p','small muted');feedback.setAttribute('role','status');
  const reveal=adornmentButton('Reveal access token','eye',async()=>{
   if(token.input.value){clearSecret();return;}
@@ -71,11 +69,11 @@ export function mount(ctx) {
  network.append(bind.wrap,port.wrap,el('p','small muted','Leave the bind address blank for all interfaces, including VPN and public interfaces. Enter a local IP address to restrict the listener.'));
  const save=el('button',null,'Save settings');save.type='submit';
  const reload=button('Reload settings',async()=>{if(saving)return;dirty=false;error.textContent='';try{await ctx.refresh(true);}catch(e){error.textContent=e.message;}});
- function updateButtons(){draft.hidden=!dirty;save.disabled=saving;reload.disabled=saving;reveal.disabled=copy.disabled=saving||!current?.has_token;rotate.disabled=saving||!current?.has_token;}
+ function updateButtons(){save.disabled=saving;reload.disabled=saving;reveal.disabled=copy.disabled=saving||!current?.has_token;rotate.disabled=saving||!current?.has_token;}
  const header=el('div','relay-header'),title=el('div'),connection=el('div','relay-connection'),credentials=el('div','relay-credentials');
  title.append(el('p','muted','Host a relay for other Zelport instances. Client connections and application sharing are configured separately.'));const badges=el('div','relay-status-badges');badges.append(status,accessMode);header.append(title);
  const runtime=el('div','relay-runtime');runtime.append(badges,listeners);connection.append(enabled.wrap,runtime);credentials.append(requireToken.wrap,accessWarning,token.wrap,feedback,el('p','small muted','The stored token is used only when protection is required. It is kept when protection is disabled. Keep the E2E secret separate.'));
- actions.append(save,reload,draft);form.append(header,connection,network,credentials,error,actions);
+ actions.append(save,reload);form.append(header,connection,network,credentials,error,actions);
  form.addEventListener('input',e=>{if(e.target===token.input)return;dirty=true;edits++;updateButtons();},{signal:ctx.signal});
  form.addEventListener('submit',async e=>{
   e.preventDefault();if(saving)return;const submittedEdits=edits;saving=true;updateButtons();error.textContent='';
@@ -85,8 +83,8 @@ export function mount(ctx) {
  },{signal:ctx.signal});
  ctx.panel.append(form);
  return {
-  render(state){current=state.data;if(!dirty&&!saving){revision=state.revision;enabled.input.checked=current.enabled;if(port.input.value!==String(current.port))port.input.value=current.port;if(bind.input.value!==current.bind_address)bind.input.value=current.bind_address;requireToken.input.checked=current.require_access_token!==false;}
-   accessWarning.hidden=requireToken.input.checked;accessMode.hidden=current.require_access_token!==false;
+  render(state){current=state.data;if(!dirty&&!saving){revision=state.revision;enabled.input.checked=current.enabled;if(port.input.value!==String(current.port))port.input.value=current.port;if(bind.input.value!==current.bind_address)bind.input.value=current.bind_address;requireToken.input.checked=current.require_access_token===true;}
+   accessWarning.hidden=requireToken.input.checked;accessMode.hidden=current.require_access_token===true;
    if(token.input.value&&secretRevision!==state.revision)clearSecret();
    const s=current.status;ctx.ui.setText(status,s.state);status.className='badge status-badge';status.dataset.tone=statusTone(s.state);
    ctx.ui.setText(listeners,`${s.clients} connected clients${s.listeners.length?' · '+s.listeners.join(', '):''}${s.error?' · '+s.error:''}`);

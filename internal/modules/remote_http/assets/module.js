@@ -1,8 +1,15 @@
 const trustNotice='Only proxy services you trust. A localhost secure context does not guarantee a secure upstream connection. Avoid banking and other sensitive websites.';
 export function mount(ctx){
- const {el,field,serviceModule}=ctx.ui;
+ const {el,field,serviceModule,warningIndicator}=ctx.ui;
  return serviceModule(ctx,{
-  empty:'No remote HTTP services yet. Add a domain and a target URL.',
+  routeMenu:true,
+  columns:['Service','Target URL','Info','Actions'],
+  tableLabel:'Remote HTTP services',
+  serviceLabel:(route,state)=>`${route.domain}:${state.port}`,
+  targetLabel:route=>route.editor?.target_url||route.summary.target,
+  targetInfo:route=>`Target URL: ${route.editor?.target_url||route.summary.target}`,
+  rowIndicators:route=>route.summary.detail?[warningIndicator(route.summary.detail).root]:[],
+  emptyState:{kind:'not-configured',message:'No remote HTTP services yet.',actionLabel:'+ Add service'},
   fields(s){
    const element=el('div'),target=field('Target URL',s.target_url||'','url'),verify=field('Verify TLS certificate',!s.skip_tls_verify,'checkbox'),origin=field('Rewrite Origin',s.rewrite_origin,'checkbox');
    target.input.required=true;target.input.placeholder='https://example.com/service01';
