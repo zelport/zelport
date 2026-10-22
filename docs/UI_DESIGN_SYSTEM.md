@@ -4,6 +4,13 @@ This document defines shared presentation and interaction rules. Module-specific
 layouts compose these components; they must not redefine global component styles.
 There is no frontend build, external font, library runtime or CDN dependency.
 
+## Product language
+
+Use **web service** as the canonical user-facing noun. Use **web app** only when
+the subject is specifically an application with a browser user interface. The
+primary flow describes where a service runs. It does not lead with its runtime
+implementation.
+
 ## Foundations
 
 The core stylesheet owns semantic colors, typography and spacing tokens. Preserve

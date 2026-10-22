@@ -2,9 +2,14 @@
 
 [![Verify release binaries](https://github.com/zelport/zelport/actions/workflows/release.yml/badge.svg?branch=main&event=push)](https://github.com/zelport/zelport/actions/workflows/release.yml?query=branch%3Amain)
 
+Open what your AI agents are building. Give every web service a stable
+localhost address whether it runs on your computer or a development server.
+Use browser features that require a secure context without managing TLS
+certificates.
+
 Zelport App is a local HTTP reverse proxy with browser-based administration.
-It gives local services stable `*.localhost` names through one loopback
-listener, normally `http://localhost:8080`.
+It gives web services stable `*.localhost` names through one loopback listener,
+normally `http://localhost:8080`.
 
 The standard build contains every capability described under
 [Service behavior](#service-behavior). Docker, Podman, `sbx` and system SSH are
