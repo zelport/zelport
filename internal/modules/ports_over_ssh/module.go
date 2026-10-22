@@ -12,6 +12,8 @@ import (
 	"io/fs"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"sync"
@@ -57,6 +59,31 @@ func (m *Module) ValidateRoute(r feature.Route) error {
 	}
 	return nil
 }
+func (m *Module) Admin() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/hosts" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			http.Error(w, "SSH hosts couldn't be read. Enter the SSH host manually.", http.StatusServiceUnavailable)
+			return
+		}
+		hosts, err := sshpipe.HostAliases(filepath.Join(home, ".ssh", "config"))
+		if err != nil {
+			http.Error(w, "SSH hosts couldn't be read. Enter the SSH host manually.", http.StatusServiceUnavailable)
+			return
+		}
+		modulekit.JSON(w, map[string]any{"hosts": hosts})
+	})
+}
 func (m *Module) Start(ctx context.Context, h feature.Host) error {
 	m.Base.Start(ctx, h)
 	m.Run(ctx, func(context.Context) {
@@ -96,6 +123,12 @@ func (m *Module) State() feature.State {
 	for id, p := range m.pools {
 		statuses[id] = p.pool.Status()
 	}
+	for i := range s.Routes {
+		if status, ok := statuses[s.Routes[i].ID]; ok && status.State == "error" {
+			s.Routes[i].Summary.State = "unavailable"
+			s.Routes[i].Summary.Detail = "SSH connection unavailable. Verify the host with the system ssh command."
+		}
+	}
 	s.Data, _ = json.Marshal(map[string]any{"connections": statuses})
 	return s
 }
@@ -124,6 +157,6 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 		if errors.As(e, &failure) && !failure.Backend {
 			code = 503
 		}
-		feature.Status(w, r, code, "SSH service unavailable", e.Error())
+		feature.StatusDiagnostic(w, r, code, "SSH service unavailable", "The SSH connection could not be established.", e.Error())
 	}})
 }
