@@ -69,6 +69,24 @@ A compact row can grow for touch targets; fixed-height rows must not clip conten
 Focus indication is visible for keyboard navigation. Active text fields may use a
 focus-within border. Never remove focus feedback without an equivalent indicator.
 
+### Add service chooser
+
+The Dashboard has one Add service action. It opens a shell owned dialog that asks
+Where does the service run. The choices are This computer and Development server.
+This computer opens the Local Ports form. Development server opens the Ports over
+SSH form. Remote HTTP and Relay do not appear in this first use chooser.
+
+Keep an unavailable choice visible and disabled with a short reason. Do not copy
+module fields into the chooser. The selected module owns its form, validation,
+persistence and runtime status. Escape and the close action restore focus to Add
+service. Unchanged polling must preserve the open chooser, an open service form,
+focus and draft values. Verify the dialog at 320 and 390 pixels.
+
+Local Ports keeps manual entry available when listener discovery fails. Ports
+over SSH accepts a valid configuration without requiring a successful connection.
+The development server must be reachable through the existing system SSH setup
+when the user expects the service to become available.
+
 The Dashboard's **Zelport runtime** panel keeps Version, Hostname, Configuration,
 Listeners and Modules in one row. Modules uses a compact count button whose
 non-modal popover lists the included module names and maturity. Runtime facts
