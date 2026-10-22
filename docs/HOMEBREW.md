@@ -60,9 +60,8 @@ brew services stop zelport
 ```
 
 Service processes do not inherit the complete interactive shell environment.
-Configure `PATH`, container engine context and SSH agent availability explicitly
-when their corresponding service sources are used. Docker, Podman, `sbx` and
-system SSH are supported external tools and are not bundled by the formula.
+Configure `PATH` and SSH agent availability explicitly when Ports over SSH is
+used. System SSH is an external tool and is not bundled by the formula.
 
 Logs are written to Homebrew's `var/log/zelport.log`. Zelport configuration
 remains in the regular per-user configuration directory and is not removed by

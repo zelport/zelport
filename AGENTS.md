@@ -13,10 +13,9 @@ behavior.
 ## Product and terminology
 
 Zelport App is a local HTTP reverse proxy application with a web interface on
-localhost. Its standard build includes all seven internal modules: Docker
-Sandboxes, Containers, Local Ports, Remote HTTP, Ports over SSH, Ports over
-Relay, and Built-in Relay. Modules are architectural boundaries, not product
-variants or user-selected build options.
+localhost. Its standard build includes Local Ports, Remote HTTP, Ports over SSH,
+Ports over Relay, and Built-in Relay. Modules are architectural boundaries, not
+product editions.
 
 Zelport Relay is the standalone relay server. Ports over Relay is a service
 source in Zelport App. Built-in Relay is the relay server embedded in Zelport
@@ -34,8 +33,6 @@ migration, or reuse of credentials from pre-Zelport formats is required.
 - `internal/feature`: module contracts, request leases, and HTTP helpers.
 - `internal/modulekit`: shared lifecycle and reverse-proxy helpers.
 - `internal/modules/<id>`: service sources, relay capability, APIs, and assets.
-- `internal/sbx`: Docker Sandbox CLI adapter and JSON fixtures.
-- `internal/containers`: Docker/Podman discovery and cached inventories.
 - `internal/web`: protected administration API, runtime information, and UI.
 - `internal/web/assets`: embedded HTML, CSS, and JavaScript; no build step/CDN.
 - `internal/sshpipe`: system SSH forwarding through stdin/stdout as `net.Conn`.
@@ -70,7 +67,7 @@ local `replace` directives or dependencies on hypothetical external products.
 Follow [docs/MODULES.md](docs/MODULES.md) and
 [docs/MODULE_CONTRACTS.md](docs/MODULE_CONTRACTS.md). Keep module APIs,
 settings, assets, dependencies, and lifecycle behind their boundaries while
-shipping every standard module in the application build.
+shipping every active standard module in the application build.
 
 When fixing shared UI behavior, audit every affected tab, module-owned section,
 and dialog. Polling should retain DOM nodes when displayed content is unchanged
@@ -88,7 +85,7 @@ Run relevant isolated tests first, then the repository checks:
 ```sh
 go test -race ./...
 go vet ./...
-make build-full
+make build
 ```
 
 Use `make -C ../workspace check`, `make -C ../workspace check-modules`, and

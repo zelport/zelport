@@ -11,8 +11,9 @@ placement, maturity and UI metadata. IDs are unique and use lowercase
 snake_case. Registration order is deterministic; duplicate IDs, invalid
 placement or invalid maturity fail startup.
 
-The full build registers all seven modules. Diagnostic builds may register a
-subset, but core contracts do not change with composition.
+The standard build registers five modules. `zelport_core` builds may register a
+subset for dependency-boundary verification. Core contracts do not change with
+composition.
 
 ## Configuration ownership
 
@@ -25,7 +26,8 @@ Core owns the schema-v1 envelope:
 
 Unknown top-level fields and unsupported versions are errors. Each module
 strictly decodes and validates its own settings and route payloads. Modules do
-not read or write the configuration file directly.
+not read or write the configuration file directly. Every settings key and route
+owner must name a module registered in the running build.
 
 ## Commit lifecycle
 
@@ -97,8 +99,8 @@ synthetic fixtures. Metadata availability, runtime connectivity and discovery
 are separate states. A transient outage keeps last-known usable inventory where
 the module contract permits and visibly marks it stale.
 
-Docker, Podman, `sbx`, `nerdctl` and SSH are supported third-party tools, not
-bundled dependencies. Core must remain independently testable without them.
+System SSH is a supported third-party tool, not a bundled dependency. Core must
+remain independently testable without it.
 
 ## Shutdown
 

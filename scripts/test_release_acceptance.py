@@ -208,23 +208,12 @@ while True:
                     acceptance.terminate_process(process, log_path, timeout=.1)
             self.assertIsNotNone(process.poll())
 
-    def test_missing_third_party_tools_require_neutral_states(self):
-        neutral = {
-            'states': {
-                'containers': {'data': {'engines': [
-                    {'engine': engine, 'cli_status': 'not_found',
-                     'runtime_status': 'not_checked'}
-                    for engine in ('docker', 'podman', 'nerdctl')
-                ]}},
-                'docker_sandboxes': {
-                    'data': {'cli': {'status': 'not_found'}}},
-            },
-        }
-        acceptance.assert_missing_tools_neutral(neutral)
-        neutral['states']['containers']['data']['engines'][0][
-            'runtime_status'] = 'unavailable'
-        with self.assertRaisesRegex(AssertionError, 'neutral'):
-            acceptance.assert_missing_tools_neutral(neutral)
+    def test_standard_build_omits_removed_module_states(self):
+        state = {'states': {'local_ports': {}}}
+        acceptance.assert_removed_modules_absent(state)
+        state['states']['containers'] = {'routes': []}
+        with self.assertRaisesRegex(AssertionError, 'removed module'):
+            acceptance.assert_removed_modules_absent(state)
 
 
 class ReleaseRelayTest(unittest.TestCase):

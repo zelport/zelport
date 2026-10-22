@@ -2,13 +2,10 @@
 
 Modules are internal architectural boundaries for source ownership, dependency
 isolation, lifecycle and verification. They are not user-selectable product
-editions. Every standard build and distribution of Zelport App contains all
-seven implemented modules.
+editions. Zelport App contains five modules.
 
 | Capability | Module ID | Diagnostic build tag | External tool |
 | --- | --- | --- | --- |
-| Docker Sandboxes | `docker_sandboxes` | `docker_sandboxes` | `sbx` |
-| Containers | `containers` | `containers` | Docker or Podman; optional `nerdctl` |
 | Local Ports | `local_ports` | `local_ports` | none |
 | Remote HTTP | `remote_http` | `remote_http` | none |
 | Ports over SSH | `ports_over_ssh` | `ports_over_ssh` | system SSH |
@@ -21,20 +18,17 @@ source that uses them and must be reported as actionable runtime status.
 ## Build behavior
 
 ```sh
-make build          # complete Zelport App
+make build          # Zelport App
 make build-core     # diagnostic core-only executable
-make check-modules  # complete build plus boundary combinations
+make check-modules  # standard and boundary combinations
 ```
 
-Ordinary `go build ./cmd/zelport` also selects the complete composition.
+Ordinary `go build ./cmd/zelport` selects the five-module composition.
 `zelport_core` explicitly selects diagnostic core, and individual module tags
-may be combined with it for boundary tests. Release builds never use
-`zelport_core`.
+may be combined with it for boundary tests. Release builds do not use it.
 
-An excluded module contributes no implementation, API registration, assets or
-adapter dependencies to that diagnostic binary. A configuration referencing an
-excluded module is preserved but cannot run; standard user builds do not expose
-that state.
+An omitted diagnostic module contributes no implementation, API registration,
+assets or configuration ownership to the binary.
 
 ## Core responsibilities
 

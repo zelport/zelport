@@ -11,10 +11,9 @@ Zelport App is a local HTTP reverse proxy with browser-based administration.
 It gives web services stable `*.localhost` names through one loopback listener,
 normally `http://localhost:8080`.
 
-The standard build contains every capability described under
-[Service behavior](#service-behavior). Docker, Podman, `sbx` and system SSH are
-optional external tools for the capabilities that use them. Modules are internal
-code boundaries, not product editions.
+The standard build contains Local Ports, Remote HTTP, Ports over SSH, Ports over
+Relay and Built-in Relay. System SSH is an optional external tool for Ports over
+SSH. Modules are internal code boundaries, not product editions.
 
 ## Install
 
@@ -42,9 +41,9 @@ make build
 ./bin/zelport
 ```
 
-`make build` and ordinary `go build ./cmd/zelport` produce the complete Zelport
-App. `make build-core` produces the diagnostic `zelport-core` executable for
-module-boundary checks; it is not a separately distributed product.
+`make build` and ordinary `go build ./cmd/zelport` produce Zelport App.
+`make build-core` produces the diagnostic `zelport-core` executable for
+module-boundary checks. It is not a separately distributed product.
 
 ## Release verification
 
@@ -66,13 +65,8 @@ persistence guarantees.
 ## Service behavior
 
 **Localhost port** is Zelport App's public loopback listener. **Aux port** is a
-host-side backend port. **Container port** and **Sandbox port** identify ports
-inside those environments.
+backend port on this computer or a development server.
 
-- Docker Sandboxes discovers applications through `sbx`.
-- Containers discovers already published TCP mappings through Docker or Podman;
-  native Linux `nerdctl` support is experimental. Zelport does not create
-  mappings or manage container lifecycle.
 - Local Ports connects a hostname to a local HTTP backend.
 - Remote HTTP forwards to an HTTP or HTTPS origin with explicit TLS and Origin
   rewriting controls.
@@ -95,8 +89,6 @@ returns 503, and an unreachable HTTP backend returns 502.
 - [UI design system](docs/UI_DESIGN_SYSTEM.md)
 - [Read-only local integration API](docs/LOCAL_INTEGRATION_API.md)
 - [Homebrew packaging and services](docs/HOMEBREW.md)
-- [Docker Sandboxes](internal/modules/docker_sandboxes/README.md)
-- [Containers](internal/modules/containers/README.md)
 - [Deferred work](TODO.md)
 
 Zelport refuses to run as root by default on macOS and Linux. `--allow-root`

@@ -31,8 +31,6 @@ EXPECTED_MEMBERS = {
 }
 EXPECTED_MODULES = {
     'built_in_relay',
-    'containers',
-    'docker_sandboxes',
     'local_ports',
     'ports_over_relay',
     'ports_over_ssh',
@@ -273,24 +271,11 @@ def _wait_for_state(process: subprocess.Popen, port: int,
     raise AssertionError(f'Zelport App startup timed out: {last_error}')
 
 
-def assert_missing_tools_neutral(state) -> bool:
-    """Require absent optional CLIs to be reported as neutral, not failed."""
-    states = state.get('states', {})
-    engines = states.get('containers', {}).get('data', {}).get('engines', [])
-    by_name = {engine.get('engine'): engine for engine in engines}
-    expected_engines = {'docker', 'podman', 'nerdctl'}
-    if set(by_name) != expected_engines:
-        raise AssertionError(
-            f'missing-tool neutrality did not report all container CLIs: {engines!r}')
-    for name, engine in by_name.items():
-        if (engine.get('cli_status') != 'not_found'
-                or engine.get('runtime_status') != 'not_checked'):
-            raise AssertionError(
-                f'missing {name} CLI is not neutral: {engine!r}')
-    sandbox = states.get('docker_sandboxes', {}).get('data', {})
-    if sandbox.get('cli', {}).get('status') != 'not_found':
-        raise AssertionError(
-            f'missing sbx CLI is not neutral: {sandbox!r}')
+def assert_removed_modules_absent(state) -> bool:
+    """Require removed feature modules to be absent from the standard build."""
+    unexpected = {'containers', 'docker_sandboxes'} & state.get('states', {}).keys()
+    if unexpected:
+        raise AssertionError(f'removed module state is present: {sorted(unexpected)}')
     return True
 
 
@@ -376,10 +361,7 @@ def run_app_acceptance(binary: Path, version: str, platform: str, *,
                         raise AssertionError(
                             f'standard module IDs are {sorted(modules)}, '
                             f'want {sorted(EXPECTED_MODULES)}')
-                    state = wait_for(
-                        lambda: _state(app_port), assert_missing_tools_neutral,
-                        [process], timeout=startup_timeout,
-                        description='neutral missing-tool discovery')
+                    assert_removed_modules_absent(state)
 
                     status, body, headers = _request(
                         app_port, '/probe?q=1',

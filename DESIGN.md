@@ -7,15 +7,14 @@ in [docs/ports-over-relay-v1.md](docs/ports-over-relay-v1.md).
 
 ## Composition
 
-`cmd/zelport` assembles core with all seven implemented modules. Core owns the
+`cmd/zelport` assembles core with the five standard modules. Core owns the
 loopback listeners, configuration, route registry, administration API and web
 shell. Modules contribute service sources, settings, route handlers and embedded
 UI assets through typed contracts.
 
-The standard build always contains Docker Sandboxes, Containers, Local Ports,
-Remote HTTP, Ports over SSH, Ports over Relay and Built-in Relay. Build tags and
-`zelport_core` exist for tests, diagnostics and dependency-boundary verification;
-they do not define user-facing editions.
+The standard build contains Local Ports, Remote HTTP, Ports over SSH, Ports over
+Relay and Built-in Relay. `zelport_core` and individual module tags remain for
+dependency-boundary tests.
 
 ## Packages and ownership
 
@@ -25,10 +24,7 @@ they do not define user-facing editions.
 - `internal/modulekit` provides common lifecycle and reverse-proxy helpers.
 - `internal/modules/<id>` owns one module's settings, routes, APIs and assets.
 - `internal/web` owns protected administration and the browser shell.
-- `internal/containers`, `internal/sbx` and `internal/sshpipe` isolate external
-  tool adapters.
-- `internal/portorigin` owns the feature-neutral, cached view used to attribute
-  host listeners without importing one feature module from another.
+- `internal/sshpipe` isolates system SSH transport.
 - `internal/relay/integration` verifies App, SDK and relay behavior together.
 
 The SDK and relay are separately buildable sibling modules. Production source
@@ -71,24 +67,24 @@ never grant that authority.
 
 ## Service sources
 
-Local, remote, container, sandbox and SSH sources adapt external services to the
-same route/lease model. Adapters report tool and discovery failures without
-silently deleting the last usable inventory. External tools remain optional
-runtime dependencies of their respective sources and are never bundled.
+Local, remote, SSH and relay sources adapt external web services to the same
+route and lease model. System SSH remains an optional runtime dependency and is
+never bundled.
 
-Local Ports reads container and sandbox attribution from an asynchronously
-refreshed shared snapshot; an administration request never starts or waits for
-an external runtime CLI. A listener is classified as a local process only after
-a complete successful discovery finds no matching published mapping. Positive
-last-known mappings retain their kind while stale, whereas incomplete negative
-evidence is reported as unknown. Address family, bind scope and protocol are
-part of correlation, and competing runtime identities remain ambiguous rather
-than being guessed.
+The Local Ports service list fetches one listener inventory for its configured
+ports and refreshes it in the background while visible. It shows process details
+and a non-loopback warning from listener data. It shows the neutral no-listener
+indicator only after a successful discovery. Unavailable discovery is not
+evidence that a listener disappeared.
+Per-service Edit and Remove actions live in the row's actions menu.
 
 Ports over Relay owns client identity, encrypted catalogs, peer sessions,
 imports and remote administration. Built-in Relay owns relay listeners and
 admission. They share the public SDK/server implementations but retain separate
 configuration and lifecycle boundaries.
+New Built-in Relay settings leave access-token admission disabled by default;
+the UI warns that reachable clients may connect when relay hosting is enabled.
+Explicit saved choices are preserved.
 
 ## Relay security boundary
 
@@ -109,6 +105,19 @@ frontend build step. Core renders shared navigation and components; modules
 provide declarative metadata and module-owned fragments. UI code must follow
 [the design system](docs/UI_DESIGN_SYSTEM.md) and remain stable when discovery
 updates arrive while a user is interacting with a control.
+
+Warnings use the shared amber outlined triangle and communicate conditions that
+deserve attention without presenting them as failures. Errors retain the
+separate danger treatment; modules must not introduce their own warning glyphs.
+
+Ordinary Save/Cancel forms do not announce generic unsaved changes. Feedback
+appears only when it explains a concrete consequence or recovery action, such
+as a configuration conflict with an explicit reload control.
+
+Interactive icon controls use the shared controlled tooltip, never the browser
+native `title` tooltip. Tooltip hover delay is **250 ms**; keyboard focus shows
+the same tooltip immediately. Tooltips close on pointer leave, Escape, scroll
+and resize so they do not cover unrelated content.
 
 ## Verification
 
