@@ -131,6 +131,7 @@ func TestRemoteAdministrationAliasesAndRevocation(t *testing.T) {
 	provider.m.SetAdministrationHandler(provider.web.ServeRemoteAdministration)
 	provider.settings(t, "ws"+rs.URL[4:], access, group, false)
 	consumer.settings(t, "ws"+rs.URL[4:], access, group, false)
+	waitPeerCatalogs(t, provider, consumer)
 	var identity struct {
 		DeviceID string `json:"device_id"`
 	}
