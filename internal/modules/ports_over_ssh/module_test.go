@@ -43,6 +43,12 @@ func TestConfiguredHostsEndpointReturnsAliasesOnly(t *testing.T) {
 	}
 }
 
+func TestPrimaryDevelopmentServerFlowIsAvailableByDefault(t *testing.T) {
+	if descriptor := New().Descriptor(); !descriptor.DefaultEnabled {
+		t.Fatalf("Ports over SSH must be available in the first use chooser: %+v", descriptor)
+	}
+}
+
 func TestUnreachableHostDoesNotRejectRoute(t *testing.T) {
 	module := New().(*Module)
 	manager, err := app.New(filepath.Join(t.TempDir(), "config.json"), 8080, module)

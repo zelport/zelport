@@ -11,12 +11,14 @@ import (
 
 type maturityModule struct {
 	testModule
-	maturity string
+	maturity       string
+	defaultEnabled bool
 }
 
 func (m *maturityModule) Descriptor() feature.Descriptor {
 	d := m.testModule.Descriptor()
 	d.Maturity = m.maturity
+	d.DefaultEnabled = m.defaultEnabled
 	return d
 }
 func (m *maturityModule) UnavailableReason(raw json.RawMessage) string {
@@ -32,8 +34,9 @@ func (m *maturityModule) UnavailableReason(raw json.RawMessage) string {
 func TestAvailabilityDefaultsPersistenceAndGuards(t *testing.T) {
 	stable := &maturityModule{testModule: testModule{id: "stable"}, maturity: "stable"}
 	experimental := &maturityModule{testModule: testModule{id: "experimental"}, maturity: "experimental"}
-	m := setup(t, stable, experimental)
-	if !m.Availability()["stable"].Enabled || m.Availability()["experimental"].Enabled {
+	primary := &maturityModule{testModule: testModule{id: "primary"}, maturity: "experimental", defaultEnabled: true}
+	m := setup(t, stable, experimental, primary)
+	if !m.Availability()["stable"].Enabled || m.Availability()["experimental"].Enabled || !m.Availability()["primary"].Enabled {
 		t.Fatal("maturity defaults incorrect")
 	}
 	rev, _ := m.Snapshot()

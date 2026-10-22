@@ -28,15 +28,16 @@ const (
 )
 
 type Descriptor struct {
-	Maturity     string        `json:"maturity"`
-	ID           string        `json:"id"`
-	Name         string        `json:"name"`
-	TabID        string        `json:"tab_id"`
-	UIPlacement  string        `json:"ui_placement,omitempty"` // Empty means a standalone tab; "settings" mounts a Settings section.
-	Order        int           `json:"order"`
-	Exportable   bool          `json:"exportable"`
-	PollInterval time.Duration `json:"poll_interval"`
-	Assets       fs.FS         `json:"-"`
+	Maturity       string        `json:"maturity"`
+	ID             string        `json:"id"`
+	Name           string        `json:"name"`
+	TabID          string        `json:"tab_id"`
+	UIPlacement    string        `json:"ui_placement,omitempty"` // Empty means a standalone tab; "settings" mounts a Settings section.
+	Order          int           `json:"order"`
+	Exportable     bool          `json:"exportable"`
+	DefaultEnabled bool          `json:"-"`
+	PollInterval   time.Duration `json:"poll_interval"`
+	Assets         fs.FS         `json:"-"`
 }
 type Summary struct {
 	State  string `json:"state"`

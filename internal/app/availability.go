@@ -19,7 +19,7 @@ type Availability struct {
 
 func (m *Manager) availability(c configuration, mod feature.Module) Availability {
 	d := mod.Descriptor()
-	a := Availability{Enabled: d.Maturity == feature.Stable, CanDisable: true}
+	a := Availability{Enabled: d.Maturity == feature.Stable || d.DefaultEnabled, CanDisable: true}
 	if enabled, ok := c.ModuleAvailability[d.ID]; ok {
 		a.Enabled = enabled
 	}

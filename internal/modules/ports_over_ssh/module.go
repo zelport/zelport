@@ -41,7 +41,7 @@ type Module struct {
 func New() feature.Module {
 	files, _ := fs.Sub(assets, "assets")
 	m := &Module{pools: map[string]poolEntry{}}
-	m.Desc = feature.Descriptor{Maturity: feature.Experimental, ID: "ports_over_ssh", Name: "Ports over SSH", TabID: "ssh", Order: 50, Exportable: true, PollInterval: 15e9, Assets: files}
+	m.Desc = feature.Descriptor{Maturity: feature.Experimental, ID: "ports_over_ssh", Name: "Ports over SSH", TabID: "ssh", Order: 50, Exportable: true, DefaultEnabled: true, PollInterval: 15e9, Assets: files}
 	m.Summary = func(r feature.Route) feature.Summary {
 		var s Settings
 		feature.Decode(r.Settings, &s)
