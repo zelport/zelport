@@ -12,46 +12,17 @@ function processLabels(processes=[]){
  return {text:labels.map(label=>label.text).join(', '),full:labels.map(label=>label.full).join(', '),truncated};
 }
 
-function sourceLabel(listener){
- const sandboxes=listener.sandboxes||[];
- if(listener.kind==='docker_sandbox'&&sandboxes.length===1){const sandbox=sandboxes[0];return {process:processLabels([{name:sandbox.name}]),container:null,sandbox};}
- const containers=listener.containers||[];
- if(listener.kind==='container'&&containers.length===1){const container=containers[0];return {process:processLabels([{name:container.name}]),container,sandbox:null};}
- if(listener.kind==='unknown')return {process:processLabels(listener.processes),container:null,sandbox:null,unknown:true};
- if(listener.kind==='local_process')return {process:processLabels(listener.processes),container:null,sandbox:null,local:true};
- // Preserve compatibility with older servers during a rolling binary update.
- if(sandboxes.length===1){const sandbox=sandboxes[0];return {process:processLabels([{name:sandbox.name}]),container:null,sandbox};}
- if(containers.length===1){const container=containers[0];return {process:processLabels([{name:container.name}]),container,sandbox:null};}
- return {process:processLabels(listener.processes),container:null,sandbox:null,local:true};
-}
-function titleCase(value=''){return value?`${value.slice(0,1).toUpperCase()}${value.slice(1)}`:'';}
-function freshnessDescription(status,verifiedAt){
- if(status!=='stale')return '';
- return `\nStatus: Stale${verifiedAt?`\nLast verified: ${verifiedAt}`:''}`;
-}
-function containerDescription(container,hostPort,status){
- const runtime=titleCase(container.engine)||'Unknown',runtimeStatus=container.runtime?` (${String(container.runtime).toLowerCase()})`:'';
- return `Kind: Container\nContainer: ${container.name}\nMapping: ${container.container_port}/${container.protocol} → localhost:${hostPort}\nCLI: ${container.cli||'Unknown'}\nRuntime: ${runtime}${runtimeStatus}${freshnessDescription(status,container.verified_at)}`;
-}
-function sandboxDescription(sandbox,hostPort,status){
- return `Kind: Docker Sandbox\nSandbox: ${sandbox.name}\nMapping: ${sandbox.sandbox_port}/${sandbox.protocol} → localhost:${hostPort}\nCLI: sbx\nRuntime: Docker Sandbox${freshnessDescription(status,sandbox.verified_at)}`;
-}
 function localPortDescription(processes=[]){
  const plural=processes.length>1,names=processes.length?processes.map(process=>process.name||'Unknown process').join(', '):'Unknown process',pids=processes.map(process=>process.pid).filter(Boolean);
- return `Kind: Generic process\n${plural?'Processes':'Process'}: ${names}\n${pids.length>1?'PIDs':'PID'}: ${pids.length?pids.join(', '):'Unknown'}`;
+ return `Kind: Generic process\n${plural?'Names':'Name'}: ${names}\n${pids.length>1?'PIDs':'PID'}: ${pids.length?pids.join(', '):'Unknown'}`;
 }
-function unknownSourceDescription(status=''){
- const details={
-  ambiguous:'Multiple runtime mappings match this port.',
-  degraded:'Discovery is temporarily unavailable.',
-  refreshing:'Discovery is still in progress.',
-  stale:'Discovery data is stale and cannot confirm this port.'
- };
- return `Kind: Unknown source\nStatus: ${details[status]||'The source could not be confirmed.'}`;
+function processIndicator(ui,listener){
+ if(!listener.processes?.length)return null;
+ return ui.localPortIndicator(localPortDescription(listener.processes)).root;
 }
 
 export function listenerPicker(ctx,port){
- const {adornmentButton,containerIndicator,el,icon,localPortIndicator,sandboxIndicator,textTooltip,warningIndicator}=ctx.ui;
+ const {adornmentButton,el,textTooltip,warningIndicator}=ctx.ui;
  const menu=el('section','listener-picker-menu');
  menu.setAttribute('role','list');menu.setAttribute('aria-label','Listening ports');port.wrap.append(menu);
 
@@ -76,14 +47,11 @@ export function listenerPicker(ctx,port){
   else if(error)state(discoveryFailure,{warning:true});
   else if(!rows.length)state('No listening ports found.');
   else for(const listener of rows){
-   const {process,container,sandbox,local,unknown}=sourceLabel(listener),row=el('div','listener-option'),actions=el('div','listener-option-actions'),processNode=process.truncated?textTooltip(process.text,process.full,'listener-process').root:el('span','listener-process',process.text);row.dataset.port=String(listener.port);row.setAttribute('role','listitem');row.setAttribute('aria-label',`Port ${listener.port}: ${process.full}`);
+   const process=processLabels(listener.processes),row=el('div','listener-option'),actions=el('div','listener-option-actions'),processNode=process.truncated?textTooltip(process.text,process.full,'listener-process').root:el('span','listener-process',process.text);row.dataset.port=String(listener.port);row.setAttribute('role','listitem');row.setAttribute('aria-label',`Port ${listener.port}: ${process.full}`);
    row.append(el('strong','listener-port',String(listener.port)),processNode);
    if(listener.listens_beyond_loopback)actions.append(warningIndicator(nonLoopbackWarning).root);
-   if(sandbox)actions.append(sandboxIndicator(sandboxDescription(sandbox,listener.port,listener.source_status)).root);
-   else if(container)actions.append(containerIndicator(containerDescription(container,listener.port,listener.source_status)).root);
-   else if(local)actions.append(localPortIndicator(localPortDescription(listener.processes)).root);
-   else if(unknown){const info=textTooltip('',unknownSourceDescription(listener.source_status),'unknown-source-indicator');info.root.prepend(icon('localPort',{className:'unknown-source-glyph'}));info.tip.className+=' unknown-source-tooltip';actions.append(info.root);}
-   const use=adornmentButton(`Choose port ${listener.port}`,'arrowUp',()=>usePort(listener.port));use.className+=' listener-use-port';actions.append(use);row.append(actions);menu.append(row);
+   const source=processIndicator(ctx.ui,listener);if(source)actions.append(source);
+   const use=adornmentButton(`Choose port ${listener.port}`,'arrowUp',()=>usePort(listener.port),{tooltipClass:'choose-port-tooltip'});use.className+=' listener-use-port';actions.append(use);row.append(actions);menu.append(row);
   }
   menu.scrollTop=scroll;
  }
@@ -119,8 +87,27 @@ export function listenerPicker(ctx,port){
 }
 
 export function mount(ctx){
- const {el,numberStepperField,serviceModule}=ctx.ui;
- return serviceModule(ctx,{
+ const {el,noListenerIndicator,numberStepperField,serviceModule,warningIndicator}=ctx.ui;
+ let latest={routes:[],data:{}},visible=false,disposed=false,request=null,timer=null,routePorts='',inventory={health:'unknown',byPort:new Map()};
+ const view=serviceModule(ctx,{
+  routeMenu:true,
+  columns:['Service','Local (Aux) port','Info','Actions'],
+  tableLabel:'Local Ports services',
+  serviceLabel:(route,state)=>`${route.domain}:${state.port}`,
+  targetLabel:route=>String(route.editor?.aux_port||''),
+  rowState(s){return (s.routes||[]).map(route=>{
+   const listener=inventory.byPort.get(Number(route.editor?.aux_port));
+   if(!listener)return [route.id,inventory.health==='ready'?'missing':'unverified'];
+   return [route.id,!!listener.listens_beyond_loopback,localPortDescription(listener.processes)];
+  });},
+  rowIndicators(route){
+   const port=Number(route.editor?.aux_port),listener=inventory.byPort.get(port);
+   if(!listener)return inventory.health==='ready'&&port>0?[noListenerIndicator(`No listener currently detected on port ${port}.`).root]:[];
+   const indicators=[];
+   if(listener.listens_beyond_loopback)indicators.push(warningIndicator(nonLoopbackWarning).root);
+   const source=processIndicator(ctx.ui,listener);if(source)indicators.push(source);
+   return indicators;
+  },
   emptyState:{kind:'not-configured',message:'No local ports yet. Add a domain and an Aux port.',actionLabel:'+ Add service'},
   fields(s){
    const element=el('div'),port=numberStepperField('Local (Aux) port',s.aux_port||3000,{min:1,max:65535});port.input.required=true;
@@ -128,4 +115,26 @@ export function mount(ctx){
    return {element,read:()=>({aux_port:Number(port.input.value)}),dispose:picker.dispose};
   }
  });
+ function schedule(){if(visible&&!disposed&&latest.routes?.length)timer=setTimeout(loadInventory,15000);}
+ async function loadInventory(){
+  if(!visible||disposed||request||!latest.routes?.length)return;
+  clearTimeout(timer);timer=null;const controller=new AbortController();request=controller;
+  try{
+   const result=await ctx.api(`/api/modules/${ctx.moduleId}/listeners`,{method:'GET',signal:controller.signal});
+   if(!visible||disposed||controller.signal.aborted)return;
+   inventory={health:'ready',byPort:new Map((Array.isArray(result.listeners)?result.listeners:[]).map(listener=>[Number(listener.port),listener]))};
+   view.render(latest);
+  }catch{
+   if(!visible||disposed||controller.signal.aborted)return;
+   inventory={health:'unavailable',byPort:new Map()};view.render(latest);
+  }finally{if(request===controller){request=null;schedule();}}
+ }
+ function stop(){visible=false;clearTimeout(timer);timer=null;request?.abort();request=null;inventory={health:'unknown',byPort:new Map()};}
+ return {
+  ...view,
+  render(s){latest=s;view.render(s);const ports=JSON.stringify((s.routes||[]).map(route=>route.editor?.aux_port));if(visible&&ports!==routePorts){routePorts=ports;loadInventory();}},
+  activate(){if(visible)return;visible=true;routePorts=JSON.stringify((latest.routes||[]).map(route=>route.editor?.aux_port));view.render(latest);loadInventory();view.activate();},
+  deactivate(){stop();view.deactivate();},
+  dispose(){disposed=true;stop();view.dispose();}
+ };
 }

@@ -21,7 +21,17 @@ export function adornedField(label,value='',type='text',adornments={}){
 const iconPaths={
  eye:'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6',
  copy:'M9 9h11v12H9zM15 9V3H3v12h6',
+ plus:'M12 5v14M5 12h14',
+ caretDown:'M5 9l7 7 7-7z',
+ caretUp:'M5 15l7-7 7 7z',
+ arrowUp:'M12 20V4M6 10l6-6 6 6',
  rotate:'M20 7v5h-5M20 12a8 8 0 1 0-2 6',
+ warning:'M12 3 2.5 20h19L12 3ZM12 9v5M12 17h.01',
+ info:'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20ZM12 11v6M12 7h.01',
+ localPort:'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01M12 7h5M12 17h5',
+ container:'M12 3 20 7.5v9L12 21 4 16.5v-9L12 3ZM4 7.5 12 12l8-4.5M12 12v9',
+ sandbox:'M12 7 17 10v5l-5 3-5-3v-5l5-3ZM7 10l5 3 5-3M12 13v5M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3',
+ plugOff:'M8 2v4M16 2v4M7 6h10v3a5 5 0 0 1-10 0V6ZM12 14v7M3 3l18 18',
  experimental:'M9 3h6M10 3v7l-5 8a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-8V3M8 15h8'
 };
 export function icon(name,{className='',title=''}={}){
@@ -32,48 +42,101 @@ export function icon(name,{className='',title=''}={}){
  if(title){const caption=document.createElementNS('http://www.w3.org/2000/svg','title');caption.textContent=title;svg.append(caption);}
  path.setAttribute('d',iconPaths[name]);svg.append(path);return svg;
 }
-export function adornmentButton(label,name,fn){
- const control=button('',fn,'adornment-button');control.setAttribute('aria-label',label);control.title=label;control.append(icon(name));return control;
+export function adornmentButton(label,name,fn,{tooltipClass=''}={}){
+ const control=button('',fn,'adornment-button'),tip=el('span',`ui-tooltip adornment-tooltip${tooltipClass?` ${tooltipClass}`:''}`,label),tooltip=attachTooltip(control,control,tip);
+ control.setAttribute('aria-label',label);control.append(icon(name),tip);return control;
 }
 // Global viewport listeners retain no row nodes after a render.
-let warningViewportListeners=false;
-function dismissWarningTooltips(){
- for(const tip of document.querySelectorAll('.warning-tooltip:popover-open')){tip.hidePopover();tip.hidden=true;}
+const activeTooltipClosers=new Set();
+let tooltipViewportListeners=false;
+function dismissTooltips(){
+ for(const close of [...activeTooltipClosers])close();
 }
-export function warningIndicator(message=''){
- const root=el('span','service-warning'),trigger=el('button','warning-trigger'),tip=el('span','warning-tooltip');
- const glyph=el('span','warning-glyph','!');glyph.setAttribute('aria-hidden','true');trigger.append(glyph);
- trigger.type='button';trigger.setAttribute('aria-label','Connection security warning');
- tip.id=`warning-${++fieldSequence}`;tip.setAttribute('role','tooltip');tip.setAttribute('popover','manual');tip.hidden=true;
- trigger.setAttribute('aria-describedby',tip.id);
- let hovered=false,focused=false;
+function ensureTooltipViewportListeners(){
+ if(tooltipViewportListeners)return;
+ window.addEventListener('scroll',dismissTooltips,true);window.addEventListener('resize',dismissTooltips);tooltipViewportListeners=true;
+}
+function attachTooltip(root,trigger,tip){
+ tip.id=`tooltip-${++fieldSequence}`;tip.setAttribute('role','tooltip');tip.setAttribute('popover','manual');tip.hidden=true;trigger.setAttribute('aria-describedby',tip.id);
+ let hovered=false,focused=false,hoverTimer=null;
+ const cancelPending=()=>{if(hoverTimer!==null){clearTimeout(hoverTimer);hoverTimer=null;}};
  const show=()=>{
-  if(root.hidden)return;
-  if(!warningViewportListeners){
-   window.addEventListener('scroll',dismissWarningTooltips,true);
-   window.addEventListener('resize',dismissWarningTooltips);
-   warningViewportListeners=true;
-  }
+  cancelPending();if(root.hidden){activeTooltipClosers.delete(close);return;}activeTooltipClosers.add(close);ensureTooltipViewportListeners();
   tip.hidden=false;tip.showPopover();
   const anchor=trigger.getBoundingClientRect(),bounds=tip.getBoundingClientRect();
   tip.style.left=`${Math.max(16,Math.min(anchor.left-32,window.innerWidth-bounds.width-16))}px`;
   const above=anchor.top-bounds.height-8;
   tip.style.top=`${Math.max(16,Math.min(above>=16?above:anchor.bottom+8,window.innerHeight-bounds.height-16))}px`;
- },close=()=>{if(!tip.hidden)tip.hidePopover();tip.hidden=true;};
- root.addEventListener('mouseenter',()=>{hovered=true;show();});
- root.addEventListener('mouseleave',()=>{hovered=false;if(!focused)close();});
+ },close=()=>{cancelPending();activeTooltipClosers.delete(close);if(!tip.hidden)tip.hidePopover();tip.hidden=true;};
+ const schedule=()=>{cancelPending();activeTooltipClosers.add(close);ensureTooltipViewportListeners();hoverTimer=setTimeout(()=>{hoverTimer=null;if(hovered)show();else activeTooltipClosers.delete(close);},250);};
+ root.addEventListener('mouseenter',()=>{hovered=true;if(!focused)schedule();});
+ root.addEventListener('mouseleave',()=>{hovered=false;cancelPending();if(!focused)close();});
  trigger.addEventListener('focus',()=>{focused=true;show();});
  trigger.addEventListener('blur',()=>{focused=false;if(!hovered)close();});
- trigger.addEventListener('click',e=>{e.preventDefault();show();});
  root.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close();}});
+ return {show,close};
+}
+export function textTooltip(text,description,className=''){
+ const root=el('span',`text-tooltip-trigger${className?` ${className}`:''}`,text),tip=el('span','ui-tooltip text-tooltip',description),tooltip=attachTooltip(root,root,tip);
+ root.tabIndex=0;root.setAttribute('aria-label',description);root.append(tip);return {root,tip,...tooltip};
+}
+export function warningIndicator(message=''){
+ const root=el('span','service-warning'),trigger=el('button','warning-trigger'),tip=el('span','ui-tooltip warning-tooltip');
+ trigger.append(icon('warning',{className:'warning-glyph'}));
+ trigger.type='button';trigger.setAttribute('aria-label','Connection security warning');
+ const tooltip=attachTooltip(root,trigger,tip);trigger.addEventListener('click',e=>{e.preventDefault();tooltip.show();});
  root.append(trigger,tip);
- const update=text=>{setText(tip,text);root.hidden=!text;if(!text)close();};
+ const update=text=>{setText(tip,text);root.hidden=!text;if(!text)tooltip.close();};
  update(message);return {root,update};
+}
+export function serviceTargetIndicator(description,domain){
+ const root=el('span','service-target-indicator'),trigger=el('button','service-target-trigger'),tip=el('span','ui-tooltip service-target-tooltip',description);
+ trigger.type='button';trigger.setAttribute('aria-label',`Details for ${domain}`);trigger.append(icon('info',{className:'service-target-glyph'}));
+ const tooltip=attachTooltip(root,trigger,tip);trigger.addEventListener('click',e=>{e.preventDefault();tooltip.show();});
+ root.append(trigger,tip);return {root,...tooltip};
+}
+export function localPortIndicator(description=''){
+ const root=el('span','local-port-indicator'),trigger=el('button','local-port-trigger'),tip=el('span','ui-tooltip local-port-tooltip');
+ trigger.append(icon('localPort',{className:'local-port-glyph'}));trigger.type='button';trigger.setAttribute('aria-label','Local port details');
+ const tooltip=attachTooltip(root,trigger,tip);trigger.addEventListener('click',e=>{e.preventDefault();tooltip.show();});
+ root.append(trigger,tip);setText(tip,description);root.hidden=!description;
+ return {root,update:text=>{setText(tip,text);root.hidden=!text;if(!text)tooltip.close();},...tooltip};
+}
+export function noListenerIndicator(description=''){
+ const root=el('span','no-listener-indicator'),trigger=el('button','no-listener-trigger'),tip=el('span','ui-tooltip no-listener-tooltip');
+ trigger.append(icon('plugOff',{className:'no-listener-glyph'}));trigger.type='button';trigger.setAttribute('aria-label','No listener detected');
+ const tooltip=attachTooltip(root,trigger,tip);trigger.addEventListener('click',e=>{e.preventDefault();tooltip.show();});
+ root.append(trigger,tip);setText(tip,description);root.hidden=!description;
+ return {root,update:text=>{setText(tip,text);root.hidden=!text;if(!text)tooltip.close();},...tooltip};
 }
 export function serviceURL(state,route){if(route.summary?.state==='unsupported')return null;return state.remote_admin?state.remote_admin.service_links?.[route.id]||null:`http://${route.domain}:${state.port}`;}
 export function el(tag,className,text){const n=document.createElement(tag);if(className)n.className=className;if(text!==undefined)n.textContent=text;return n;}
+// The shell queries these stable IDs while navigating between module panels.
+export function moduleHeading(title){
+ const heading=el('div','module-heading'),actions=el('div','module-actions');
+ heading.id='module-heading';actions.id='module-actions';
+ title.before(heading);heading.append(title,actions);
+ return {heading,actions};
+}
 export function button(text,fn,className='secondary'){const b=el('button',className,text);b.type='button';b.addEventListener('click',e=>{e.preventDefault();Promise.resolve(fn(e)).catch(()=>{});});return b;}
+export function emptyState({kind='no-results',message='No resources found.',action}={}){
+ const card=el('section',`empty-state empty-state-${kind}`);card.setAttribute('role',kind==='unavailable'?'alert':'status');
+ card.append(el('p','empty-state-message',message));
+ if(action)card.append(button(action.label,action.run,action.className||'secondary'));
+ return card;
+}
 export function field(label,value='',type='text'){return type==='checkbox'?switchField(label,!!value):adornedField(label,value??'',type);}
+export function numberStepperField(label,value='',{min=0,max=Number.MAX_SAFE_INTEGER,step=1}={}){
+ let field;
+ const change=delta=>{
+  const current=Number(field.input.value),base=Number.isFinite(current)?current:min,next=Math.max(min,Math.min(max,base+(delta*step)));
+  if(next!==current){field.input.value=String(next);field.input.dispatchEvent(new Event('input',{bubbles:true}));}
+  field.input.focus();
+ };
+ const increment=adornmentButton(`Increase ${label}`,'caretUp',()=>change(1)),decrease=adornmentButton(`Decrease ${label}`,'caretDown',()=>change(-1)),controls=el('span','number-stepper-controls');
+ controls.append(increment,decrease);field=adornedField(label,value,'number',{actions:[controls]});field.input.className='number-stepper-input';field.input.min=min;field.input.max=max;field.input.step=step;
+ return {...field,increment,decrease};
+}
 // Menus share interaction mechanics; callers retain navigation/listbox semantics.
 const openDisclosures=new Set();
 export function disclosureMenu(root,trigger,menu,{selected=()=>false}={}){
@@ -145,35 +208,37 @@ export function routeEditRevision(original,state){
  return state.revision;
 }
 export function serviceModule(ctx,definition){let current={routes:[],data:{}},dialog=null;const getState=()=>ctx.ui.state();const base=`/api/modules/${ctx.moduleId}`;
- let refreshing=false,refreshButton=null;const menus=[];
+ let refreshing=false,refreshButton=null,addButton=null;const menus=[];
  const disposeMenus=()=>{for(const menu of menus)menu.dispose();menus.length=0;};
  const updateRefresh=()=>{if(refreshButton){refreshButton.disabled=refreshing;refreshButton.setAttribute('aria-busy',String(refreshing));}};
  async function refreshDiscovery(){if(refreshing)return;refreshing=true;updateRefresh();try{await ctx.mutate(()=>ctx.api(`${base}/refresh`,{method:'POST',body:'{}'}));}finally{refreshing=false;updateRefresh();}}
  if(definition.refresh&&ctx.toolbar){refreshButton=refreshControl('Refresh',refreshDiscovery);ctx.toolbar.append(refreshButton);}
+ if(!definition.groups&&definition.add!==false&&ctx.toolbar){addButton=adornmentButton('Add service','plus',()=>edit());addButton.className='module-action-icon module-add-icon';ctx.toolbar.append(addButton);}
  const remove=route=>{
   const d=el('dialog'),title=dialogHeader('Remove service',d),error=el('p','route-error'),options=el('div','remove-options');
+  const endpoint=serviceURL(getState(),route)||`http://${route.domain}:${getState().port}`;
   error.setAttribute('role','alert');let busy=false;
   const run=async work=>{if(busy)return;busy=true;error.textContent='';for(const control of options.children)control.disabled=true;
    try{await work();d.close();}catch(e){error.textContent=e.message;}finally{busy=false;for(const control of options.children)control.disabled=false;}
   };
-  options.append(button('Remove from proxy',()=>run(()=>ctx.mutate(()=>ctx.api(`/api/routes/${route.id}?revision=${getState().revision}`,{method:'DELETE'}),{reportError:false}))));
+  options.append(button('Remove',()=>run(()=>ctx.mutate(()=>ctx.api(`/api/routes/${route.id}?revision=${getState().revision}`,{method:'DELETE'}),{reportError:false})),'danger'));
   for(const action of definition.removeActions?.(route)||[])options.append(button(action.label,()=>run(action.run),action.className||'danger'));
   options.append(button('Cancel',()=>d.close(),'text-button'));
-  d.append(title,el('p',null,route.domain),error,options);showDialog(d,{signal:ctx.signal});
+  d.append(title,el('p','remove-service-address',endpoint),error,options);showDialog(d,{signal:ctx.signal});
  };
 
  function edit(route=null,group=null){
   if(dialog){dialog.close();dialog.remove();}
   const d=el('dialog');dialog=d;const form=el('form'),head=dialogHeader(route?'Edit service':'Add a service',d);
   form.append(head);
-  const label=el('label',null,'Domain name'),input=el('input'),domain=inputAdornment(input,{prefix:'http://',suffix:`.localhost:${getState().port}`});
+  const domain=adornedField('Domain name','','text',{prefix:'http://',suffix:`.localhost:${getState().port}`}),{wrap:domainField,input}=domain,label=domainField.children[0];
   input.id=`domain-${ctx.moduleId}`;label.htmlFor=input.id;input.required=true;
   input.pattern='[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?)*';
   input.maxLength=243;input.value=route?.domain.replace(/\.localhost$/,'')||suggest(group?.name||'service');
-  form.append(label,domain);
+  form.append(domainField);
   const fields=definition.fields(route?.editor||{},group,current);form.append(fields.element);let fieldsDisposed=false;
   const disposeFields=()=>{if(fieldsDisposed)return;fieldsDisposed=true;fields.dispose?.();};
-  const {error,actions,save}=formActions(d,{submit:'Save service',draft:true,form});
+  const {error,actions,save}=formActions(d,{submit:'Save service'});
   let changedRoute=null;
   const reload=button('Reload saved values',()=>{if(changedRoute)edit(changedRoute,group);});
   reload.hidden=true;form.append(error,reload,actions);
@@ -197,15 +262,49 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
   d.append(form);showDialog(d,{signal:ctx.signal,initialFocus:input,onClose(){disposeFields();if(dialog===d)dialog=null;}});
  }
  function suggest(value){let base=value.toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'')||'service';base=base.slice(0,50);const used=new Set(Object.values(getState().states).flatMap(s=>(s.routes||[]).map(r=>r.domain)));let name=base,n=2;while(used.has(name+'.localhost'))name=`${base}-${n++}`;return name;}
- function row(route){const box=el('div','service'),name=el('div'),address=serviceURL(getState(),route),link=el(address?'a':'span',null,route.domain);if(address){link.href=address;link.target='_blank';link.rel='noopener';}name.append(link);if(!address)name.append(el('span','small muted','Not connected on this device'));if(route.summary.detail&&route.module!=='remote_http')name.append(el('span','small route-error',route.summary.detail));const actions=el('div','service-actions');actions.append(button('Edit',()=>edit(route)),button('Remove',()=>remove(route),'text-button'));for(const action of definition.routeActions?.(route)||[])actions.append(button(action.label,action.run));const target=el('div','target-address');target.append(el('span',null,route.summary.target));if(route.module==='remote_http'&&route.summary.detail)target.append(warningIndicator(route.summary.detail).root);box.append(name,target,actions);return box;}
+ function row(route){
+  const tabular=!!definition.columns,box=el('div','service'),name=el('div'),address=serviceURL(getState(),route),link=el(address?'a':'span',null,definition.serviceLabel?.(route,getState())||route.domain);
+  if(tabular){box.setAttribute('role','row');name.setAttribute('role','cell');}
+  if(address){link.href=address;link.target='_blank';link.rel='noopener';}
+  name.append(link);if(!address)name.append(el('span','small muted','Not connected on this device'));
+  if(!tabular&&route.summary.detail&&route.module!=='remote_http')name.append(el('span','small route-error',route.summary.detail));
+  const target=el('div','target-address');
+  if(tabular){target.setAttribute('role','cell');target.append(el('span','mobile-target-label',`${definition.mobileTargetLabel||definition.columns[1]} `));}
+  target.append(el('span',null,definition.targetLabel?.(route)||route.summary.target));
+  if(!tabular&&route.module==='remote_http'&&route.summary.detail)target.append(warningIndicator(route.summary.detail).root);
+  const actions=el('div','service-actions');
+  if(tabular)actions.setAttribute('role','cell');
+  const indicators=definition.rowIndicators?.(route)||[];
+  let details=null;
+  if(tabular){details=el('div','service-port-details');details.setAttribute('role','cell');}
+  if(indicators.length||definition.targetInfo){const group=el('span','service-indicators');group.append(...indicators);if(definition.targetInfo)group.append(serviceTargetIndicator(definition.targetInfo(route),route.domain).root);(details||actions).append(group);}
+  if(definition.routeMenu){
+   const root=el('div','resource-actions service-actions-menu'),trigger=el('button','resource-menu-trigger service-menu-trigger','⋮'),menu=el('div','resource-menu service-menu');
+   trigger.setAttribute('aria-label',`Actions for ${route.domain}`);trigger.setAttribute('aria-haspopup','menu');menu.setAttribute('role','menu');
+   root.append(trigger,menu);const disclosure=disclosureMenu(root,trigger,menu);menus.push(disclosure);
+   const editAction=button('Edit',()=>{disclosure.close(true);edit(route);},'resource-menu-item');
+   const removeAction=button('Remove',()=>{disclosure.close(true);remove(route);},'resource-menu-item service-menu-remove');
+   editAction.setAttribute('role','menuitem');removeAction.setAttribute('role','menuitem');menu.append(editAction,removeAction);actions.append(root);
+  }else actions.append(button('Edit',()=>edit(route)),button('Remove',()=>remove(route),'danger-text'));
+  for(const action of definition.routeActions?.(route)||[])actions.append(button(action.label,action.run));
+  box.append(name,target,...(details?[details]:[]),actions);return box;
+ }
  function render(s){current=s;
  // Revision and discovery timestamps are not displayed. Keep unchanged views attached.
- const {updated_at,...data}=s.data||{},globalState=getState();
+ const {updated_at,...data}=s.data||{},globalState=getState(),groups=definition.groups?.(s)||null,seen=new Set();
+ if(groups)for(const group of groups)for(const route of s.routes)if(definition.matches(route,group))seen.add(route.id);
+ const orphans=groups?s.routes.filter(route=>!seen.has(route.id)):[];
+ const hasEmpty=groups?!groups.length&&!orphans.length:!s.routes.length;
+ const empty=hasEmpty?(typeof definition.emptyState==='function'?definition.emptyState(s):definition.emptyState)||{
+  kind:groups?'no-results':'not-configured',message:groups?'No resources found.':definition.empty||'No services yet.',
+  actionLabel:definition.add===false?undefined:'+ Add service'
+ }:null;
+ const emptyKey=empty&&{kind:empty.kind,message:empty.message,actionLabel:empty.actionLabel};
  const content=(definition.hideServicesOnDiscoveryError&&!definition.statuses&&data.error
-  ?{error:data.error}:{routes:s.routes,error:data.error,groups:definition.groups?.(s),statuses:definition.statuses?.(s),port:globalState.port,remote_admin:globalState.remote_admin});
+  ?{error:data.error}:{routes:s.routes,error:data.error,groups,statuses:definition.statuses?.(s),empty:emptyKey,port:globalState.port,remote_admin:globalState.remote_admin,rowState:definition.rowState?.(s)});
  renderChanged(ctx.panel,content,()=>{
- const opened=new Set([...ctx.panel.querySelectorAll('details[open]')].map(d=>d.dataset.key));disposeMenus();ctx.panel.replaceChildren();if(definition.refresh){const header=el('div','refresh-row');for(const item of definition.statuses?.(s)||[]){const label=`${item.name} ${item.status}`;if(item.error){const detail=el('details','source-status source-status-error');detail.dataset.key=`status:${item.key}`;detail.open=opened.has(detail.dataset.key);detail.append(el('summary',null,label),el('div','source-status-detail',item.error));header.append(detail);}else header.append(el('span','source-status muted',label));}if(header.childElementCount)ctx.panel.append(header);}if(s.data?.error){if(definition.discoveryErrorTitle){const box=el('section','discovery-error');box.append(el('strong','route-error',definition.discoveryErrorTitle));const detail=el('details');detail.dataset.key='discovery-error';detail.open=opened.has(detail.dataset.key);detail.append(el('summary',null,'CLI output'),el('pre',null,s.data.error));box.append(detail);ctx.panel.append(box);}else ctx.panel.append(el('p','route-error',s.data.error));if(definition.hideServicesOnDiscoveryError){return;}}if(definition.groups){const groups=definition.groups(s),seen=new Set();for(const g of groups){const details=el('details','resource');details.dataset.key=g.key;details.open=opened.has(g.key);const summary=el('summary');summary.append(el('strong',null,g.name));if(g.source)summary.append(el('span','small muted',g.source));summary.append(statusBadge(g.status));const groupActions=definition.groupActions?.(g)||[];if(groupActions.length){const root=el('div','resource-actions'),toggle=el('button','resource-menu-trigger','⋮'),menu=el('div','resource-menu');toggle.setAttribute('aria-label',`Actions for ${g.name}`);root.append(toggle,menu);const disclosure=disclosureMenu(root,toggle,menu);menus.push(disclosure);for(const action of groupActions)menu.append(button(action.label,()=>{disclosure.close(true);return action.run();},'resource-menu-item'));summary.append(root);}const services=el('div','services');for(const r of s.routes.filter(r=>definition.matches(r,g))){seen.add(r.id);services.append(row(r));}services.append(button('+ Add service',()=>edit(null,g))); details.append(summary,services);ctx.panel.append(details);}const orphans=s.routes.filter(r=>!seen.has(r.id));if(orphans.length){ctx.panel.append(el('h2',null,'Unavailable services'));const orphanList=el('div','local-service-list');for(const r of orphans)orphanList.append(row(r));ctx.panel.append(orphanList);}if(!groups.length&&!orphans.length)ctx.panel.append(el('div','empty','No resources found.'));}else{const area=el('div',s.routes.length?'local-service-list':'empty');if(!s.routes.length)area.append(el('p',null,definition.empty||'No services yet.'));for(const route of s.routes)area.append(row(route));if(definition.add!==false)area.append(button('+ Add service',()=>edit()));ctx.panel.append(area);}});}
- return {render,edit,activate(){},deactivate(){for(const menu of menus)menu.close();},dispose(){disposeMenus();refreshButton?.remove();dialog?.close();dialog?.remove();}};
+ const opened=new Set([...ctx.panel.querySelectorAll('details[open]')].map(d=>d.dataset.key));disposeMenus();ctx.panel.replaceChildren();if(definition.refresh){const header=el('div','refresh-row');for(const item of definition.statuses?.(s)||[]){const label=`${item.name} ${item.status}`;if(item.error){const detail=el('details','source-status source-status-error');detail.dataset.key=`status:${item.key}`;detail.open=opened.has(detail.dataset.key);detail.append(el('summary',null,label),el('div','source-status-detail',item.error));header.append(detail);}else header.append(el('span','source-status muted',label));}if(header.childElementCount)ctx.panel.append(header);}if(s.data?.error){if(definition.discoveryErrorTitle){const box=el('section','discovery-error');box.append(el('strong','route-error',definition.discoveryErrorTitle));const detail=el('details');detail.dataset.key='discovery-error';detail.open=opened.has(detail.dataset.key);detail.append(el('summary',null,'CLI output'),el('pre',null,s.data.error));box.append(detail);ctx.panel.append(box);}else ctx.panel.append(el('p','route-error',s.data.error));if(definition.hideServicesOnDiscoveryError){return;}}if(groups){for(const g of groups){const details=el('details','resource');details.dataset.key=g.key;details.open=opened.has(g.key);const summary=el('summary');summary.append(el('strong',null,g.name));if(g.source)summary.append(el('span','small muted',g.source));summary.append(statusBadge(g.status));const groupActions=definition.groupActions?.(g)||[];if(groupActions.length){const root=el('div','resource-actions'),toggle=el('button','resource-menu-trigger','⋮'),menu=el('div','resource-menu');toggle.setAttribute('aria-label',`Actions for ${g.name}`);root.append(toggle,menu);const disclosure=disclosureMenu(root,toggle,menu);menus.push(disclosure);for(const action of groupActions)menu.append(button(action.label,()=>{disclosure.close(true);return action.run();},'resource-menu-item'));summary.append(root);}const services=el('div','services');for(const r of s.routes.filter(r=>definition.matches(r,g)))services.append(row(r));services.append(button('+ Add service',()=>edit(null,g))); details.append(summary,services);ctx.panel.append(details);}if(orphans.length){ctx.panel.append(el('h2',null,'Unavailable services'));const orphanList=el('div','local-service-list');for(const r of orphans)orphanList.append(row(r));ctx.panel.append(orphanList);}if(!groups.length&&!orphans.length)ctx.panel.append(emptyState(empty));}else{if(!s.routes.length)ctx.panel.append(emptyState({...empty,action:empty?.actionLabel?{label:empty.actionLabel,run:()=>edit()}:undefined}));else{const area=el('div','local-service-list');if(definition.columns){area.setAttribute('role','table');area.setAttribute('aria-label',definition.tableLabel||'Services');const header=el('div','service-list-header');header.setAttribute('role','row');for(const label of definition.columns){const cell=el('span',null,label);cell.setAttribute('role','columnheader');header.append(cell);}area.append(header);}for(const route of s.routes)area.append(row(route));ctx.panel.append(area);}}});}
+ return {render,edit,activate(){},deactivate(){for(const menu of menus)menu.close();},dispose(){disposeMenus();refreshButton?.remove();addButton?.remove();dialog?.close();dialog?.remove();}};
 }
 
 export function switchField(label,checked=false){
@@ -247,17 +346,12 @@ export function showDialog(dialog,{initialFocus,onClose=()=>{},signal}={}){
  },true);
  document.body.append(dialog);dialog.showModal();initialFocus?.focus();return dialog;
 }
-export function formActions(dialog,{submit='Save',className='',draft=false,form}={}){
+export function formActions(dialog,{submit='Save',className=''}={}){
  const actions=el('div','dialog-actions'),cancel=button('Cancel',()=>dialog.close()),save=el('button',className,submit),error=el('p','route-error');
  save.type='submit';error.setAttribute('role','alert');actions.append(cancel,save);
- if(draft)draftNotice(form,actions);return {actions,cancel,save,error};
+ return {actions,cancel,save,error};
 }
-export function draftNotice(form,actions){
- const notice=el('span','draft-notice','Unsaved changes');notice.hidden=true;notice.setAttribute('role','status');actions.prepend(notice);
- const update=()=>{notice.hidden=false;};form.addEventListener('input',update);form.addEventListener('change',update);
- return notice;
-}
-export function refreshControl(label,action){const control=adornmentButton(label,'rotate',action);control.className='refresh-icon';return control;}
+export function refreshControl(label,action){const control=adornmentButton(label,'rotate',action);control.className='module-action-icon refresh-icon';return control;}
 
 export {refreshControl as refreshButton};
 

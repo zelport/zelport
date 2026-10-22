@@ -4,11 +4,9 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/zelport/zelport/internal/feature"
 	"github.com/zelport/zelport/internal/modulekit"
-	"github.com/zelport/zelport/internal/portorigin"
 	"io/fs"
 	"net"
 	"net/http"
@@ -26,78 +24,22 @@ type Settings struct {
 type Module struct {
 	modulekit.Base
 	scanner listenerScanner
-	catalog attributionCatalog
 }
-
-type attributionCatalog interface {
-	Start(context.Context, time.Duration)
-	Snapshot() portorigin.Snapshot
-	RequestRefresh() <-chan struct{}
-	Close() error
-}
-
-type emptyAttributionCatalog struct{}
-
-func (emptyAttributionCatalog) Start(context.Context, time.Duration) {}
-func (emptyAttributionCatalog) Snapshot() portorigin.Snapshot {
-	return portorigin.Snapshot{Health: portorigin.Ready}
-}
-func (emptyAttributionCatalog) RequestRefresh() <-chan struct{} {
-	done := make(chan struct{})
-	close(done)
-	return done
-}
-func (emptyAttributionCatalog) Close() error { return nil }
 
 func New() feature.Module {
-	return newModule(newListenerScanner(), portorigin.NewDefaultCatalog())
+	return newModule(newListenerScanner())
 }
 
-func newModule(scanner listenerScanner, catalogs ...attributionCatalog) *Module {
+func newModule(scanner listenerScanner) *Module {
 	files, _ := fs.Sub(assets, "assets")
-	catalog := attributionCatalog(emptyAttributionCatalog{})
-	if len(catalogs) > 0 && catalogs[0] != nil {
-		catalog = catalogs[0]
-	}
-	m := &Module{scanner: scanner, catalog: catalog}
+	m := &Module{scanner: scanner}
 	m.Desc = feature.Descriptor{Maturity: feature.Stable, ID: "local_ports", Name: "Local Ports", TabID: "local", Order: 30, Exportable: true, Assets: files}
 	m.Summary = func(r feature.Route) feature.Summary {
 		var s Settings
 		feature.Decode(r.Settings, &s)
-		return feature.Summary{State: "configured", Target: fmt.Sprintf("Aux port %d", s.AuxPort)}
+		return feature.Summary{State: "configured", Target: fmt.Sprintf("Local (Aux) port %d", s.AuxPort)}
 	}
 	return m
-}
-
-func (m *Module) Start(ctx context.Context, host feature.Host) error {
-	if err := m.Base.Start(ctx, host); err != nil {
-		return err
-	}
-	m.catalog.Start(ctx, 15*time.Second)
-	return nil
-}
-
-func (m *Module) Close() error {
-	return errors.Join(m.catalog.Close(), m.Base.Close())
-}
-
-type attributionMetadata struct {
-	AttributionHealth     string     `json:"attribution_health"`
-	AttributionGeneration uint64     `json:"attribution_generation"`
-	AttributionUpdatedAt  *time.Time `json:"attribution_updated_at,omitempty"`
-}
-
-func metadata(snapshot portorigin.Snapshot) attributionMetadata {
-	health := string(snapshot.Health)
-	if health == "" {
-		health = SourceRefreshing
-	}
-	result := attributionMetadata{AttributionHealth: health, AttributionGeneration: snapshot.Generation}
-	if !snapshot.UpdatedAt.IsZero() {
-		updated := snapshot.UpdatedAt
-		result.AttributionUpdatedAt = &updated
-	}
-	return result
 }
 
 func (m *Module) Admin() http.Handler {
@@ -109,12 +51,7 @@ func (m *Module) Admin() http.Handler {
 				return
 			}
 			w.Header().Set("Cache-Control", "no-store")
-			select {
-			case <-m.catalog.RequestRefresh():
-				modulekit.JSON(w, metadata(m.catalog.Snapshot()))
-			case <-r.Context().Done():
-				return
-			}
+			modulekit.JSON(w, map[string]any{})
 			return
 		}
 		if r.URL.Path != "/listeners" {
@@ -137,11 +74,9 @@ func (m *Module) Admin() http.Handler {
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Listening ports couldn't be detected. Enter the Aux port manually."})
 			return
 		}
-		snapshot := m.catalog.Snapshot()
 		response := struct {
-			attributionMetadata
 			Listeners []Listener `json:"listeners"`
-		}{attributionMetadata: metadata(snapshot), Listeners: attributeListeners(listeners, snapshot)}
+		}{Listeners: listeners}
 		_ = json.NewEncoder(w).Encode(response)
 	})
 }
