@@ -10,13 +10,14 @@ export function headerStatus(state) {
 export function mount(ctx) {
  const {el,button,field,serviceModule,renderChanged,adornedField,adornmentButton,statusBadge,refreshButton}=ctx.ui;
  let current,settingsForm,settingsFields,settingsKey,settingsRevision,settingsDirty=false,settingsSaving=false,secretInput,secretReveal,secretFeedback,secretRevision,active=false,generation=0,refreshing=false;
- const navigation=el('nav','relay-view-nav'),servicesView=el('section','relay-services-view'),configurationView=el('section','relay-configuration-view');
+ const navigation=el('nav','relay-view-nav'),overviewView=el('section','relay-services-view'),configurationView=el('section','relay-configuration-view');
  const routePanel=el('section'),setup=el('section','relay-setup'),catalog=el('section','relay-catalog'),administration=el('section','relay-administration'),settingsPanel=el('section','relay-settings-panel');
- servicesView.append(el('h2',null,'Imported services'),routePanel,administration,catalog);
+ overviewView.append(el('h2',null,'Imported services'),routePanel,administration,catalog);
  configurationView.append(setup,settingsPanel);configurationView.hidden=true;
- const servicesButton=button('Services',()=>showView('services'),'relay-view-button'),configurationButton=button('Configuration',()=>showView('configuration'),'relay-view-button');
- navigation.setAttribute('aria-label','Ports over Relay views');navigation.append(servicesButton,configurationButton);
- ctx.panel.append(navigation,servicesView,configurationView);
+ const overviewButton=button('Overview',()=>showView('overview'),'relay-view-button'),configurationButton=button('Configuration',()=>showView('configuration'),'relay-view-button');
+ navigation.setAttribute('aria-label','Ports over Relay views');navigation.append(overviewButton,configurationButton);
+ ctx.toolbar?.append(navigation);
+ ctx.panel.append(overviewView,configurationView);
  const api=path=>`/api/modules/${ctx.moduleId}/${path}`;
  const routes=serviceModule({...ctx,panel:routePanel},{
   add:false,
@@ -33,8 +34,8 @@ export function mount(ctx) {
   return {element,read:()=>({...settings,rewrite_origin:origin.input.checked})};
  }});
  function showView(view){
-  const configuration=view==='configuration';servicesView.hidden=configuration;configurationView.hidden=!configuration;
-  servicesButton.setAttribute('aria-current',configuration?'false':'page');configurationButton.setAttribute('aria-current',configuration?'page':'false');
+  const configuration=view==='configuration';overviewView.hidden=configuration;configurationView.hidden=!configuration;
+  overviewButton.setAttribute('aria-current',configuration?'false':'page');configurationButton.setAttribute('aria-current',configuration?'page':'false');
   refresh.hidden=configuration;
   if(configuration&&!settingsForm&&current)configure();
   if(!configuration)clearSecret();
@@ -112,6 +113,6 @@ export function mount(ctx) {
   }
   });
  }
- showView('services');
- return {render,edit:routes.edit,activate(){active=true;},deactivate(){active=false;clearSecret();},dispose(){active=false;clearSecret();clearSettingsSecrets();refresh.remove();routes.dispose();}};
+ showView('overview');
+ return {render,edit:routes.edit,activate(){active=true;},deactivate(){active=false;clearSecret();},dispose(){active=false;clearSecret();clearSettingsSecrets();navigation.remove();refresh.remove();routes.dispose();}};
 }
