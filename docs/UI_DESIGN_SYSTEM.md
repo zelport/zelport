@@ -142,7 +142,9 @@ gallery. A passing DOM test does not prove visual consistency or accessibility.
 
 ## Primary navigation
 
-The shell exposes Dashboard, Services and Settings at every width. Services is a
+The shell exposes Dashboard, Services and Settings at every width. The three
+destinations remain visible and left aligned with a consistent gap; they never
+collapse into a hamburger or spread across the available row. Services is a
 navigation disclosure containing enabled source modules, with flask icons for experimental modules. The icons have native Experimental
 tooltips; button accessible names also include the maturity. The current module
 heading repeats the same icon and accessible maturity label. Pointer opening keeps
@@ -158,6 +160,15 @@ is disabled. Generic navigation buttons use aria-current rather than tab semanti
 
 The header brand links to `#dashboard` within the current document. Returning home
 must not reload the application or rebuild the navigation.
+
+Ports over Relay exposes Overview and Configuration as a segmented control in
+the module heading. This local control uses a filled selected segment instead of
+repeating the global underline grammar. On wide layouts it sits to the right of
+the module title and maturity badge. At 720px and below the heading stacks, the
+control consumes the remaining action row beside Refresh, and both segments keep
+equal widths with a minimum 44px touch target. The title and maturity badge may
+wrap without overlapping the actions. Review this layout at 720px, 390px and
+320px and require no horizontal scrolling.
 
 ## Shared JavaScript components
 

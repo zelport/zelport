@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import * as ui from '../internal/web/assets/ui.js';
 
 class Node {
@@ -64,4 +65,16 @@ test('pointer opening does not move focus into the Services menu',()=>{
  nav.trigger.events.keydown({key:'ArrowDown',preventDefault(){}});assert.equal(document.activeElement,modules[3]);
  nav.menu.events.keydown({key:'ArrowDown',preventDefault(){}});assert.equal(document.activeElement,modules[2]);
  assert.equal(tabs.children[0],dashboard);assert.equal(tabs.children.at(-1),settings);nav.dispose();
+});
+
+test('global and relay navigation keep distinct responsive visual grammars',()=>{
+ const shell=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8').replace(/\s+/g,''),relay=readFileSync(new URL('../internal/modules/ports_over_relay/assets/style.css',import.meta.url),'utf8').replace(/\s+/g,'');
+ const primary=shell.match(/\.primary-navigation\{([^}]*)\}/)?.[1]||'',relayNav=relay.match(/\.relay-view-nav\{([^}]*)\}/)?.[1]||'',selected=relay.match(/\.relay-view-button\[aria-current=page\]\{([^}]*)\}/)?.[1]||'';
+ assert.match(primary,/justify-content:flex-start/);assert.match(primary,/gap:24px/);
+ assert.match(shell,/@media\(max-width:480px\)\{[^}]*\.primary-navigation\{[^}]*gap:16px/);
+ assert.match(shell,/@media\(max-width:360px\)\{[^}]*\.primary-navigation\{[^}]*gap:12px/);
+ assert.match(relayNav,/display:grid/);assert.match(relayNav,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);assert.doesNotMatch(relayNav,/border-bottom/);
+ assert.match(selected,/background:var\(--surface\)/);assert.match(selected,/box-shadow:/);assert.doesNotMatch(selected,/border-bottom/);
+ assert.match(shell,/\.module-heading\{[^}]*flex-direction:column/);assert.match(shell,/\.module-actions\{[^}]*width:100%/);assert.match(shell,/\.module-toolbar:has\(\.relay-view-nav\)\{[^}]*grid-template-columns:minmax\(0,1fr\)auto/);
+ assert.match(relay,/@media\(max-width:720px\)\{[^}]*\.relay-view-nav\{[^}]*min-width:0[^}]*flex:1/);assert.match(relay,/\.relay-view-button\{[^}]*min-height:44px/);
 });

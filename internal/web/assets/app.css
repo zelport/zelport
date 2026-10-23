@@ -196,7 +196,7 @@ button,.button{min-height:var(--control-height);border-radius:var(--radius-contr
 .tabs-toolbar[data-collapsed=true] .tabs [role=tab]{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
 
 /* Three stable destinations; source modules live in the Services disclosure. */
-.primary-navigation{display:flex;align-items:center;gap:24px;min-width:0;flex:1}
+.primary-navigation{display:flex;align-items:center;justify-content:flex-start;gap:24px;min-width:0;flex:1}
 .primary-navigation>.navigation-item,.services-trigger{padding:12px 0;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--muted);font-size:15px;white-space:nowrap}
 .primary-navigation>.navigation-item[aria-current=page],.services-trigger[data-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
 .services-navigation{position:relative}
@@ -210,9 +210,10 @@ button,.button{min-height:var(--control-height);border-radius:var(--radius-contr
 .primary-navigation>.navigation-item:focus-visible,.services-trigger:focus-visible{outline:none;background:var(--accent-soft);box-shadow:inset 0 -3px 0 var(--accent)}
 .services-menu>.navigation-item:focus-visible{outline:none;box-shadow:inset 3px 0 0 var(--accent)}
 button[type=submit]:focus-visible,.danger:focus-visible{outline-color:var(--ink)}
-.module-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin:0 0 var(--space-4)}.module-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;font-size:var(--text-heading)}.module-actions{display:flex;align-items:center;margin-left:auto}
+.module-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin:var(--space-8) 0 var(--space-6)}.module-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;font-size:var(--text-heading)}.module-actions{display:flex;align-items:center;margin-left:auto}
+@media(max-width:720px){.module-heading{align-items:stretch;flex-direction:column;gap:var(--space-4)}.module-actions{width:100%;margin-left:0}.module-toolbar{width:100%;justify-content:flex-end}.module-toolbar:has(.relay-view-nav){display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-2)}}
 @media(max-width:480px){.primary-navigation{gap:16px}.tabs-toolbar{gap:8px}.services-navigation{position:static}.services-menu{left:0;max-width:100%}}
-@media(max-width:360px){.primary-navigation{gap:8px}.tabs-toolbar{gap:4px}}
+@media(max-width:360px){.primary-navigation{gap:12px}.tabs-toolbar{gap:4px}}
 
 /* Outlined identity-kit logo; retain the same geometry in both themes. */
 header .brand{display:flex;align-items:center;flex-shrink:0;line-height:1}header .brand-logo{display:block;width:146.667px;height:40px}.brand-logo>g:last-child>path{fill:#524264}@media(prefers-color-scheme:dark){.brand-logo path,.brand-logo>g:last-child>path{fill:#eee7f4}}@media(max-width:520px){header .brand-logo{width:132px;height:36px}}
