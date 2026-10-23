@@ -4,8 +4,8 @@
 .relay-view-button:hover{background:var(--accent-soft);color:var(--accent);filter:none}
 .relay-view-button[aria-current=page]{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px #39234e18}
 .relay-view-button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-.relay-settings-panel{max-width:680px;padding:var(--panel-padding);border:1px solid var(--line);border-radius:var(--radius-panel);background:var(--surface)}
-.relay-configuration-view .relay-setup{max-width:680px}
+.relay-settings-panel{padding:var(--panel-padding);border:1px solid var(--line);border-radius:var(--radius-panel);background:var(--surface)}
+.relay-configuration-form{max-width:680px}.relay-configuration-view .relay-setup>*{max-width:680px}
 .relay-configuration-form h2{margin-bottom:var(--space-4)}
 .relay-configuration-form .relay-actions{justify-content:flex-end;margin-top:var(--space-4)}
 .relay-configuration-form .dialog-advanced{margin-top:var(--space-4)}

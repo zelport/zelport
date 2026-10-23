@@ -78,3 +78,11 @@ test('global and relay navigation keep distinct responsive visual grammars',()=>
  assert.match(shell,/\.module-heading\{[^}]*flex-direction:column/);assert.match(shell,/\.module-actions\{[^}]*width:100%/);assert.match(shell,/\.module-toolbar:has\(\.relay-view-nav\)\{[^}]*grid-template-columns:minmax\(0,1fr\)auto/);
  assert.match(relay,/@media\(max-width:720px\)\{[^}]*\.relay-view-nav\{[^}]*min-width:0[^}]*flex:1/);assert.match(relay,/\.relay-view-button\{[^}]*min-height:44px/);
 });
+
+test('relay configuration panels share the overview frame while forms keep a readable width',()=>{
+ const relay=readFileSync(new URL('../internal/modules/ports_over_relay/assets/style.css',import.meta.url),'utf8').replace(/\s+/g,'');
+ const settingsPanel=relay.match(/\.relay-settings-panel\{([^}]*)\}/)?.[1]||'',setupPanel=relay.match(/\.relay-configuration-view\.relay-setup\{([^}]*)\}/)?.[1]||'';
+ assert.doesNotMatch(settingsPanel,/max-width:/);assert.doesNotMatch(setupPanel,/max-width:/);
+ assert.match(relay,/\.relay-configuration-form\{[^}]*max-width:680px/);
+ assert.match(relay,/\.relay-configuration-view\.relay-setup>\*\{[^}]*max-width:680px/);
+});
