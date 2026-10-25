@@ -28,8 +28,8 @@ rejected; Zelport does not import or rewrite earlier schemas.
 Writes are atomic and owner-only. Route UUIDs survive edits, and concurrent
 changes are rejected instead of silently overwriting one another.
 
-Service sources are visible in navigation by default, including experimental
-sources. Settings → Module UI availability controls visibility only.
+Service sources are visible in Sources and Add service by default, including
+experimental sources. Settings → Sources in Add service controls visibility only.
 Explicit choices in `module_availability` survive restarts. Showing a source does
 not enable its connections, sharing or listeners.
 
@@ -42,7 +42,7 @@ default `8090`.
 
 ## Ports over SSH
 
-Ports over SSH has Overview and Configuration views. The configuration file path
+The Ports over SSH source page holds its configuration. The configuration file path
 is stored under `modules.ports_over_ssh.ssh_config_path`. Leave it blank for
 `~/.ssh/config`, or enter an absolute path or a path beginning with `~/`.
 Paths containing `%` are unsupported because OpenSSH versions interpret them differently.

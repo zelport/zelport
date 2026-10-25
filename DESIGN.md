@@ -71,12 +71,12 @@ Local, remote, SSH and relay sources adapt external web services to the same
 route and lease model. System SSH remains an optional runtime dependency and is
 never bundled.
 
-The Local Ports service list fetches one listener inventory for its configured
-ports and refreshes it in the background while visible. It shows process details
-and a non-loopback warning from listener data. It shows the neutral no-listener
-indicator only after a successful discovery. Unavailable discovery is not
-evidence that a listener disappeared.
-Per-service Edit and Remove actions live in the row's actions menu.
+Services is the only service list. Local Ports fetches one listener inventory
+for its configured ports and refreshes it in the background while Services is
+visible. Its Status reports Listening, No listener or a non-loopback warning
+only after a successful discovery. Unavailable discovery is not evidence that a
+listener disappeared. Per-service Open, Edit and Remove actions live in the
+row's actions menu. Source pages hold source configuration only.
 
 Ports over Relay owns client identity, encrypted catalogs, peer sessions,
 imports and remote administration. Built-in Relay owns relay listeners and

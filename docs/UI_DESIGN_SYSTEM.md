@@ -40,7 +40,7 @@ secrets and raw diagnostics, not ordinary service names.
 `.service` is the shared service row used by source modules and imported services.
 `.local-service-list` is its bordered surface; `.services` is its borderless variant
 inside a resource accordion. `.data-table` supplies the same visual rules for
-Dashboard and relay catalog tables. They share tokens rather than forcing a table
+Services and relay catalog tables. They share tokens rather than forcing a table
 and a list into the same DOM semantics.
 
 - One outer surface, one subtle separator between adjacent rows.
@@ -73,23 +73,17 @@ A compact row can grow for touch targets; fixed-height rows must not clip conten
 Focus indication is visible for keyboard navigation. Active text fields may use a
 focus-within border. Never remove focus feedback without an equivalent indicator.
 
-### Add service chooser
+### Add service
 
-The Dashboard has one Add service action. It opens a shell owned dialog that asks
-Where does the service run. The choices are This computer and Development server.
-This computer opens the Local Ports form. Development server opens the Ports over
-SSH form. Both choices explain their matching source and SSH requirements.
-Remote HTTP and Ports over Relay appear under Other service sources. Remote HTTP
-opens its form; Ports over Relay opens its configuration.
-
-Keep an unavailable choice visible and disabled with a short reason. Do not copy
-module fields into the chooser. The selected module owns its form, validation,
-persistence and runtime status. Escape and the close action restore focus to Add
-service. Selecting a source opens its form over the original page. Back returns
-to the chooser and retains raw field values, selection and expanded details for
-each source. Cancel and Escape leave the original page unchanged. Only a
-successful save navigates to the selected source. Unchanged polling must preserve the open chooser, an open service form,
-focus and draft values. Verify the dialog at 320 and 390 pixels.
+Services has one Add service action. It opens a single form: the Source choice
+(Local Ports, Ports over SSH, Remote HTTP, Ports over Relay) sits at the top as a
+two-column radio group, followed by the selected source's fields. Changing the
+source reopens the form for that source and keeps the typed address. Ports over
+Relay opens its source page, where shared services are imported from connected
+devices. Hidden sources are not offered. The selected module owns its fields,
+validation, persistence and runtime status. Escape and Cancel leave the page
+unchanged; a successful save returns to Services. Unchanged polling preserves the
+open form, focus and draft values. Verify the dialog at 320 and 390 pixels.
 
 Local Ports and SSH discovery pickers provide case-insensitive search and explicit
 Use/Selected actions. Searching never changes the manual target, and Enter in a
@@ -99,22 +93,30 @@ over SSH accepts a valid configuration without requiring a successful connection
 The development server must be reachable through the existing system SSH setup
 when the user expects the service to become available.
 
-The empty Dashboard explains how a service port becomes a named localhost
-address. Its **Zelport runtime** disclosure starts expanded on desktop and
-collapsed at 720px and below; subsequent toggles remain under user control.
-The panel keeps Version, Hostname, Configuration,
-Listeners and Modules in one row. Modules uses a compact count button whose
-non-modal popover lists the included module names and maturity. Runtime facts
-become a two-column grid at intermediate widths and one column on mobile; the
-Modules field spans both intermediate columns. Build time and uptime are not
-shown in this panel. Configuration paths and listener values wrap or scroll
-within their own cells without widening the page.
+### Services
 
-Service Overview empty states and relay onboarding share the same full-width
-card, padding, centered text and centered action below the message. Messages
-use the entire inner card width and wrap naturally, without a character-width
-limit. Relay onboarding uses the same message-and-action layout without an
-additional heading. The single empty-state action is the primary next step.
+Services is the only list of services. The table has fixed columns: Address,
+Source, Target, Status and the row menu (Open, Edit, Remove). Every row is one
+line; long values truncate with an ellipsis. Status shows a dot or the shared
+warning glyph with a short label (Listening, Configured, Available, No listener,
+Exposed, Unencrypted, Unreachable, Unavailable). Its detail is a tooltip on the
+label, never a second line. At 720px and below each service becomes a list item
+with address, source, target and status on separate single lines; the status
+detail follows the label on its line. The empty state is one short sentence.
+
+### Sources and Settings
+
+Sources shows one card per visible source in a two-column grid: name, maturity,
+service count and key facts. Configure has a fixed bottom-left position on every
+card. A source page has a breadcrumb back to Sources, the source title and its
+configuration form (at most 720px wide); Ports over Relay adds its device catalog
+below the form. Source pages never repeat the service list.
+
+Settings contains Built-in Relay, Sources in Add service and About. Sources in Add
+service controls visibility only; hidden sources keep their services running.
+About keeps Version, Hostname, Configuration, Listeners and Modules in one row.
+Modules uses a compact count button whose non-modal popover lists the included
+module names and maturity. Build time and uptime are not shown.
 
 ## Layers, feedback and lifecycle
 
@@ -172,50 +174,33 @@ gallery. A passing DOM test does not prove visual consistency or accessibility.
 
 ## Primary navigation
 
-The shell exposes Dashboard, Services and Settings at every width. The three
-destinations remain visible and left aligned with a consistent gap; they never
-collapse into a hamburger or spread across the available row. All service sources, including experimental ones, appear in navigation by default;
-explicit saved choices take precedence. This changes visibility only, not module
-connections, sharing or listeners. Services is a
-navigation disclosure containing enabled source modules, with flask icons for experimental modules. The icons have native Experimental
-tooltips; button accessible names also include the maturity. The current module
-heading repeats the same icon and accessible maturity label. Pointer opening keeps
-focus on Services; keyboard opening focuses the current module. Navigation keyboard
-focus uses a thin rounded outline and a soft background. The selected module highlights Services and its
-own menu item, and appears as a heading above the module content. Refresh remains
-at the right of the toolbar. The disclosure supports arrows, Home/End, Escape,
-outside click and focus return; ordinary Tab navigation remains available.
+The header holds the logo and three destinations: Services, Sources and Settings.
+They remain visible and left aligned at every width; below 480px the logo shows
+only its symbol. They never collapse into a hamburger. The current destination
+uses the accent underline; a source page highlights Sources. Generic navigation
+buttons use aria-current rather than tab semantics. The logo links to
+`#dashboard` (Services) without reloading the application.
 
-Module hashes, history and lifecycle remain unchanged. Settings still owns embedded
-relay hosting and module UI availability. With no available source modules, Services
-is disabled. Generic navigation buttons use aria-current rather than tab semantics.
-
-The header brand links to `#dashboard` within the current document. Returning home
-must not reload the application or rebuild the navigation.
+The header shows a relay indicator only for a configured relay connection or an
+enabled Built-in Relay. In remote administration a Remote · E2E label replaces it.
 
 Relay connection status distinguishes Not configured, Disabled, Connecting,
-Connected and Connection failed. First-use and disabled overviews show guidance
-and a configuration action. Header Open settings selects Configuration directly.
-Relay setup, configuration and onboarding use the full content width of their
-panels, matching Settings. Do not constrain their fields to a narrower column.
-The E2E field groups Reveal, Copy and Change (edit icon) when a secret is stored;
-Change becomes Generate (shuffle icon) while editing. Generation remains an
-unsaved draft. Reveal/Copy are disabled for an empty draft. Instructions wrap
-outside secret inputs; no separate action row sits beneath the field.
+Connected and Connection failed. The E2E field groups Reveal, Copy and Change
+(edit icon) when a secret is stored; Change becomes Generate (shuffle icon) while
+editing. Generation remains an unsaved draft. Reveal/Copy are disabled for an
+empty draft.
 
-Every module exposes Overview and Configuration as a shared segmented control in
-the module heading. This local control uses a filled selected segment instead of
-repeating the global underline grammar. On wide layouts it sits to the right of
-the module title and maturity badge. At 720px and below the heading stacks, the
-control stays aligned to the right on its own row, icon actions sit beside the
-module title above it, and both
-segments keep equal widths with a minimum 44px touch target. The title and maturity badge may
-wrap without overlapping the actions. Review this layout at 720px, 390px and
-320px and require no horizontal scrolling.
+## Layout rhythm
 
-Built-in Relay Overview owns its live listener and client status. Configuration
-contains editable settings only and keeps Discard changes / Save settings aligned
-to the right like the other configuration forms.
+Tokens in `app.css` define every dimension: header 72px, page heading row 104px
+with a 28px title, table header 40px, table rows 56px, controls 40px (44px on
+touch), 24px card padding and grid gaps, 12px radius on surfaces and 8px on
+controls. Do not introduce one-off sizes in modules.
+
+Text buttons start a task, change data or navigate: Add service, Configure, Save,
+Discard, Remove, Cancel. Icon-only buttons are reserved for repeated, universally
+understood actions in tight spaces (row menu, close, field adornments) and always
+have an accessible name and the shared tooltip. There is no gear icon.
 
 ## Shared JavaScript components
 
@@ -245,44 +230,20 @@ These helpers require no external library, CDN or frontend build. New source
 modules should compose them instead of duplicating interaction handlers.
 
 
-## Ports over SSH views
+## Source configuration forms
 
-Ports over SSH uses Overview and Configuration in its module heading, with the
-same shared component and selected-segment language as the other modules. Its
-content CSS is owned by the SSH module. Overview keeps service creation and the service list;
-Configuration uses full-width panels and hides Add service. Narrow headings keep
-icon actions beside the title above the segmented control without horizontal scrolling.
-Keep this form compact: one path field, one default-path hint, and editor and
-save actions. Edit file and host refresh are adornments of the
-path field; Discard changes / Save settings remain in a right-aligned footer. Avoid repeated section headings and instructional
-paragraphs. Show file status only when the file is missing. Do not attach a
-tooltip to the path input: automatic focus must not cover its label. The web
-editor shows the resolved saved path.
+Every source page uses `moduleViews(ctx, {configuration, overview, overviewPlacement})`.
+Configuration is always visible. `overviewPlacement` is `hidden` (default),
+`before` (Built-in Relay runtime status) or `after` (Ports over Relay catalog).
+The module toolbar holds only content-specific actions such as Refresh catalog.
 
-The SSH configuration path remains a draft until saved. Polling preserves that
-draft and conflicts require explicit retry or discard. Edit file opens the saved
-file in the shared web editor, locally or remotely. It is disabled while settings
-are dirty or an action is pending. Show a concise save/discard hint for drafts.
-
-## Shared module views
-
-Use `moduleViews(ctx, {overview, configuration, onChange})` for every module.
-The helper owns navigation and a separate actions slot. Module header switches
-share a 260 px width and the same right content edge. Overview actions come
-before the switch on desktop and below it on narrow screens. Hide actions in
-Configuration. Creation uses an accessible plus icon, with the label Add service.
-Local Ports leaves Configuration empty until settings exist. Remote HTTP uses a
-compact form for an additional CA bundle and outbound proxy, with authentication
-fields in a disclosure. Proxy passwords are write-only and never refilled by polling.
-Built-in Relay keeps its Settings placement, showing runtime state in Overview
-and its existing form in Configuration. View switches preserve drafts and clear
-revealed credentials when leaving configuration.
-
-Remote HTTP shows the platform default `additional-ca.pem` as the CA field's
-placeholder. CA actions are Edit file and Reload certificates, grouped
-inside that field’s InputAdornment. Editor reasons are visible only when relevant. Editing works locally and remotely, uses the saved path and is blocked by unsaved/pending changes. Reload
-refreshes saved certificate validation while preserving proxy/password drafts.
-
+Forms stay compact: fields, a one-line hint where needed and a right-aligned
+Discard / Save footer. Ports over SSH has one path field with Edit file and host
+refresh adornments and shows file status only when the file is missing. Remote
+HTTP has the additional CA bundle (Edit file, Reload certificates) and an outbound
+proxy with authentication in a disclosure; proxy passwords are write-only. Local
+Ports has Automatic port detection, Ignored ports and Ignored processes. Drafts
+survive polling and navigation; conflicts require explicit retry or discard.
 
 ### Configuration file editor
 
@@ -292,21 +253,6 @@ to 960px, keeps text scrollable in narrow/short viewports and inherits theme
 colors. Keep drafts through polling, errors and conflicts. A dirty close asks
 for explicit discard. Save uses the loaded file version/revision, never the
 latest polled revision. Do not preload file contents into module state.
-
-
-Selecting a source from Services always opens Overview, including selecting the
-current source again and returning through browser history. Configuration is an
-explicit action; its draft survives navigation and polling. Source modules expose
-`openOverview()` so the shell resets only their selected view on navigation.
-Settings sections retain their own disclosure behavior.
-
-
-Local Ports Configuration uses one compact form: Automatic port detection,
-Ignored ports and Ignored processes, with Discard changes / Save settings.
-Ignore lists remain editable while detection is off. A disabled picker explains
-that manual ports still work and does not display stale suggestions. Filters do
-not remove indicators from configured services; disabled discovery withholds
-unverified indicators. Keep drafts, focus, selection and search through polling.
 
 
 Tooltips size to their text up to 300px and use a bordered pointer aimed at the
@@ -323,31 +269,28 @@ action explanations visible in the form rather than repeating them in tooltips.
 
 ## Audit consistency rules
 
-Dashboard displays existing route diagnostics and module-provided listener
-observations beneath the target. Cached observations say “Last detected” and
-are invalidated after changed discovery settings/routes or a failed lookup.
-Dashboard rendering must not start extra health probes.
+Services displays route diagnostics and module-provided listener observations
+in the Status column. Local Ports keeps its listener inventory active while
+Services is visible so Status can say Listening or No listener; observations are
+invalidated after changed discovery settings/routes or a failed lookup. Services
+does not start network health probes.
 
-All configuration forms enable Save settings and Discard changes only when
+All configuration forms enable Save and Discard only when
 values differ from saved settings. Reverting an edit returns to the clean state,
 including edits made while a save is pending. Discard restores saved values
 without requiring a network reload.
 
-Removal confirmation identifies the service, explains that only the mapping is
-removed, and ends with a shared Cancel / Remove footer. Close controls never
+Removal confirmation identifies the service, says the service itself keeps
+running, and ends with a shared Cancel / Remove footer. Close controls never
 shrink below 44 by 44 pixels.
 
 Escape is consumed by a tooltip only while that tooltip is visible. Otherwise
 it reaches the enclosing dialog or popover. Popover-trigger focus waits until
 the native transition completes before considering a tooltip.
 
-### Shared relay catalog and dashboard warnings
+### Shared relay catalog
 
 A provider card lists source service addresses including that provider's Zelport
 port and the Imported / Not imported state. One plus icon in the device header
 opens import; multiple services use a labelled service chooser. Service rows
 have no creation buttons. Repeated import proposes an unused local domain.
-The Dashboard places the shared warning triangle and tooltip in the Actions
-cell, immediately before the row menu, for HTTP and disabled TLS verification
-warnings. Keep diagnostic details
-available to keyboard and pointer users without expanding every table row.
