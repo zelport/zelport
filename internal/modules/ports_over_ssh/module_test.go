@@ -44,8 +44,13 @@ func TestConfiguredHostsEndpointReturnsAliasesOnly(t *testing.T) {
 }
 
 func TestPrimaryDevelopmentServerFlowIsAvailableByDefault(t *testing.T) {
-	if descriptor := New().Descriptor(); !descriptor.DefaultEnabled {
-		t.Fatalf("Ports over SSH must be available in the first use chooser: %+v", descriptor)
+	manager, err := app.New(filepath.Join(t.TempDir(), "config.json"), 8080, New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer manager.Close()
+	if !manager.Availability()["ports_over_ssh"].Enabled {
+		t.Fatal("Ports over SSH must be available in the first use chooser")
 	}
 }
 

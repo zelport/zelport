@@ -7,7 +7,7 @@
 <style>.gallery{max-width:1100px;margin:auto;padding:24px 16px}.gallery>section{margin:24px 0}.gallery h2{margin-bottom:16px}.gallery-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}.navigation-preview{padding:0 20px 28px;border:1px solid var(--line);border-radius:var(--radius-panel)}.navigation-preview>.module-heading .module-title{margin:0}.navigation-preview-content{height:120px;border:1px solid var(--line);border-radius:var(--radius-panel);background:var(--surface)}</style>
 <main class="gallery"><h1>Component gallery</h1><p>Isolated sample data. No application API calls.</p>
 <div class="gallery-controls"><button id="light" class="secondary">Light</button><button id="dark" class="secondary">Dark</button><button id="dialog" class="secondary">Open editor</button></div>
-<section><h2>Navigation hierarchy</h2><div class="navigation-preview"><div class="toolbar tabs-toolbar"><nav class="primary-navigation" aria-label="Navigation"><button class="navigation-item">Dashboard</button><div class="services-navigation"><button class="services-trigger" data-selected="true">Services ▾</button></div><button class="navigation-item">Settings</button></nav></div><div class="module-heading"><h2 class="module-title">Ports over Relay <span class="badge maturity-experimental">Experimental</span></h2><div class="module-actions"><div class="module-toolbar"><nav class="relay-view-nav" aria-label="Ports over Relay views"><button class="relay-view-button" aria-current="page">Overview</button><button class="relay-view-button" aria-current="false">Configuration</button></nav><button class="module-action-icon refresh-icon" aria-label="Refresh catalog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2 6"/></svg></button></div></div></div><div class="navigation-preview-content"></div></div></section>
+<section><h2>Navigation hierarchy</h2><div class="navigation-preview"><div class="toolbar tabs-toolbar"><nav class="primary-navigation" aria-label="Navigation"><button class="navigation-item">Dashboard</button><div class="services-navigation"><button class="services-trigger" data-selected="true">Services ▾</button></div><button class="navigation-item">Settings</button></nav></div><div class="module-heading"><h2 class="module-title">Ports over Relay <span class="badge maturity-experimental">Experimental</span></h2><div class="module-actions"><div class="module-toolbar"><div class="module-view-actions"><button class="module-action-icon refresh-icon" aria-label="Refresh catalog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M20 12a8 8 0 1 0-2 6"/></svg></button></div><nav class="module-view-nav" aria-label="Ports over Relay views"><button class="module-view-button" aria-current="page">Overview</button><button class="module-view-button" aria-current="false">Configuration</button></nav></div></div></div><div class="navigation-preview-content"></div></div></section>
 <section><h2>Service table</h2><div class="dashboard-table-wrap"><table class="data-table"><thead><tr><th scope="col">Domain</th><th scope="col">Target</th><th scope="col">State</th><th scope="col">Actions</th></tr></thead><tbody id="table-body"></tbody></table></div></section>
 <section><h2>Module service list</h2><div class="local-service-list" id="services"></div></section>
 <section><details class="resource"><summary><strong>Resource accordion</strong><span class="badge status-badge" data-tone="ok">running</span></summary><div class="services" id="nested"></div></details></section>
@@ -16,6 +16,7 @@
 <section><h2>Diagnostics</h2><div class="discovery-error"><details><summary>SSH connection failed</summary><pre>Connection refused by the development server.
 Raw command output stays selectable.</pre></details></div></section>
 <section data-module="ports_over_relay"><h2>Catalog table</h2><div class="relay-provider"><table class="data-table relay-services-table"><thead><tr><th scope="col">Domain</th><th scope="col">Localhost port</th><th scope="col">Actions</th></tr></thead><tbody><tr><td data-label="Domain">long-catalog-service.example.localhost</td><td data-label="Localhost port">8080</td><td data-label="Actions"><button class="secondary" disabled>Import</button></td></tr></tbody></table></div></section>
+<section><h2>Field actions</h2><div id="field-actions"></div></section>
 </main><script type="module">
 import * as ui from '../../internal/web/assets/ui.js';
 const {$}= { $:id=>document.getElementById(id) };
@@ -25,6 +26,15 @@ for(const [domain,target,state] of examples){const row=ui.el('tr');for(const [la
 function service(parent,example){const row=ui.el('div','service'),[domain,target]=example,name=ui.el('div'),actions=ui.el('div','service-actions');name.append(ui.el('span',null,domain));actions.append(ui.button('Edit',edit),ui.button('Remove',()=>{},'text-button'));row.append(name,ui.el('div','target-address',target),actions);parent.append(row);}
 examples.forEach(e=>service($('services'),e));service($('nested'),examples[0]);for(const id of ['services','nested'])$(id).append(ui.button('+ Add service',edit));
 $('settings').append(ui.switchField('Enable feature',true).wrap,ui.field('Port','8090','number').wrap);$('dialog').onclick=edit;
+for(const [label,value,actions] of [
+ ['E2E secret','Stored secret',[['Reveal E2E secret','eye'],['Copy E2E secret','copy'],['Change E2E secret','edit']]],
+ ['E2E secret draft','',[['Reveal E2E secret','eye'],['Copy E2E secret','copy'],['Generate E2E secret','shuffle']]],
+ ['SSH configuration file','~/.ssh/config',[['Edit file','edit'],['Refresh hosts','rotate']]],
+ ['Additional CA certificate file','~/.config/zelport/additional-ca.pem',[['Edit file','edit'],['Reload certificates','rotate']]]
+]){
+ const field=ui.adornedField(label,value,'text',{actions:actions.map(([name,icon])=>ui.adornmentButton(name,icon,()=>{}))});
+ $('field-actions').append(field.wrap);
+}
 // Preview actual dark-mode rules without changing OS preferences.
 const darkStyle=document.createElement('style');document.head.append(darkStyle);
 const theme=dark=>{darkStyle.textContent=dark?[...document.styleSheets].filter(s=>s!==darkStyle.sheet).flatMap(s=>[...s.cssRules].filter(r=>/prefers-color-scheme\s*:\s*dark/.test(r.conditionText||'')).map(r=>[...r.cssRules].map(x=>x.cssText).join('\n'))).join('\n'):'';document.documentElement.style.colorScheme=dark?'dark':'light';};

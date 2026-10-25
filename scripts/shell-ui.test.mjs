@@ -9,9 +9,9 @@ import {renderHeaderStatus as renderRuntimeHeaderStatus,renderAvailability as re
 function shell(){
  const elements=new Map(),dialogs=[];
  const element=id=>{if(!elements.has(id))elements.set(id,{hidden:false,textContent:'',children:[],setAttribute(){},removeAttribute(){},append(...children){for(const child of children){if(child.parentElement)child.parentElement.children=child.parentElement.children.filter(item=>item!==child);this.children.push(child);child.parentElement=this;}},querySelector(){return element('fallback')},querySelectorAll(){return []}});return elements.get(id)};
- const context={renderRuntimeHeaderStatus,renderRuntimeAvailability,document:{getElementById:element,body:element('body'),hidden:false,addEventListener(){},querySelectorAll(){return dialogs}},window:{addEventListener(){}},location:{hash:''},history:{pushState(){},replaceState(){}},clearTimeout(){},setTimeout(){},ui:{setText,renderChanged,el(){return {append(){}}}}};
+ const context={renderRuntimeHeaderStatus,renderRuntimeAvailability,document:{getElementById:element,body:element('body'),hidden:false,addEventListener(){},querySelectorAll(){return dialogs}},window:{addEventListener(){}},location:{hash:''},history:{pushState(){},replaceState(){}},clearTimeout(){},setTimeout(){},ui:{setTooltip(){},setText,renderChanged,el(){return {append(){}}}}};
  const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
- runInNewContext(source+`\nlet testRefresh=async()=>{};client={refresh:(force)=>testRefresh(force),mutate:async(work,{reportError=true}={})=>{const owner=active;message('',owner);try{const result=await work();await testRefresh(true);return result;}catch(e){if(reportError)message(e.message,owner);await testRefresh(true).catch(()=>{});throw e;}},state:()=>state};globalThis.shell={setRefreshControls(toolbar,button){fallbackToolbar=toolbar;fallbackRefresh=button},navigate,message,mutate,refreshVisible,setRefresh(fn){testRefresh=fn},renderAvailability,renderHeaderStatus,addModule(m){modules.set(m.descriptor.id,m)},setState(s){state=s},active(){return active}};`,context);
+ runInNewContext(source+`\ncomposed=true;let testRefresh=async()=>{};client={refresh:(force)=>testRefresh(force),mutate:async(work,{reportError=true}={})=>{const owner=active;message('',owner);try{const result=await work();await testRefresh(true);return result;}catch(e){if(reportError)message(e.message,owner);await testRefresh(true).catch(()=>{});throw e;}},state:()=>state};globalThis.shell={setRefreshControls(toolbar,button){fallbackToolbar=toolbar;fallbackRefresh=button},navigate,message,mutate,refreshVisible,setRefresh(fn){testRefresh=fn},renderAvailability,renderHeaderStatus,addModule(m){modules.set(m.descriptor.id,m)},setState(s){state=s},active(){return active}};`,context);
  return {...context.shell,dialogs,error:element('error'),settings:element('panel-settings'),moduleActions:element('module-actions'),moduleHeading:element('module-heading')};
 }
 
@@ -99,6 +99,20 @@ test('module status and runtime module popovers share one visual shell',()=>{
  assert.doesNotMatch(css,/\.connection-popover\{position:|\.runtime-modules-popover\{position:/);
 });
 
+test('remote administration uses a distinct page canvas in light and dark themes',()=>{
+ const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace(/\s+/g,'');
+ const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8').replace(/\s+/g,'');
+ assert.match(app,/document\.body\.dataset\.administration=state\.remote_admin\?'remote':'local'/);
+ assert.match(css,/body\[data-administration=remote\]\{background:#fff4f4\}/);
+ assert.match(css,/body\[data-administration=remote\]\{background:#211719\}/);
+});
+
+test('Settings keeps the concise module availability label without explanatory filler',()=>{
+ const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8');
+ assert.match(app,/ui\.accordion\('Module UI availability'\)/);
+ assert.doesNotMatch(app,/Choose which service sources|Changes apply immediately|source can be hidden/);
+});
+
 test('successful refresh clears a restart error on every tab',async()=>{
  const s=shell();s.navigate('settings');s.setRefresh(async()=>{throw Error('Failed to fetch')});
  await s.refreshVisible();assert.equal(s.error.hidden,false);
@@ -115,7 +129,7 @@ test('recovery preserves a form error even when it matches the refresh error',as
 
 test('fallback Refresh is shown only on the Dashboard',()=>{
  const node=()=>({hidden:false,children:[],append(...children){for(const child of children){if(child.parentElement)child.parentElement.children=child.parentElement.children.filter(item=>item!==child);this.children.push(child);child.parentElement=this;}},prepend(...children){this.append(...children);for(const child of children){this.children=this.children.filter(item=>item!==child);this.children.unshift(child);}},querySelector(selector){return this.children.find(child=>selector==='.refresh-icon'&&child.className?.includes('refresh-icon'))||null;}});
- const s=shell(),toolbar=node(),button={className:'module-action-icon refresh-icon',setAttribute(){}};toolbar.append(button);
+ const s=shell(),toolbar=node(),button={className:'module-action-icon refresh-icon',setAttribute(name,value){this[name]=value;}};toolbar.append(button);
  s.setRefreshControls(toolbar,button);
  s.navigate('dashboard');assert.equal(toolbar.hidden,false);assert.equal(button.disabled,false);
  s.navigate('settings');assert.equal(toolbar.hidden,true);assert.equal(button.parentElement,toolbar);
@@ -126,7 +140,7 @@ test('fallback Refresh is shown only on the Dashboard',()=>{
  s.addModule({descriptor:{id:'static',tab_id:'static'},panel:{},toolbar:staticToolbar});
  s.navigate('static');assert.equal(toolbar.hidden,true);assert.equal(button.disabled,true);assert.equal(staticToolbar.parentElement,s.moduleActions);
  assert.equal(button.parentElement,toolbar);assert.deepEqual(staticToolbar.children,[add]);
- assert.equal(button.title,'Nothing to refresh');
+ assert.equal(button['aria-label'],'Nothing to refresh');assert.equal(button.title,undefined);
  s.navigate('static');assert.equal(button.parentElement,toolbar);assert.deepEqual(staticToolbar.children,[add]);
  s.navigate('dashboard');assert.equal(button.parentElement,toolbar);assert.deepEqual(toolbar.children,[button]);assert.equal(s.moduleHeading.hidden,true);
 });
@@ -141,4 +155,23 @@ test('enabling a module refreshes the header action label without a reload',()=>
  s.addModule({descriptor:{id:'local_ports'},headerStatus(){return {status:'Available',tone:'ok',action:'Open module',rows:[]}},indicator});
  s.setState({states:{local_ports:{}},module_availability:{local_ports:{enabled:true}}});s.renderHeaderStatus();
  assert.equal(indicator.settings.textContent,'Open module');
+});
+
+
+test('header Open settings invokes module configuration after navigation',()=>{
+ const calls=[],make=()=>({children:[],dataset:{},style:{},addEventListener(){},setAttribute(){},append(...children){this.children.push(...children)},querySelectorAll(){return []},replaceChildren(){},hidePopover(){calls.push('closed')},matches(){return false}});
+ const module={descriptor:{id:'ports_over_relay',name:'Ports over Relay',tab_id:'relay'},headerStatus:()=>({status:'Not configured',tone:'neutral',rows:[]}),instance:{openSettings(){calls.push('configuration')}}},fallback=make(),host=make();host.querySelector=()=>fallback;
+ const ui={setTooltip:()=>({update(){},close(){}}),el:make,statusBadge:make,setText,renderChanged,button:(text,click)=>({...make(),click})};
+ renderRuntimeHeaderStatus({state:{states:{ports_over_relay:{}}},modules:new Map([['ports_over_relay',module]]),moduleEnabled:()=>true,navigate:id=>calls.push(id),ui,host,positionPopovers(){}});
+ module.indicator.settings.click();assert.deepEqual(calls,['closed','relay','configuration']);
+});
+
+test('entering or reselecting a service opens Overview while polling preserves Configuration',()=>{
+ const s=shell();let selected='configuration';const activated=[];
+ const m={descriptor:{id:'ssh',tab_id:'ssh'},panel:{},tab:{setAttribute(){}},instance:{openOverview(){selected='overview'},activate(){activated.push(selected)},deactivate(){}}};
+ s.addModule(m);s.setState({modules:[m.descriptor],module_availability:{ssh:{enabled:true}}});
+ s.navigate('ssh');assert.equal(selected,'overview');assert.deepEqual(activated,['overview']);
+ selected='configuration';s.renderAvailability();assert.equal(selected,'configuration');
+ s.navigate('dashboard');s.navigate('ssh',false);assert.equal(selected,'overview');
+ selected='configuration';s.navigate('ssh');assert.equal(selected,'overview');
 });

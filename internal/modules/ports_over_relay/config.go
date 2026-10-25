@@ -26,6 +26,7 @@ type Settings struct {
 	Publish         bool                    `json:"publish"`
 	RelayURL        string                  `json:"relay_url,omitempty"`
 	AccessToken     string                  `json:"access_token,omitempty"`
+	GroupSecret     string                  `json:"group_secret,omitempty"`
 	GroupToken      string                  `json:"group_token,omitempty"`
 	DeviceID        string                  `json:"device_id,omitempty"`
 	PrivateKey      string                  `json:"private_key,omitempty"`
@@ -53,7 +54,7 @@ func (m *Module) ValidateSettings(b json.RawMessage) error {
 	if e := feature.Decode(b, &s); e != nil {
 		return e
 	}
-	established := s.ProtocolVersion != 0 || s.AdminServiceID != "" || len(s.Peers) != 0 || s.Enabled || s.Publish || s.RelayURL != "" || s.AccessToken != "" || s.GroupToken != "" || s.DeviceID != "" || s.PrivateKey != "" || s.Sequence != 0 || len(s.Watermarks) != 0
+	established := s.ProtocolVersion != 0 || s.AdminServiceID != "" || len(s.Peers) != 0 || s.Enabled || s.Publish || s.RelayURL != "" || s.AccessToken != "" || s.GroupToken != "" || s.GroupSecret != "" || s.DeviceID != "" || s.PrivateKey != "" || s.Sequence != 0 || len(s.Watermarks) != 0
 	if established {
 		if s.ProtocolVersion != protocol.Version {
 			return errors.New("Relay protocol_version must be 1. Create a fresh Ports over Relay configuration.")
@@ -65,18 +66,27 @@ func (m *Module) ValidateSettings(b json.RawMessage) error {
 			return errors.New("The relay private identity is invalid. Restore the configuration backup.")
 		}
 		if _, e := protocol.DecodeKey(s.GroupToken); e != nil {
-			return errors.New("E2E secret must contain 32 random bytes")
+			return errors.New("The stored E2E key is invalid. Enter the shared secret again.")
+		}
+		if s.GroupSecret != "" {
+			token, err := m.groupToken(s.GroupSecret)
+			if err != nil {
+				return err
+			}
+			if token != s.GroupToken {
+				return errors.New("The stored E2E secret and key do not match. Enter the shared secret again.")
+			}
 		}
 		if !protocol.ValidID(s.AdminServiceID) || s.AdminServiceID == s.DeviceID {
 			return errors.New("invalid administration service identity")
 		}
 	}
-	if s.AccessToken != "" && s.AccessToken == s.GroupToken {
+	if s.AccessToken != "" && (s.AccessToken == s.GroupToken || s.AccessToken == s.GroupSecret) {
 		return errors.New("relay access token and E2E secret must be different")
 	}
 	if s.AccessToken != "" {
 		if _, e := protocol.DecodeKey(s.AccessToken); e != nil {
-			return errors.New("relay access token must contain 32 random bytes")
+			return errors.New("Paste the relay access token from the relay server.")
 		}
 	}
 	if s.RelayURL != "" {

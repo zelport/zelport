@@ -260,6 +260,29 @@ func TestInvalidSettingsAndMissingModule(t *testing.T) {
 	}
 }
 
+func TestRelayPortDefaultsAndSavedValues(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		raw  string
+		want int
+	}{
+		{"new settings", `{}`, 8070},
+		{"omitted port", `{"enabled":false}`, 8070},
+		{"saved previous default", `{"port":8090}`, 8090},
+		{"saved custom port", `{"port":9080}`, 9080},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := settings(json.RawMessage(tc.raw))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if s.Port != tc.want {
+				t.Fatalf("Port = %d, want %d", s.Port, tc.want)
+			}
+		})
+	}
+}
+
 func TestAccessTokenProtectionUsesOnlySavedValue(t *testing.T) {
 	for _, tc := range []struct {
 		name string

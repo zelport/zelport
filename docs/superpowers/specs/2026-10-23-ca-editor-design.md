@@ -1,0 +1,9 @@
+# Default additional CA file and terminal editing
+
+Blank Remote HTTP ca_cert_path selects additional-ca.pem beside the platform userpaths.Config() default configuration file, independently of --config. Missing default file means system trust only. An existing invalid default file, including empty files or dangling symlinks, fails closed. Explicit paths remain strict. Runtime path failures remain recoverable and do not block configuration-only validation.
+
+State includes default_ca_cert_path, default_ca_cert_display_path, effective_ca_cert_path, editor_available and editor_error. The UI shows the platform default as its placeholder and offers Edit in terminal and Reload certificates beneath the CA field. Keep text compact. Editing is disabled for unsaved fields, pending work, unavailable launchers and remote administration, with a visible reason. Invalid PEM must remain editable. Reload uses the existing refresh/state path and never saves a draft.
+
+POST /api/modules/remote_http/edit-ca accepts revision only. It opens only the saved effective path, behind exact localhost authority and core Origin/CSRF. Serialize with settings commits and reject stale/future revisions. Reuse internal/terminal. Create missing parent directories owner-only, but do not create or rewrite the target file: opening an absent default file must not install an empty invalid trust bundle. Existing bytes and modes remain unchanged. The editor creates the file only on explicit user save. Subsequent connections read changes, and Reload certificates refreshes current validation.
+
+Tests use isolated HOME/XDG directories, synthetic certificates and injected launch functions; never edit the user's actual default CA file. Preserve existing proxy secrets, route scopes, stream lifecycle, configuration drafts and module boundaries.

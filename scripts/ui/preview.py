@@ -14,7 +14,8 @@ root = Path(__file__).resolve().parents[2]
 assets = ["scripts/ui/design-system.html", "internal/web/assets/app.css",
           "internal/web/assets/ui.js", "internal/web/assets/ui-dom.js",
           "internal/web/assets/ui-forms.js", "internal/web/assets/ui-dialogs.js",
-          "internal/web/assets/ui-services.js", "internal/modules/built_in_relay/assets/style.css",
+          "internal/web/assets/ui-services.js",
+        "internal/web/assets/ui-module-views.js", "internal/web/assets/ui-file-editor.js", "internal/modules/built_in_relay/assets/style.css",
           "internal/modules/ports_over_relay/assets/style.css"]
 with TemporaryDirectory(prefix="zelport-ui-") as directory:
     for name in assets:

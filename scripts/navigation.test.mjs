@@ -10,7 +10,7 @@ class Node {
  setAttribute(k,v){this.attrs[k]=v;}
  getAttribute(k){return this.attrs[k];}
  removeAttribute(k){delete this.attrs[k];}
- addEventListener(k,v){this.events[k]=v;}
+ addEventListener(k,v){const previous=this.events[k];this.events[k]=previous?event=>{previous(event);v(event);}:v;}
  removeEventListener(){}
  getBoundingClientRect(){return {width:this.width};}
  querySelectorAll(){return this.children;}
@@ -67,22 +67,21 @@ test('pointer opening does not move focus into the Services menu',()=>{
  assert.equal(tabs.children[0],dashboard);assert.equal(tabs.children.at(-1),settings);nav.dispose();
 });
 
-test('global and relay navigation keep distinct responsive visual grammars',()=>{
- const shell=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8').replace(/\s+/g,''),relay=readFileSync(new URL('../internal/modules/ports_over_relay/assets/style.css',import.meta.url),'utf8').replace(/\s+/g,'');
- const primary=shell.match(/\.primary-navigation\{([^}]*)\}/)?.[1]||'',relayNav=relay.match(/\.relay-view-nav\{([^}]*)\}/)?.[1]||'',selected=relay.match(/\.relay-view-button\[aria-current=page\]\{([^}]*)\}/)?.[1]||'';
+test('global navigation and shared module views keep distinct responsive visual grammars',()=>{
+ const shell=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8').replace(/\s+/g,'');
+ const primary=shell.match(/\.primary-navigation\{([^}]*)\}/)?.[1]||'',moduleNav=shell.match(/\.module-view-nav\{([^}]*)\}/)?.[1]||'',selected=shell.match(/\.module-view-button\[aria-current=page\]\{([^}]*)\}/)?.[1]||'';
  assert.match(primary,/justify-content:flex-start/);assert.match(primary,/gap:24px/);
  assert.match(shell,/@media\(max-width:480px\)\{[^}]*\.primary-navigation\{[^}]*gap:16px/);
  assert.match(shell,/@media\(max-width:360px\)\{[^}]*\.primary-navigation\{[^}]*gap:12px/);
- assert.match(relayNav,/display:grid/);assert.match(relayNav,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);assert.doesNotMatch(relayNav,/border-bottom/);
+ assert.match(moduleNav,/display:grid/);assert.match(moduleNav,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);assert.match(moduleNav,/width:260px/);
  assert.match(selected,/background:var\(--surface\)/);assert.match(selected,/box-shadow:/);assert.doesNotMatch(selected,/border-bottom/);
- assert.match(shell,/\.module-heading\{[^}]*flex-direction:column/);assert.match(shell,/\.module-actions\{[^}]*width:100%/);assert.match(shell,/\.module-toolbar:has\(\.relay-view-nav\)\{[^}]*grid-template-columns:minmax\(0,1fr\)auto/);
- assert.match(relay,/@media\(max-width:720px\)\{[^}]*\.relay-view-nav\{[^}]*min-width:0[^}]*flex:1/);assert.match(relay,/\.relay-view-button\{[^}]*min-height:44px/);
+ assert.match(shell,/\.module-heading\{[^}]*flex-direction:column/);assert.match(shell,/\.module-actions\{[^}]*width:100%/);
+ assert.match(shell,/\.module-view-nav\{grid-column:1\/-1;grid-row:2;justify-self:end/);assert.match(shell,/\.module-view-actions\{grid-column:2;grid-row:1;justify-self:end/);assert.match(shell,/\.module-view-button\{[^}]*min-height:44px/);
 });
 
-test('relay configuration panels share the overview frame while forms keep a readable width',()=>{
+test('relay configuration panels and fields use the full available width',()=>{
  const relay=readFileSync(new URL('../internal/modules/ports_over_relay/assets/style.css',import.meta.url),'utf8').replace(/\s+/g,'');
  const settingsPanel=relay.match(/\.relay-settings-panel\{([^}]*)\}/)?.[1]||'',setupPanel=relay.match(/\.relay-configuration-view\.relay-setup\{([^}]*)\}/)?.[1]||'';
  assert.doesNotMatch(settingsPanel,/max-width:/);assert.doesNotMatch(setupPanel,/max-width:/);
- assert.match(relay,/\.relay-configuration-form\{[^}]*max-width:680px/);
- assert.match(relay,/\.relay-configuration-view\.relay-setup>\*\{[^}]*max-width:680px/);
+ for(const selector of [String.raw`\.relay-configuration-form`,String.raw`\.relay-configuration-view\.relay-setup>\*`,String.raw`\.relay-setup>\.form-field`,String.raw`\.relay-onboarding`])assert.doesNotMatch(relay,new RegExp(`${selector}\\{[^}]*max-width:`));
 });

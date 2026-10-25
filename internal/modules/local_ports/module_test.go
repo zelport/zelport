@@ -43,6 +43,11 @@ func TestLocalApplicationResponse(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
+	rev, _ := m.Snapshot()
+	raw, _ := json.Marshal(map[string]any{"revision": rev, "discovery_enabled": false, "ignored_ports": []string{strconv.Itoa(n)}, "ignored_processes": []string{}})
+	if response := discoveryRequest(m.Module("local_ports").(*Module), "PUT", "/settings", string(raw)); response.Code != 200 {
+		t.Fatalf("disable discovery: %d %s", response.Code, response.Body)
+	}
 	r := httptest.NewRequest("GET", "http://demo.localhost:8080/x?q=1", nil)
 	w := httptest.NewRecorder()
 	m.ServeHTTP(w, r)
@@ -83,7 +88,7 @@ func TestListenerEndpointReturnsOnlyRuntimeIndependentFields(t *testing.T) {
 	if response.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("Cache-Control = %q", response.Header().Get("Cache-Control"))
 	}
-	want := "{\"listeners\":[{\"port\":3000,\"processes\":[],\"listens_beyond_loopback\":true}]}\n"
+	want := "{\"listeners\":[{\"port\":3000,\"processes\":[],\"listens_beyond_loopback\":true}],\"configured_listeners\":[],\"discovery_enabled\":true}\n"
 	if response.Body.String() != want {
 		t.Fatalf("body = %q, want %q", response.Body.String(), want)
 	}
@@ -105,7 +110,7 @@ func TestListenersAPIReturnsSafeUnavailableResponse(t *testing.T) {
 	if response.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusServiceUnavailable)
 	}
-	if body := response.Body.String(); body != "{\"error\":\"Listening ports couldn't be detected. Enter the Aux port manually.\"}\n" || strings.Contains(body, "secret") {
+	if body := response.Body.String(); body != "{\"error\":\"Listening ports couldn't be detected. Enter the service port manually.\"}\n" || strings.Contains(body, "secret") {
 		t.Fatalf("unsafe or unexpected body: %q", body)
 	}
 }

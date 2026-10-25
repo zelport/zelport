@@ -162,6 +162,13 @@ func TestIntegrationConnectionVisibility(t *testing.T) {
 		}
 		return v
 	}
+	if len(read().Connections) != 1 {
+		t.Fatal("experimental module should be visible by default")
+	}
+	revision, _ := m.Snapshot()
+	if _, e = m.SetAvailability(context.Background(), revision, "test", false); e != nil {
+		t.Fatal(e)
+	}
 	if len(read().Connections) != 0 {
 		t.Fatal("hidden module exposed")
 	}

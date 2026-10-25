@@ -11,14 +11,12 @@ import (
 
 type maturityModule struct {
 	testModule
-	maturity       string
-	defaultEnabled bool
+	maturity string
 }
 
 func (m *maturityModule) Descriptor() feature.Descriptor {
 	d := m.testModule.Descriptor()
 	d.Maturity = m.maturity
-	d.DefaultEnabled = m.defaultEnabled
 	return d
 }
 func (m *maturityModule) UnavailableReason(raw json.RawMessage) string {
@@ -34,9 +32,8 @@ func (m *maturityModule) UnavailableReason(raw json.RawMessage) string {
 func TestAvailabilityDefaultsPersistenceAndGuards(t *testing.T) {
 	stable := &maturityModule{testModule: testModule{id: "stable"}, maturity: "stable"}
 	experimental := &maturityModule{testModule: testModule{id: "experimental"}, maturity: "experimental"}
-	primary := &maturityModule{testModule: testModule{id: "primary"}, maturity: "experimental", defaultEnabled: true}
-	m := setup(t, stable, experimental, primary)
-	if !m.Availability()["stable"].Enabled || m.Availability()["experimental"].Enabled || !m.Availability()["primary"].Enabled {
+	m := setup(t, stable, experimental)
+	if !m.Availability()["stable"].Enabled || !m.Availability()["experimental"].Enabled {
 		t.Fatal("maturity defaults incorrect")
 	}
 	rev, _ := m.Snapshot()
@@ -160,5 +157,25 @@ func TestAvailabilityConcurrentRouteCreation(t *testing.T) {
 	_, routes := m.Snapshot()
 	if len(routes) > 0 && !m.Availability()["test"].Enabled {
 		t.Fatal("route created inside hidden module")
+	}
+}
+
+func TestExplicitExperimentalDisableSurvivesRestart(t *testing.T) {
+	hidden := &maturityModule{testModule: testModule{id: "hidden"}, maturity: feature.Experimental}
+	visible := &maturityModule{testModule: testModule{id: "visible"}, maturity: feature.Experimental}
+	manager := setup(t, hidden, visible)
+	revision, _ := manager.Snapshot()
+	if _, err := manager.SetAvailability(context.Background(), revision, "hidden", false); err != nil {
+		t.Fatal(err)
+	}
+	manager.Close()
+	restarted, err := New(manager.path, 8080, hidden, visible)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restarted.Close()
+	availability := restarted.Availability()
+	if availability["hidden"].Enabled || !availability["visible"].Enabled {
+		t.Fatalf("explicit disable must persist while an unspecified experimental source defaults on: %+v", availability)
 	}
 }

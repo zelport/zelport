@@ -1,7 +1,11 @@
+import {mountConfiguration} from './configuration.js';
+
 const trustNotice='Only proxy services you trust. A localhost secure context does not guarantee a secure upstream connection. Avoid banking and other sensitive websites.';
 export function mount(ctx){
  const {el,field,serviceModule,warningIndicator}=ctx.ui;
- return serviceModule(ctx,{
+ const views=ctx.ui.moduleViews({...ctx,moduleName:ctx.moduleName||'Remote HTTP'},{onChange(view){if(view==='configuration')settings.open();}});
+ const settings=mountConfiguration(ctx,views.configuration);
+ const routes=serviceModule({...ctx,panel:views.overview,toolbar:views.actions},{
   routeMenu:true,
   columns:['Service','Target URL','Info','Actions'],
   tableLabel:'Remote HTTP services',
@@ -11,9 +15,9 @@ export function mount(ctx){
   rowIndicators:route=>route.summary.detail?[warningIndicator(route.summary.detail).root]:[],
   emptyState:{kind:'not-configured',message:'No remote HTTP services yet.',actionLabel:'+ Add service'},
   fields(s){
-   const element=el('div'),target=field('Target URL',s.target_url||'','url'),verify=field('Verify TLS certificate',!s.skip_tls_verify,'checkbox'),origin=field('Rewrite Origin',s.rewrite_origin,'checkbox');
+   const element=el('div'),target=field('Target URL',s.target_url||'','url'),verify=field('Verify TLS certificate',!s.skip_tls_verify,'checkbox'),origin=field('Use target origin',s.rewrite_origin,'checkbox');
    target.input.required=true;target.input.placeholder='https://example.com/service01';
-   const notice=el('p','small remote-trust-notice',trustNotice),warning=el('p','small route-error'),hint=el('p','small muted','Use the target origin for HTTP and WebSocket requests from this domain.');
+   const notice=el('p','small remote-trust-notice',trustNotice),warning=el('p','small route-error'),hint=el('p','small muted','Send the target URL’s Origin header with HTTP and WebSocket requests. Enable this if the service rejects requests from its localhost address.');
    warning.setAttribute('role','status');
    const update=()=>{
     let protocol='';try{protocol=new URL(target.input.value.trim()).protocol;}catch{}
@@ -26,4 +30,5 @@ export function mount(ctx){
    return {element,read:()=>({target_url:target.input.value.trim(),skip_tls_verify:!verify.wrap.hidden&&!verify.input.checked,rewrite_origin:origin.input.checked})};
   }
  });
+ return {...routes,render(state){routes.render(state);settings.render(state);},openOverview(){views.show('overview');},openSettings(){views.show('configuration');settings.open();},dispose(){settings.dispose();routes.dispose();views.dispose();}};
 }

@@ -38,6 +38,10 @@ func (m *Module) Admin() http.Handler {
 			}
 			s := old
 			if s.DeviceID == "" {
+				if req.GroupToken == "" {
+					err = errors.New("Paste a shared E2E secret or generate a new one.")
+					break
+				}
 				s, err = newIdentity()
 				if err != nil {
 					break
@@ -57,7 +61,17 @@ func (m *Module) Admin() http.Handler {
 				s.AccessToken = req.AccessToken
 			}
 			if req.GroupToken != "" {
-				s.GroupToken = req.GroupToken
+				if err = validateSecret(req.GroupToken); err != nil {
+					break
+				}
+				s.GroupToken, err = m.groupToken(req.GroupToken)
+				if err != nil {
+					break
+				}
+				s.GroupSecret = ""
+				if s.GroupToken != req.GroupToken {
+					s.GroupSecret = req.GroupToken
+				}
 			}
 			resets := []string{}
 			if s.Enabled != old.Enabled || s.RelayURL != old.RelayURL || s.AccessToken != old.AccessToken || s.GroupToken != old.GroupToken {
@@ -101,6 +115,12 @@ func (m *Module) Admin() http.Handler {
 				}
 				s, err = newIdentity()
 				if err == nil {
+					s.GroupSecret, err = generateSecret()
+				}
+				if err == nil {
+					s.GroupToken, err = m.groupToken(s.GroupSecret)
+				}
+				if err == nil {
 					_, err = m.Host.Commit(r.Context(), rev, feature.CommitOptions{}, func(d *feature.Draft) error {
 						var latest Settings
 						if e := feature.Decode(d.Settings, &latest); e != nil {
@@ -125,7 +145,7 @@ func (m *Module) Admin() http.Handler {
 				err = errors.New("choose generate or reveal")
 			}
 			if err == nil {
-				modulekit.JSON(w, map[string]string{"group_token": s.GroupToken})
+				modulekit.JSON(w, map[string]string{"group_token": s.revealedSecret()})
 				return
 			}
 		case r.Method == "POST" && r.URL.Path == "/refresh":

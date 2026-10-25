@@ -8,3 +8,28 @@ export function field(label,value='',type='text'){return type==='checkbox'?switc
 export function numberStepperField(label,value='',{min=0,max=Number.MAX_SAFE_INTEGER,step=1}={}){let result;const change=delta=>{const current=Number(result.input.value),base=Number.isFinite(current)?current:min,next=Math.max(min,Math.min(max,base+(delta*step)));if(next!==current){result.input.value=String(next);result.input.dispatchEvent(new Event('input',{bubbles:true}));}result.input.focus();};const increment=adornmentButton(`Increase ${label}`,'caretUp',()=>change(1)),decrease=adornmentButton(`Decrease ${label}`,'caretDown',()=>change(-1)),controls=el('span','number-stepper-controls');controls.append(increment,decrease);result=adornedField(label,value,'number',{actions:[controls]});result.input.className='number-stepper-input';result.input.min=min;result.input.max=max;result.input.step=step;return {...result,increment,decrease};}
 export function picker(label,options,value,{placeholder='Select…'}={}){const wrap=el('div','mapping-fields'),caption=el('label',null,label),root=el('div','mapping-dropdown'),trigger=el('button','mapping-trigger'),menu=el('div','mapping-menu');trigger.id=nextUIID('picker');caption.htmlFor=trigger.id;caption.id=`${trigger.id}-label`;trigger.setAttribute('aria-haspopup','listbox');menu.setAttribute('role','listbox');menu.setAttribute('aria-labelledby',caption.id);let current=value;const result={wrap,get value(){return current;},set disabled(disabled){trigger.disabled=disabled||!options.length;for(const child of menu.children)child.disabled=disabled;},onchange:null},disclosure=disclosureMenu(root,trigger,menu,{selected:n=>n.dataset.value===current});function select(next,notify=false){current=next;setText(trigger,options.find(option=>option.value===next)?.label||placeholder);disclosure.close();for(const child of menu.children)child.setAttribute('aria-selected',String(child.dataset.value===next));if(notify){result.onchange?.(next);root.dispatchEvent(new Event('change',{bubbles:true}));}}for(const option of options){const control=button(option.label,()=>{select(option.value,true);trigger.focus();},'mapping-option');control.dataset.value=option.value;control.setAttribute('role','option');menu.append(control);}trigger.disabled=!options.length;root.append(trigger,menu);wrap.append(caption,root);select(value);result.dispose=disclosure.dispose;return result;}
 export function accordion(title,maturity){const root=el('details','settings-accordion'),summary=el('summary'),content=el('div','settings-accordion-content');summary.append(el('span','settings-accordion-title',title));if(maturity==='experimental')summary.append(experimentalBadge());root.append(summary,content);return {root,summary,content};}
+
+// Keep validation beside its field; focus only after the caller restores controls.
+export function formFeedback(form,error,fields=[]){
+ const home=error.parentElement;
+ let invalid=null,description=null;
+ error.id ||= nextUIID('form-error');error.setAttribute('role','alert');error.tabIndex=-1;
+ function clear(){
+  if(invalid){invalid.removeAttribute('aria-invalid');if(description)invalid.setAttribute('aria-describedby',description);else invalid.removeAttribute('aria-describedby');invalid=null;}
+  error.textContent='';if(home&&error.parentElement!==home)home.append(error);
+ }
+ function show(message,input){
+  clear();if(!message)return;
+  input ||= fields.find(field=>field.matches.test(message))?.input;
+  error.textContent=message;
+  if(input){
+   invalid=input;description=input.getAttribute('aria-describedby');input.setAttribute('aria-invalid','true');input.setAttribute('aria-describedby',[description,error.id].filter(Boolean).join(' '));
+   const wrap=input.closest?.('.form-field');if(wrap)wrap.append(error);
+   for(let parent=input.parentElement;parent&&parent!==form;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;
+  }
+  const target=input&&!input.disabled?input:error;target.focus();target.scrollIntoView?.({block:'nearest',behavior:'instant'});
+  error.scrollIntoView?.({block:'nearest',behavior:'instant'});
+ }
+ form.addEventListener('input',clear);
+ return {show,clear};
+}

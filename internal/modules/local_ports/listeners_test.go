@@ -39,7 +39,7 @@ func TestDiscoverListenersNormalizesScopeProcessesAndOrder(t *testing.T) {
 	}
 	want := []Listener{
 		{Port: 3000, Processes: []ProcessIdentity{{PID: 30, Name: "server"}}, ListensBeyondLoopback: true},
-		{Port: 4000, Processes: []ProcessIdentity{}},
+		{Port: 4000, Processes: []ProcessIdentity{}, unknownOwner: true},
 		{Port: 5000, Processes: []ProcessIdentity{{PID: 50, Name: "mixed"}}, ListensBeyondLoopback: true},
 		{Port: 8080, Processes: []ProcessIdentity{{PID: 10, Name: "alpha"}, {PID: 20, Name: "zeta"}}},
 	}

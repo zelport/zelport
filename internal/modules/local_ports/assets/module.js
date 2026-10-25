@@ -1,4 +1,7 @@
-const discoveryFailure="Listening ports couldn't be detected. Enter the Aux port manually.";
+import {mountConfiguration} from './configuration.js';
+
+const discoveryFailure="Listening ports couldn't be detected. Enter the service port manually.";
+const discoverySignature=(data={})=>JSON.stringify([data.discovery_enabled!==false,data.ignored_ports||[],data.ignored_processes||[]]);
 const nonLoopbackWarning='This port also listens on non-loopback interfaces.';
 
 function processLabels(processes=[]){
@@ -22,16 +25,19 @@ function processIndicator(ui,listener){
 }
 
 export function listenerPicker(ctx,port){
- const {adornmentButton,el,textTooltip,warningIndicator}=ctx.ui;
+ const {adornmentButton,button,el,field,textTooltip,warningIndicator}=ctx.ui;
  const menu=el('section','listener-picker-menu');
  menu.setAttribute('role','list');menu.setAttribute('aria-label','Listening ports');port.wrap.append(menu);
 
  let loading=false,disposed=false,generation=0,request=null,listeners=[],renderError='';
+ let configuration=ctx.ui.state?.()?.states?.[ctx.moduleId]?.data||{},configurationKey=discoverySignature(configuration),enabled=configuration.discovery_enabled!==false;
  const heading=el('div','listener-picker-header'),title=el('strong',null,'Detected listening ports');
  const refresh=adornmentButton('Refresh listening ports','rotate',()=>refreshInventory());refresh.className+=' listener-picker-refresh';
- heading.append(title,refresh);menu.append(heading);
+ heading.append(title,refresh);
+ const search=field('Search listening ports','','search');search.input.className+=' listener-picker-search';search.input.placeholder='Port or process name';search.wrap.className+=' listener-picker-filter';menu.append(heading,search.wrap);
+ let options=[];
 
- function clearRows(){for(const child of [...menu.children])if(child!==heading)child.remove();}
+ function clearRows(){for(const child of [...menu.children])if(child!==heading&&child!==search.wrap)child.remove();options=[];}
  function state(message,{spinner=false,warning=false}={}){
   const row=el('div',`listener-picker-state${warning?' listener-picker-state-warning':''}`);row.disabled=true;row.setAttribute('role','status');
   if(spinner){row.setAttribute('aria-label','Loading listening ports');const indicator=el('span','boot-spinner');indicator.setAttribute('aria-hidden','true');row.append(indicator);}
@@ -41,57 +47,68 @@ export function listenerPicker(ctx,port){
  function usePort(value){
   port.input.value=String(value);port.input.dispatchEvent(new Event('input',{bubbles:true}));port.input.focus();
  }
+ function updateSelection(){for(const {row,use,value} of options){const selected=Number(port.input.value)===value;row.dataset.selected=String(selected);use.textContent=selected?'Selected':'Use';use.setAttribute('aria-pressed',String(selected));}}
  function render(rows=listeners,error=renderError){
-  const scroll=menu.scrollTop;clearRows();refresh.disabled=loading;refresh.setAttribute('aria-busy',String(loading));
-  if(loading&&!rows.length)state('',{spinner:true});
+  const scroll=menu.scrollTop;clearRows();heading.hidden=search.wrap.hidden=!enabled;refresh.disabled=loading||!enabled;refresh.setAttribute('aria-busy',String(loading));
+  const query=search.input.value.trim().toLowerCase(),filtered=rows.filter(listener=>`${listener.port} ${processLabels(listener.processes).full}`.toLowerCase().includes(query));
+  if(!enabled)state('Port detection is off. Enter the service port manually.');
+  else if(loading&&!rows.length)state('',{spinner:true});
   else if(error)state(discoveryFailure,{warning:true});
-  else if(!rows.length)state('No listening ports found.');
-  else for(const listener of rows){
+  else if(!rows.length)state('No listening ports found. Enter the service port manually.');
+  else if(!filtered.length)state('No listening ports match your search. Change the search or enter the service port manually.');
+  for(const listener of enabled?filtered:[]){
    const process=processLabels(listener.processes),row=el('div','listener-option'),actions=el('div','listener-option-actions'),processNode=process.truncated?textTooltip(process.text,process.full,'listener-process').root:el('span','listener-process',process.text);row.dataset.port=String(listener.port);row.setAttribute('role','listitem');row.setAttribute('aria-label',`Port ${listener.port}: ${process.full}`);
    row.append(el('strong','listener-port',String(listener.port)),processNode);
    if(listener.listens_beyond_loopback)actions.append(warningIndicator(nonLoopbackWarning).root);
    const source=processIndicator(ctx.ui,listener);if(source)actions.append(source);
-   const use=adornmentButton(`Choose port ${listener.port}`,'arrowUp',()=>usePort(listener.port),{tooltipClass:'choose-port-tooltip'});use.className+=' listener-use-port';actions.append(use);row.append(actions);menu.append(row);
+   const use=button('Use',()=>usePort(listener.port),'secondary listener-use-port');use.setAttribute('aria-label',`Use port ${listener.port}`);actions.append(use);row.append(actions);menu.append(row);options.push({row,use,value:Number(listener.port)});
   }
-  menu.scrollTop=scroll;
+  updateSelection();menu.scrollTop=scroll;
  }
  async function load(){
-  if(disposed||loading)return;
+  if(disposed||loading)return;if(!enabled){render();return;}
   request?.abort();const controller=new AbortController();request=controller;const current=++generation;loading=true;render([]);
   try{
    const result=await ctx.api(`/api/modules/${ctx.moduleId}/listeners`,{method:'GET',signal:controller.signal});
-   if(disposed||current!==generation)return;loading=false;listeners=Array.isArray(result.listeners)?result.listeners:[];renderError='';render();
+   if(disposed||current!==generation)return;loading=false;enabled=result.discovery_enabled!==false;listeners=Array.isArray(result.listeners)?result.listeners:[];renderError='';render();
   }catch(error){
    if(disposed||current!==generation||controller.signal.aborted)return;
    loading=false;listeners=[];renderError=discoveryFailure;render();
   }
  }
  async function refreshInventory(){
-  if(disposed||loading)return;
+  if(disposed||loading)return;if(!enabled){render();return;}
   request?.abort();const controller=new AbortController();request=controller;const current=++generation;loading=true;render();
   try{
    await ctx.api(`/api/modules/${ctx.moduleId}/listeners/refresh`,{method:'POST',signal:controller.signal});
    if(disposed||current!==generation)return;
    const result=await ctx.api(`/api/modules/${ctx.moduleId}/listeners`,{method:'GET',signal:controller.signal});
    if(disposed||current!==generation)return;
-   listeners=Array.isArray(result.listeners)?result.listeners:[];renderError='';loading=false;render();
+   enabled=result.discovery_enabled!==false;listeners=Array.isArray(result.listeners)?result.listeners:[];renderError='';loading=false;render();
   }catch(error){
    if(disposed||current!==generation||controller.signal.aborted)return;
-   loading=false;if(!listeners.length)renderError=discoveryFailure;render();
+   loading=false;renderError=discoveryFailure;render();
   }
  }
+ const filter=()=>render(),searchKeydown=event=>{if(event.key==='Enter')event.preventDefault();};search.input.addEventListener('input',filter);search.input.addEventListener('keydown',searchKeydown);port.input.addEventListener('input',updateSelection);
  const abort=()=>dispose();ctx.signal?.addEventListener('abort',abort,{once:true});
- function dispose(){if(disposed)return;disposed=true;generation++;request?.abort();ctx.signal?.removeEventListener('abort',abort);}
+ function dispose(){if(disposed)return;disposed=true;generation++;request?.abort();search.input.removeEventListener('input',filter);search.input.removeEventListener('keydown',searchKeydown);port.input.removeEventListener('input',updateSelection);ctx.signal?.removeEventListener('abort',abort);}
+ function configure(data={}){
+  const key=discoverySignature(data),nextEnabled=data.discovery_enabled!==false;if(disposed||(key===configurationKey&&enabled===nextEnabled))return;
+  configurationKey=key;enabled=nextEnabled;generation++;request?.abort();request=null;loading=false;listeners=[];renderError='';if(enabled)load();else render();
+ }
  load();
- return {menu,refresh,dispose};
+ return {menu,refresh,configure,dispose};
 }
 
 export function mount(ctx){
  const {el,noListenerIndicator,numberStepperField,serviceModule,warningIndicator}=ctx.ui;
- let latest={routes:[],data:{}},visible=false,disposed=false,request=null,timer=null,routePorts='',inventory={health:'unknown',byPort:new Map()};
- const view=serviceModule(ctx,{
+ let latest={routes:[],data:{}},visible=false,disposed=false,request=null,timer=null,routePorts='',discoveryKey='',pickers=new Set(),inventory={health:'unknown',byPort:new Map()};
+ const views=ctx.ui.moduleViews({...ctx,moduleName:ctx.moduleName||'Local Ports'},{onChange(view){if(view==='configuration')settings.open();}});
+ const settings=mountConfiguration(ctx,views.configuration);
+ const view=serviceModule({...ctx,panel:views.overview,toolbar:views.actions},{
   routeMenu:true,
-  columns:['Service','Local (Aux) port','Info','Actions'],
+  columns:['Service','Service port','Info','Actions'],
   tableLabel:'Local Ports services',
   serviceLabel:(route,state)=>`${route.domain}:${state.port}`,
   targetLabel:route=>String(route.editor?.aux_port||''),
@@ -108,33 +125,49 @@ export function mount(ctx){
    const source=processIndicator(ctx.ui,listener);if(source)indicators.push(source);
    return indicators;
   },
-  emptyState:{kind:'not-configured',message:'No local ports yet. Add a domain and an Aux port.',actionLabel:'+ Add service'},
+  emptyState:{kind:'not-configured',message:'No local services yet. Add a domain and the port where your service listens on this computer.',actionLabel:'+ Add service'},
   fields(s){
-   const element=el('div'),port=numberStepperField('Local (Aux) port',s.aux_port||3000,{min:1,max:65535});port.input.required=true;
-   const picker=listenerPicker(ctx,port);element.append(port.wrap);
-   return {element,read:()=>({aux_port:Number(port.input.value)}),dispose:picker.dispose};
+   const element=el('div'),port=numberStepperField('Service port',s.aux_port||3000,{min:1,max:65535});port.input.required=true;
+   const picker=listenerPicker(ctx,port);pickers.add(picker);element.append(port.wrap,el('p','small muted','The port where your service listens on this computer.'));
+   return {element,read:()=>({aux_port:Number(port.input.value)}),dispose(){pickers.delete(picker);picker.dispose();}};
   }
  });
- function schedule(){if(visible&&!disposed&&latest.routes?.length)timer=setTimeout(loadInventory,15000);}
+ function schedule(){if(visible&&!disposed&&latest.data?.discovery_enabled!==false&&latest.routes?.length)timer=setTimeout(loadInventory,15000);}
  async function loadInventory(){
-  if(!visible||disposed||request||!latest.routes?.length)return;
+  if(!visible||disposed||request||latest.data?.discovery_enabled===false||!latest.routes?.length)return;
   clearTimeout(timer);timer=null;const controller=new AbortController();request=controller;
   try{
    const result=await ctx.api(`/api/modules/${ctx.moduleId}/listeners`,{method:'GET',signal:controller.signal});
    if(!visible||disposed||controller.signal.aborted)return;
-   inventory={health:'ready',byPort:new Map((Array.isArray(result.listeners)?result.listeners:[]).map(listener=>[Number(listener.port),listener]))};
+   inventory={health:result.discovery_enabled===false?'disabled':'ready',byPort:new Map((result.configured_listeners||result.listeners||[]).map(listener=>[Number(listener.port),listener]))};
    view.render(latest);
   }catch{
    if(!visible||disposed||controller.signal.aborted)return;
    inventory={health:'unavailable',byPort:new Map()};view.render(latest);
   }finally{if(request===controller){request=null;schedule();}}
  }
- function stop(){visible=false;clearTimeout(timer);timer=null;request?.abort();request=null;inventory={health:'unknown',byPort:new Map()};}
+ function stop(){visible=false;clearTimeout(timer);timer=null;request?.abort();request=null;}
  return {
   ...view,
-  render(s){latest=s;view.render(s);const ports=JSON.stringify((s.routes||[]).map(route=>route.editor?.aux_port));if(visible&&ports!==routePorts){routePorts=ports;loadInventory();}},
+  routeNotice(route){
+   const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return '';
+   const listener=inventory.byPort.get(port);
+   return !listener?`Last detected: no listener on port ${port}.`:listener.listens_beyond_loopback?'Last detected: this port also listens on non-loopback interfaces.':'';
+  },
+  openOverview(){views.show('overview');},
+  openSettings(){views.show('configuration');settings.open();},
+  render(s){
+   latest=s;settings.render(s);const key=discoverySignature(s.data),ports=JSON.stringify((s.routes||[]).map(route=>route.editor?.aux_port));
+   const settingsChanged=key!==discoveryKey,portsChanged=ports!==routePorts;
+   if(settingsChanged||portsChanged){
+    discoveryKey=key;routePorts=ports;clearTimeout(timer);request?.abort();request=null;inventory={health:'unknown',byPort:new Map()};
+    if(settingsChanged)for(const picker of pickers)picker.configure(s.data);
+    if(visible)loadInventory();
+   }
+   view.render(s);
+  },
   activate(){if(visible)return;visible=true;routePorts=JSON.stringify((latest.routes||[]).map(route=>route.editor?.aux_port));view.render(latest);loadInventory();view.activate();},
   deactivate(){stop();view.deactivate();},
-  dispose(){disposed=true;stop();view.dispose();}
+  dispose(){disposed=true;stop();for(const picker of pickers)picker.dispose();pickers.clear();settings.dispose();view.dispose();views.dispose();}
  };
 }

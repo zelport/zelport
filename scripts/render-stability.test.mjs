@@ -21,17 +21,20 @@ test('initial boot hides the incomplete shell and delays an accessible spinner',
 });
 test('dialog headers vertically center their title and close control',()=>{
  const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8');
- const header=[...css.matchAll(/\.dialog-header\{([^}]+)\}/g)].at(-1)?.[1]||'';
+ const header=[...css.matchAll(/(?:^|\n)\.dialog-header\{([^}]+)\}/g)].at(-1)?.[1]||'';
  assert.match(header,/align-items:center/);
 });
 class Node {
  constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={};this.textContent='';this.className='';this.events={};}
+ focus(){document.activeElement=this;}
  get lastElementChild(){return this.children.at(-1);}
  prepend(...nodes){this.children.unshift(...nodes);}
  querySelector(selector){return this.children.find(n=>n.className===selector.slice(1));}
  append(...nodes){for(const node of nodes)node.parentElement=this;this.children.push(...nodes);}
  replaceChildren(...nodes){this.children=nodes;}
  setAttribute(name,value){this[name]=value;}
+ getAttribute(name){return this[name];}
+ removeAttribute(name){delete this[name];}
  addEventListener(name,fn){this.events[name]=fn;}
  removeEventListener(name){delete this.events[name];}
  querySelectorAll(){return [];}
@@ -83,16 +86,16 @@ test('relay client preserves separate sections and updates expiration without ne
  const ctx=context(),view=relayMount(ctx),provider={group:'group',device_id:'other',hostname:'peer',port:8080,public_key:'key',publish:true,expires_at:2,services:[{id:'service',kind:'application',domain:'app.localhost'}]};
  const state={revision:1,routes:[],data:{device_id:'self',has_identity:true,enabled:true,publish:false,administration_peers:[],status:{connected:true,records:[provider]}}};
  view.render(state);const services=tree(ctx.panel).find(n=>n.className==='relay-services-view'),setup=tree(ctx.panel).find(n=>n.className==='relay-setup');
- const [,routes,admin,catalog]=services.children,original=tree(ctx.panel),setupBefore=tree(setup);
+ const [,,routes,catalog]=services.children,original=tree(ctx.panel),setupBefore=tree(setup);
  view.render({...state,revision:2,data:{...state.data,status:{...state.data.status,metadata_counter:7}}});sameNodes(tree(ctx.panel),original);
  now=3000;view.render(state);
- assert.equal(services.children[1],routes);assert.equal(services.children[2],admin);
+ assert.equal(services.children[2],routes);assert.equal(services.children[3],catalog);
  assert.equal(tree(catalog).find(n=>n.tag==='button').disabled,true);
  sameNodes(tree(setup),setupBefore);
 });
 
 test('relay local navigation uses unique labels in the shared module toolbar',()=>{
- const ctx=context(),view=relayMount(ctx),navigation=tree(ctx.toolbar).find(n=>n.className==='relay-view-nav');
+ const ctx=context(),view=relayMount(ctx),navigation=tree(ctx.toolbar).find(n=>n.className==='module-view-nav');
  assert.ok(navigation,'the relay view navigation belongs in the shared module toolbar');
  assert.equal(tree(ctx.panel).includes(navigation),false);
  assert.equal(navigation['aria-label'],'Ports over Relay views');
@@ -126,7 +129,7 @@ test('relay client hides a revealed E2E secret when leaving Configuration',async
  const view=relayMount(ctx);view.render({revision:1,routes:[],data:{has_identity:true,enabled:false,publish:false,administration_peers:[],status:{connected:false,records:[]}}});view.activate();
  const controls=tree(ctx.toolbar),configuration=controls.find(n=>n.tag==='button'&&n.textContent==='Configuration'),overview=controls.find(n=>n.tag==='button'&&n.textContent==='Overview');
  configuration.events.click({preventDefault(){}});
- const reveal=tree(ctx.panel).find(n=>n['aria-label']==='Reveal E2E secret');await reveal.events.click({preventDefault(){}});
+ const reveal=tree(ctx.panel).find(n=>n['aria-label']==='Reveal E2E secret');await reveal.events.click({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));
  assert.ok(tree(ctx.panel).some(n=>n.value==='test-only'));
  overview.events.click({preventDefault(){}});
  assert.equal(tree(ctx.panel).some(n=>n.value==='test-only'),false);
@@ -156,14 +159,14 @@ test('relay configuration preserves unsaved secret fields when switching views',
 
 test('relay configuration retries a conflicted draft with the latest revision',async()=>{
  const ctx=context(),view=relayMount(ctx),requests=[];
- let state={revision:1,routes:[],data:{relay_url:'wss://old.example.test',has_identity:false,has_access_token:false,enabled:false,publish:false,administration_peers:[],status:{connected:false,records:[]}}};
+ let state={revision:1,routes:[],data:{relay_url:'wss://old.example.test',has_identity:true,has_access_token:false,enabled:false,publish:false,administration_peers:[],status:{connected:false,records:[]}}};
  ctx.setState(state);view.render(state);tree(ctx.toolbar).find(n=>n.tag==='button'&&n.textContent==='Configuration').events.click({preventDefault(){}});
  const form=tree(ctx.panel).find(n=>n.className==='relay-configuration-form'),url=tree(form).find(n=>n.tag==='input'&&n.value==='wss://old.example.test');
  url.value='wss://draft.example.test';form.events.input({});
  ctx.api=async(_path,options)=>{const body=JSON.parse(options.body);requests.push(body);if(requests.length===1){const error=Error('Conflict');error.status=409;throw error;}return {};};
  ctx.mutate=async work=>{try{return await work();}catch(error){state={...state,revision:2,data:{...state.data,relay_url:'wss://new.example.test'}};ctx.setState(state);view.render(state);throw error;}};
  await form.events.submit({preventDefault(){}});
- assert.ok(tree(form).some(n=>n.textContent?.includes('Save again')),'the conflict must explain how to retry without losing the draft');
+ assert.ok(tree(form).some(n=>n.textContent?.includes('save again')),'the conflict must explain how to retry without losing the draft');
  assert.equal(url.value,'wss://draft.example.test');
  await form.events.submit({preventDefault(){}});
  assert.deepEqual(requests.map(r=>r.revision),[1,2]);assert.equal(requests[1].relay_url,'wss://draft.example.test');
@@ -179,7 +182,12 @@ test('Dashboard retains rows and runtime nodes across polling and uptime changes
  assert.equal(rows.filter(n=>n.tag==='thead').length,1);assert.equal(rows.filter(n=>n.tag==='tbody').length,1);
  assert.ok(rows.find(n=>n.tag==='table').className.includes('data-table'));
  assert.deepEqual(rows.filter(n=>n.tag==='th').map(n=>n.textContent),['Domain','Source type','Data flow','Actions']);
- assert.ok(!rows.some(n=>n.className.includes('status-badge')||n.className.includes('service-warning')),'Dashboard must not show state badges or warnings');
+ assert.ok(!rows.some(n=>n.className.includes('status-badge')));
+ const warning=rows.find(n=>n.className==='service-warning'&&!n.hidden);assert.ok(warning,'connection warning needs the shared indicator');
+ assert.ok(warning.parentElement.className.includes('dashboard-actions'),'warning belongs beside the row actions');
+ assert.equal(warning.parentElement.parentElement.dataset.label,'Actions');
+ assert.ok(tree(warning).some(n=>n.tag==='button'&&n['aria-label']==='Service warning'));
+ assert.ok(tree(warning).some(n=>n.role==='tooltip'&&n.textContent==='Certificate verification is disabled'&&n.hidden));
  assert.ok(rows.some(n=>n.tag==='button'&&n['aria-label']==='Actions for test.localhost'&&n.textContent==='⋮'));
  assert.ok(rows.some(n=>n.tag==='button'&&n.textContent==='Edit'&&n.role==='menuitem'));
  assert.deepEqual(get('runtime-info').children.map(c=>c.dataset.label),['Version','Hostname','Configuration','Listeners','Modules']);
@@ -193,9 +201,9 @@ test('Dashboard retains rows and runtime nodes across polling and uptime changes
  const changed={...state,states:{test:{routes:[{...state.states.test.routes[0],summary:{state:'unavailable',target:'localhost'}}]}}};context.update(changed);
  assert.equal(tree(get('dashboard-services')).find(n=>n.tag==='a'),stableDomain,'a status update must retain the selected domain node');
  for(const status of ['ready','stale','unavailable','waiting','error','configured']){
-  const route={...state.states.test.routes[0],summary:{state:status,target:'localhost',detail:'Diagnostic must stay in module UI'}};
+  const route={...state.states.test.routes[0],summary:{state:status,target:'localhost',detail:'Known connection diagnostic'}};
   const next={...state,states:{test:{routes:[route]}}};context.update(next);
-  assert.ok(!tree(get('dashboard-services')).some(n=>n.textContent===route.summary.detail),status);
+  assert.ok(tree(get('dashboard-services')).some(n=>n.textContent===route.summary.detail),status);
   const retained=tree(get('dashboard-services'));context.update({...next,states:{test:{routes:[{...route,summary:{...route.summary,detail:'Updated diagnostic'}}]}}});sameNodes(tree(get('dashboard-services')),retained);
  }
 
@@ -212,8 +220,25 @@ for(const lifecycle of ['deactivate','dispose'])test(`relay client discards a la
  const ctx=context();ctx.signal=new AbortController().signal;let finish;
  ctx.api=()=>new Promise(resolve=>finish=resolve);ctx.mutate=work=>work();
  const view=relayMount(ctx);
- view.render({routes:[],data:{has_identity:true,enabled:false,status:{records:[]}}});view.activate();
+ view.render({revision:1,routes:[],data:{has_identity:true,enabled:false,status:{records:[]}}});view.activate();view.openSettings();
  const reveal=tree(ctx.panel).find(n=>n['aria-label']==='Reveal E2E secret');
  const request=reveal.events.click({preventDefault(){}});view[lifecycle]();finish({group_token:'test-only'});await request;await Promise.resolve();
  assert.ok(!tree(ctx.panel).some(n=>n.value==='test-only'));
+});
+
+for(const id of ['local_ports','remote_http','ports_over_ssh','ports_over_relay','built_in_relay'])test(`${id}: shared module views expose Configuration and retain its nodes`,async()=>{
+ const {mount}=await import(`../internal/modules/${id}/assets/module.js`),ctx=context(),view=mount(ctx);
+ view.render({revision:1,routes:[],data:{status:{state:'Stopped',clients:0,listeners:[],records:[]},port:8090,bind_address:'',config_exists:true}});
+ const navigation=tree(id==='built_in_relay'?ctx.panel:ctx.toolbar).find(n=>n.className==='module-view-nav');assert.ok(navigation);assert.equal(typeof view.openSettings,'function');
+ view.openSettings();const config=tree(ctx.panel).filter(n=>n.tag==='input');
+ const controls=tree(ctx.panel);assert.ok(controls.length);
+ navigation.children[0].events.click({preventDefault(){}});view.openSettings();sameNodes(tree(ctx.panel).filter(n=>n.tag==='input'),config);view.dispose();
+});
+
+test('navigation events during boot wait for composed module controls',()=>{
+ const events=new Map();
+ const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
+ const context={window:{addEventListener:(name,handler)=>events.set(name,handler)},document:{body:new Node('body'),getElementById:()=>null,addEventListener(){},querySelectorAll:()=>[]},location:{hash:'#remote'},history:{pushState(){}},clearTimeout(){}};
+ runInNewContext(source,context);
+ assert.doesNotThrow(()=>events.get('hashchange')());assert.doesNotThrow(()=>events.get('popstate')());
 });

@@ -24,7 +24,7 @@ func TestRelayCredentialsExplicitAndRedacted(t *testing.T) {
 	}
 	var v map[string]string
 	json.Unmarshal(w.Body.Bytes(), &v)
-	if len(v["group_token"]) != 43 {
+	if len(v["group_token"]) != 40 || strings.Trim(v["group_token"], "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") != "" {
 		t.Fatal("invalid generated token")
 	}
 	w = request(`{"revision":0,"action":"reveal"}`)
@@ -91,6 +91,7 @@ func TestRelaySettingsSaveAcrossMetadataUpdates(t *testing.T) {
 func TestEmptyAccessTokenAndExplicitClearing(t *testing.T) {
 	mod, _ := testModule(t)
 	token, _ := protocol.Token()
+	group, _ := protocol.Token()
 	request := func(extra map[string]any) *httptest.ResponseRecorder {
 		_, rev := mod.store.snapshot()
 		extra["revision"] = rev
@@ -100,7 +101,7 @@ func TestEmptyAccessTokenAndExplicitClearing(t *testing.T) {
 		mod.Admin().ServeHTTP(w, httptest.NewRequest("PUT", "/settings", strings.NewReader(string(b))))
 		return w
 	}
-	for _, extra := range []map[string]any{{"access_token": token}, {"access_token": ""}} {
+	for _, extra := range []map[string]any{{"access_token": token, "group_token": group}, {"access_token": ""}} {
 		if w := request(extra); w.Code != 200 {
 			t.Fatal(w.Body.String())
 		}
@@ -175,5 +176,29 @@ func TestCatalogSemanticWatermarkIdempotentRevision(t *testing.T) {
 	_, after := mod.store.snapshot()
 	if before != after {
 		t.Fatal("idempotent catalog changed revision", before, after)
+	}
+}
+
+func TestFirstSettingsSaveRequiresExplicitE2ESecret(t *testing.T) {
+	mod, _ := testModule(t)
+	before, revision := mod.store.snapshot()
+	w := httptest.NewRecorder()
+	mod.Admin().ServeHTTP(w, httptest.NewRequest("PUT", "/settings", strings.NewReader(fmt.Sprintf(`{"revision":%d,"relay_url":"ws://relay.example.test","enabled":true}`, revision))))
+	if w.Code != 400 || !strings.Contains(w.Body.String(), "E2E secret") {
+		t.Fatalf("missing secret: %d %s", w.Code, w.Body.String())
+	}
+	after, afterRevision := mod.store.snapshot()
+	if revision != afterRevision || before.DeviceID != after.DeviceID || after.GroupToken != "" {
+		t.Fatal("rejected save generated identity or secret")
+	}
+	token, _ := protocol.Token()
+	w = httptest.NewRecorder()
+	mod.Admin().ServeHTTP(w, httptest.NewRequest("PUT", "/settings", strings.NewReader(fmt.Sprintf(`{"revision":%d,"relay_url":"ws://relay.example.test","group_token":%q}`, revision, token))))
+	if w.Code != 200 {
+		t.Fatalf("explicit secret: %d %s", w.Code, w.Body.String())
+	}
+	saved, _ := mod.store.snapshot()
+	if saved.GroupToken != token || saved.DeviceID == "" {
+		t.Fatal("explicit E2E secret was not stored")
 	}
 }

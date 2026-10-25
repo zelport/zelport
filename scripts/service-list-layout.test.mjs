@@ -6,7 +6,7 @@ import {mount as sshMount,sshHostPicker} from '../internal/modules/ports_over_ss
 import {mount as relayMount} from '../internal/modules/ports_over_relay/assets/module.js';
 
 class Node {
- constructor(tag='div'){this.tag=tag;this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.style={};this.attrs={};this.events=new Map();this.className='';this.textContent='';this.hidden=false;this.disabled=false;}
+ constructor(tag='div'){this.tag=tag;this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.style={setProperty(k,v){this[k]=v;}};this.attrs={};this.events=new Map();this.className='';this.textContent='';this.hidden=false;this.disabled=false;}
  get childElementCount(){return this.children.length;}
  append(...nodes){for(const node of nodes){if(node.parentElement)node.parentElement.children=node.parentElement.children.filter(child=>child!==node);node.parentElement=this;this.children.push(node);}}
  prepend(...nodes){for(const node of [...nodes].reverse()){node.parentElement=this;this.children.unshift(node);}}
@@ -40,7 +40,7 @@ function mountRoute(mount,moduleId,route,data={}){
 
 for(const scenario of [
  {id:'remote_http',mount:remoteMount,target:'https://example.test/path',editor:{target_url:'https://example.test/path'},headers:['Service','Target URL','Info','Actions'],detail:'Target URL: https://example.test/path',warning:'Unencrypted upstream connection.'},
- {id:'ports_over_ssh',mount:sshMount,target:'office-server → 127.0.0.1:3000',editor:{ssh_host:'office-server',ssh_port:3000},headers:['Service','SSH target','Info','Actions'],detail:'SSH host: office-server\nRemote loopback port: 3000',warning:'SSH host unavailable.'},
+ {id:'ports_over_ssh',mount:sshMount,target:'office-server → 127.0.0.1:3000',editor:{ssh_host:'office-server',ssh_port:3000},headers:['Service','SSH target','Info','Actions'],detail:'SSH host: office-server\nService port on server: 3000',warning:'SSH host unavailable.'},
  {id:'ports_over_relay',mount:relayMount,target:'device-123',editor:{group:'group',device_id:'device-123',service_id:'remote-app',provider_key:'key',rewrite_origin:false},headers:['Service','Provider','Info','Actions'],detail:'Provider device: device-123\nService ID: remote-app'}
  ]){
  test(`${scenario.id} exposes headed service rows, full target details and action menu`,()=>{
@@ -64,7 +64,7 @@ for(const scenario of [
 
 test('SSH host picker explains non-interactive keys and fills only the chosen alias',async()=>{
  setup();const host=ui.field('SSH host','manual-host'),controller=new AbortController(),paths=[];
- const picker=sshHostPicker({moduleId:'ports_over_ssh',signal:controller.signal,ui,api:async path=>{paths.push(path);return {hosts:['office-server','tv.slovan.lan']};}},host);
+ const picker=sshHostPicker({moduleId:'ports_over_ssh',signal:controller.signal,ui,api:async path=>{paths.push(path);return {hosts:['office-server','tv.example.test']};}},host);
  try{
   await new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(paths,['/api/modules/ports_over_ssh/hosts']);
@@ -73,10 +73,10 @@ test('SSH host picker explains non-interactive keys and fills only the chosen al
   assert.match(byClass(picker.menu,'ssh-host-help-tooltip').textContent,/system ssh command/i);
   assert.match(byClass(picker.menu,'ssh-host-help-tooltip').textContent,/Source: ~\/\.ssh\/config/);
   assert.doesNotMatch(byClass(picker.menu,'ssh-host-help-tooltip').textContent,/Include files/);
-  const option=walk(picker.menu).find(node=>node.dataset.host==='tv.slovan.lan');
+  const option=walk(picker.menu).find(node=>node.dataset.host==='tv.example.test');
   assert.ok(option);
   fire(byClass(option,'ssh-host-use'),'click');
-  assert.equal(host.input.value,'tv.slovan.lan');
+  assert.equal(host.input.value,'tv.example.test');
   assert.equal(document.activeElement,host.input);
  }finally{picker.dispose();controller.abort();}
 });

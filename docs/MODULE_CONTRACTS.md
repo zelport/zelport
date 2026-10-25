@@ -92,6 +92,13 @@ Refreshes preserve active focus, selections and open controls when their backing
 identity still exists. Destructive actions require explicit confirmation and
 report completion or failure accessibly.
 
+A frontend instance may expose `routeNotice(route)` to supply an existing
+module-owned observation to Dashboard. This synchronous presentation hook must
+not perform network requests. Qualify cached information as a last observation
+and invalidate it when its inputs change or discovery fails. Dashboard also
+displays the route summary's existing diagnostic detail. Neither source implies
+a new end-to-end health check.
+
 ## External adapters
 
 CLI and engine adapters have bounded execution, deterministic parsing and

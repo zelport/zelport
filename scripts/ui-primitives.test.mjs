@@ -1,22 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as ui from '../internal/web/assets/ui.js';
+import {renderHeaderStatus} from '../internal/web/assets/runtime.js';
 const moduleUIContract=[
  'accordion','adornedField','adornmentButton','button','dialogHeader','disclosureMenu','el','emptyState',
  'experimentalBadge','field','formActions','icon','localPortIndicator','moduleHeading','noListenerIndicator',
- 'numberStepperField','picker','refreshButton','refreshControl','renderChanged','routeEditRevision','serviceLocationDialog',
- 'serviceModule','serviceNavigation','serviceTargetIndicator','serviceURL','setText','showDialog','statusBadge','statusTone',
+ 'moduleViews','numberStepperField','picker','refreshButton','refreshControl','renderChanged','routeEditRevision','serviceLocationDialog',
+ 'serviceModule','serviceNavigation','serviceTargetIndicator','serviceURL','setTooltip','setText','showDialog','statusBadge','statusTone',
  'switchField','textTooltip','warningIndicator'
 ];
 class Node {
- constructor(tag='div'){this.tag=tag;this.children=[];this.dataset={};this.attrs={};this.events={};}
+ constructor(tag='div'){this.tag=tag;this.children=[];this.dataset={};this.attrs={};this.events={};this.style={};}
  append(...nodes){for(const node of nodes){node.parentElement?.children.splice(node.parentElement.children.indexOf(node),1);this.children.push(node);node.parentElement=this;}}
  prepend(...nodes){for(const node of [...nodes].reverse()){node.parentElement?.children.splice(node.parentElement.children.indexOf(node),1);this.children.unshift(node);node.parentElement=this;}}
  before(node){const parent=this.parentElement,index=parent?.children.indexOf(this);if(index===undefined||index<0)return;node.parentElement?.children.splice(node.parentElement.children.indexOf(node),1);parent.children.splice(index,0,node);node.parentElement=parent;}
  replaceChildren(...nodes){this.children=[];this.append(...nodes);}
  setAttribute(k,v){this.attrs[k]=v;}
  getAttribute(k){return this.attrs[k];}
- addEventListener(k,fn){this.events[k]=fn;}
+ addEventListener(k,fn){const previous=this.events[k];this.events[k]=previous?event=>{previous(event);fn(event);}:fn;}
  removeEventListener(k){delete this.events[k];}
  contains(n){return this===n||this.children.some(c=>c.contains(n));}
  focus(){document.activeElement=this;}
@@ -82,6 +83,7 @@ test('empty states share one semantic shell across configuration, results and av
   assert.equal(message.tag,'p');
   assert.equal(card.children.some(node=>node.className==='empty-state-label'||node.tag==='h3'),false);
   assert.equal(actions[0]?.textContent,spec.action?.label);
+  if(spec.action)assert.equal(actions[0].className,'primary','the only empty-state action is the primary next step');
  }
 });
 
@@ -130,28 +132,27 @@ test('service dialogs use the shared form-field layout for domain and module fie
  const view=ui.serviceModule({moduleId:'local_ports',panel,signal:controller.signal,ui:{...ui,state:()=>state},api:async()=>{},mutate:async work=>work()},{
   fields(){return {element:fields,read:()=>({aux_port:3000})};}
  });
- view.edit();const dialog=document.body.children.at(-1),form=dialog.children[0],domainField=form.children[1],localField=form.children[2].children[0];
+ view.edit();const dialog=document.body.children.at(-1),form=dialog.children[0],domainField=form.children[1].children[0],localField=form.children[1].children[1].children[0];
  assert.equal(domainField.className,'form-field');assert.equal(localField.className,'form-field');
  assert.deepEqual(domainField.children.map(node=>node.tag),localField.children.map(node=>node.tag));
  assert.equal(domainField.children[1].className,'input-adornment');assert.equal(localField.children[1].className,'input-adornment');
  dialog.close();
 });
 
-test('flat service modules keep Add service in the toolbar for empty and populated states',()=>{
+test('flat service modules keep an accessible plus in the toolbar for empty and populated states',()=>{
  setup();const controller=new AbortController(),panel=new Node(),toolbar=new Node(),state={port:9090,revision:0,states:{local_ports:{routes:[]}}};
  const view=ui.serviceModule({moduleId:'local_ports',panel,toolbar,signal:controller.signal,ui:{...ui,state:()=>state},api:async()=>{},mutate:async work=>work()},{
   emptyState:{kind:'not-configured',message:'No local ports yet.',actionLabel:'+ Add service'},
   fields(){return {element:new Node(),read:()=>({aux_port:3000})};}
  });
- const add=toolbar.children.find(node=>node.getAttribute('aria-label')==='Add service');assert.ok(add);assert.equal(add.className,'module-action-icon module-add-icon');
- const path=add.children[0].children[0];assert.equal(path.getAttribute('d'),'M12 5v14M5 12h14');
+ const add=toolbar.children.find(node=>node.getAttribute('aria-label')==='Add service');assert.ok(add);assert.equal(add.className,'module-action-icon module-add-icon');assert.equal(add.textContent,'');assert.equal(add.children[0].tag,'svg');
  view.render({routes:[],data:{}});assert.equal(panel.children[0].children.at(-1).textContent,'+ Add service');assert.equal(toolbar.children.includes(add),true);
  const route={id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:3000},summary:{state:'configured',detail:'',target:'Aux port 3000'}};state.states.local_ports.routes=[route];view.render({routes:[route],data:{}});
  assert.equal(panel.children[0].children.some(node=>node.tag==='button'&&node.textContent==='+ Add service'),false);assert.equal(toolbar.children.includes(add),true);
  add.events.click({preventDefault(){}});assert.equal(document.body.children.at(-1).open,true);
 });
 
-test('removal dialog centers the complete service URL and uses one compact destructive action',()=>{
+test('removal dialog explains mapping scope and ends with Cancel then Remove',()=>{
  setup();const controller=new AbortController(),panel=new Node(),state={port:8080,revision:0,states:{local_ports:{routes:[]}}};
  const view=ui.serviceModule({moduleId:'local_ports',panel,signal:controller.signal,ui:{...ui,state:()=>state},api:async()=>{},mutate:async work=>work()},{
   fields(){return {element:new Node(),read:()=>({aux_port:3000})};}
@@ -160,10 +161,11 @@ test('removal dialog centers the complete service URL and uses one compact destr
  state.states.local_ports.routes=[route];view.render({routes:[route],data:{}});
  const removeButton=panel.children[0].children[0].children[2].children[1];
  assert.equal(removeButton.className,'danger-text');removeButton.events.click({preventDefault(){}});
- const dialog=document.body.children.at(-1),address=dialog.children[1],options=dialog.children[3];
+ const dialog=document.body.children.at(-1),address=dialog.children[1],options=dialog.children[4];
  assert.equal(address.className,'remove-service-address');assert.equal(address.textContent,'http://forman.localhost:8080');
- assert.equal(options.children[0].textContent,'Remove');assert.equal(options.children[0].className,'danger');
- assert.equal(options.children.at(-1).textContent,'Cancel');assert.equal(options.children.at(-1).className,'text-button');
+ assert.match(dialog.children[2].textContent,/mapping.*application will keep running/i);
+ assert.equal(options.className,'dialog-actions');assert.equal(options.children[0].textContent,'Cancel');
+ assert.equal(options.children.at(-1).textContent,'Remove');assert.equal(options.children.at(-1).className,'danger');
 });
 
 test('security tooltips close on scroll and resize instead of covering unrelated content',()=>{
@@ -171,11 +173,87 @@ test('security tooltips close on scroll and resize instead of covering unrelated
  const {root}=ui.warningIndicator('Unencrypted connection'),[trigger,tip]=root.children;
  const glyph=trigger.children[0];assert.equal(glyph.tag,'svg');assert.equal(glyph.getAttribute('class'),'warning-glyph');
  assert.equal(glyph.children[0].getAttribute('d'),'M12 3 2.5 20h19L12 3ZM12 9v5M12 17h.01');
- tip.style={};tip.showPopover=()=>tip.open=true;tip.hidePopover=()=>tip.open=false;
- tip.getBoundingClientRect=()=>({height:65,width:300});trigger.getBoundingClientRect=()=>({top:300,bottom:324,left:200});
+ tip.style={setProperty(k,v){this[k]=v;}};tip.showPopover=()=>tip.open=true;tip.hidePopover=()=>tip.open=false;
+ tip.getBoundingClientRect=()=>({height:65,width:300});trigger.getBoundingClientRect=()=>({top:300,bottom:324,left:200,right:224,width:24,height:24});
  document.querySelectorAll=()=>tip.open?[tip]:[];
  trigger.events.focus();assert.equal(tip.open,true);
  listeners.get('scroll')();assert.equal(tip.open,false);assert.equal(tip.hidden,true);
  trigger.events.click({preventDefault(){}});assert.equal(tip.open,true);
  listeners.get('resize')();assert.equal(tip.open,false);assert.equal(tip.hidden,true);
+});
+
+ test('module views keep navigation last, preserve draft nodes and hide Overview actions',()=>{
+ setup();const panel=new Node('section'),toolbar=new Node('div'),changes=[];
+ const views=ui.moduleViews({panel,toolbar,moduleName:'Example'},{onChange:view=>changes.push(view)});
+ const draft=new Node('input');draft.value='draft';views.configuration.append(draft);const action=new Node('button');views.actions.append(action);
+ assert.deepEqual(toolbar.children,[views.actions,views.navigation]);assert.equal(views.navigation.getAttribute('aria-label'),'Example views');
+ assert.deepEqual(views.navigation.children.map(n=>n.textContent),['Overview','Configuration']);assert.equal(views.configuration.hidden,true);assert.equal(views.actions.hidden,false);
+ views.navigation.children[1].events.click({preventDefault(){}});assert.equal(views.overview.hidden,true);assert.equal(views.configuration.hidden,false);assert.equal(views.actions.hidden,true);
+ views.show('overview');views.show('configuration');assert.equal(views.configuration.children[0],draft);assert.equal(draft.value,'draft');assert.deepEqual(changes,['configuration','overview','configuration']);
+ views.dispose();assert.equal(views.navigation.removed,true);assert.equal(views.actions.removed,true);
+ });
+
+function tooltipFixture(anchor,{width=100,height=40,viewportWidth=400,viewportHeight=300}={}){
+ setup();globalThis.window={innerWidth:viewportWidth,innerHeight:viewportHeight,addEventListener(){}};
+ const trigger=ui.adornmentButton('Add service','plus',()=>{}),tip=trigger.children.find(n=>n.getAttribute('role')==='tooltip');
+ tip.style={setProperty(k,v){this[k]=v;}};tip.showPopover=()=>tip.open=true;tip.hidePopover=()=>tip.open=false;
+ trigger.getBoundingClientRect=()=>({...anchor,width:anchor.right-anchor.left,height:anchor.bottom-anchor.top});tip.getBoundingClientRect=()=>({width,height});
+ return {trigger,tip};
+}
+test('tooltip placement centers its pointer on the trigger above and flips below near the top',()=>{
+ const above=tooltipFixture({left:200,right:224,top:150,bottom:174});above.trigger.events.focus();
+ assert.equal(above.tip.dataset.placement,'top');assert.equal(above.tip.style.left,'162px');assert.equal(above.tip.style.top,'98px');assert.equal(above.tip.style['--tooltip-arrow-x'],'50px');above.trigger.events.blur();
+ const below=tooltipFixture({left:200,right:224,top:8,bottom:32});below.trigger.events.focus();assert.equal(below.tip.dataset.placement,'bottom');assert.equal(below.tip.style.top,'44px');below.trigger.events.blur();
+});
+test('tooltip stays inside narrow viewport edges while its pointer still targets the icon',()=>{
+ const h=tooltipFixture({left:366,right:390,top:150,bottom:174},{width:160,viewportWidth:390});h.trigger.events.focus();
+ const left=parseFloat(h.tip.style.left),point=left+parseFloat(h.tip.style['--tooltip-arrow-x']);assert.ok(left>=12&&left+160<=378);assert.ok(point>=366&&point<=390);h.trigger.events.blur();
+});
+test('action tooltips close on activation and losing focus, and another tooltip replaces the first',()=>{
+ const first=tooltipFixture({left:50,right:74,top:150,bottom:174}),second=tooltipFixture({left:200,right:224,top:150,bottom:174});
+ first.trigger.events.focus();second.trigger.events.focus();assert.equal(first.tip.hidden,true);assert.equal(second.tip.hidden,false);
+ second.trigger.events.click({preventDefault(){}});assert.equal(second.tip.hidden,true);
+ first.trigger.events.mouseenter();first.trigger.events.focus();first.trigger.events.blur();assert.equal(first.tip.hidden,true);
+});
+
+test('changing a reveal action updates the existing tooltip without adding a native tooltip',()=>{
+ const h=tooltipFixture({left:200,right:224,top:150,bottom:174});
+ ui.setTooltip(h.trigger,'Hide E2E secret');h.trigger.events.focus();
+ assert.equal(h.tip.textContent,'Hide E2E secret');assert.equal(h.trigger.title,undefined);
+ assert.equal(h.trigger.getAttribute('aria-describedby'),h.tip.id);
+ assert.equal(h.trigger.children.filter(n=>n.getAttribute('role')==='tooltip').length,1);
+ h.trigger.events.blur();
+});
+
+test('header connection status uses one shared tooltip and updates it across polls',()=>{
+ setup();let status='Not configured';const host=new Node(),module={descriptor:{id:'relay',name:'Ports over Relay'},headerStatus:()=>({status,tone:'neutral',rows:[]})};
+ host.querySelector=()=>null;
+ const render=()=>renderHeaderStatus({state:{states:{relay:{}}},modules:new Map([['relay',module]]),moduleEnabled:()=>true,navigate(){},ui,host,positionPopovers(){}});
+ render();const trigger=module.indicator.trigger;
+ assert.equal(trigger.title,undefined);
+ const tip=module.indicator.wrap.children.find(n=>n.getAttribute('role')==='tooltip');
+ assert.ok(tip);assert.equal(tip.textContent,'Ports over Relay: Not configured');
+ status='Connected';render();assert.equal(tip.textContent,'Ports over Relay: Connected');
+ assert.equal(module.indicator.wrap.children.filter(n=>n.getAttribute('role')==='tooltip').length,1);
+ assert.equal(trigger.getAttribute('aria-label'),'Ports over Relay: Connected');
+});
+
+test('Escape reaches the dialog when its tooltip is already closed',()=>{
+ const h=tooltipFixture({left:50,right:74,top:150,bottom:174});
+ h.trigger.events.focus();const first=key('Escape');h.trigger.events.keydown(first);
+ assert.equal(first.stopped,true);assert.equal(h.tip.hidden,true);
+ const second=key('Escape');h.trigger.events.keydown(second);assert.notEqual(second.stopped,true);
+});
+test('popover trigger focus waits until the current transition has finished',async()=>{
+ const h=tooltipFixture({left:50,right:74,top:150,bottom:174});h.trigger.setAttribute('popovertarget','status');
+ let transitioning=true;document.getElementById=()=>({matches:()=>false});
+ h.tip.showPopover=()=>{assert.equal(transitioning,false);h.tip.open=true;};
+ h.trigger.events.focus();assert.notEqual(h.tip.open,true);transitioning=false;await Promise.resolve();assert.equal(h.tip.open,true);h.trigger.events.blur();
+});
+test('form feedback places field errors next to the input and focuses them after failure',()=>{
+ setup();const form=new Node('form'),wrap=new Node(),input=new Node('input'),error=new Node('p');input.closest=()=>wrap;input.scrollIntoView=()=>input.scrolled=true;input.removeAttribute=k=>delete input.attrs[k];
+ wrap.append(input);form.append(wrap,error);const feedback=ui.formFeedback(form,error,[{input,matches:/domain/i}]);
+ feedback.show('This domain is already in use.');
+ assert.equal(error.parentElement,wrap);assert.equal(input.getAttribute('aria-invalid'),'true');assert.equal(document.activeElement,input);assert.equal(input.scrolled,true);
+ feedback.clear();assert.equal(error.parentElement,form);assert.equal(input.getAttribute('aria-invalid'),undefined);assert.equal(error.textContent,'');
 });

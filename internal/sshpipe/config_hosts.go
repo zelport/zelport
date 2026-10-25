@@ -16,7 +16,13 @@ var configuredHostAlias = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:-]{0,254}
 // It never reads identity files; an alias in this list is not an authentication check.
 func HostAliases(configPath string) ([]string, error) {
 	const maxFiles, maxDepth, maxBytes, maxAliases = 64, 8, 1 << 20, 256
-	root := filepath.Dir(configPath)
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	// OpenSSH resolves relative user Include paths from ~/.ssh, including
+	// when the selected file (or an included file) is in another directory.
+	root := filepath.Join(home, ".ssh")
 	seenFiles := map[string]bool{}
 	seenAliases := map[string]bool{}
 	aliases := []string{}
@@ -57,8 +63,16 @@ func HostAliases(configPath string) ([]string, error) {
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
 			}
-			line = strings.Replace(line, "=", " ", 1)
-			parts := strings.Fields(line)
+			// Only the directive separator may be '='; filenames may contain it.
+			if end := strings.IndexAny(line, " \t="); end >= 0 && line[end] == '=' {
+				line = line[:end] + " " + line[end+1:]
+			} else if end >= 0 {
+				value := strings.TrimLeft(line[end:], " \t")
+				if strings.HasPrefix(value, "=") {
+					line = line[:end] + " " + value[1:]
+				}
+			}
+			parts := configFields(line)
 			if len(parts) < 2 {
 				continue
 			}
@@ -82,12 +96,7 @@ func HostAliases(configPath string) ([]string, error) {
 					if strings.HasPrefix(pattern, "#") {
 						break
 					}
-					pattern = strings.Trim(pattern, `"'`)
 					if strings.HasPrefix(pattern, "~/") {
-						home, err := os.UserHomeDir()
-						if err != nil {
-							return err
-						}
 						pattern = filepath.Join(home, pattern[2:])
 					} else if !filepath.IsAbs(pattern) {
 						pattern = filepath.Join(root, pattern)
@@ -110,4 +119,56 @@ func HostAliases(configPath string) ([]string, error) {
 		return nil, err
 	}
 	return aliases, nil
+}
+
+// configFields preserves quoted pathnames rather than splitting them at spaces.
+func configFields(line string) []string {
+	var fields []string
+	var field strings.Builder
+	var quote rune
+	escaped := false
+	for _, char := range line {
+		if escaped {
+			// Preserve glob escapes for filepath.Glob after removing config
+			// quoting; otherwise a literal wildcard can include other files.
+			if strings.ContainsRune(`*?[]`, char) {
+				field.WriteRune('\\')
+			}
+			field.WriteRune(char)
+			escaped = false
+			continue
+		}
+		if char == '\\' {
+			escaped = true
+			continue
+		}
+		if quote != 0 {
+			if char == quote {
+				quote = 0
+			} else {
+				field.WriteRune(char)
+			}
+			continue
+		}
+		switch char {
+		case '\'', '"':
+			quote = char
+		case '#':
+			if field.Len() == 0 {
+				return fields
+			}
+			field.WriteRune(char)
+		case ' ', '\t':
+			if field.Len() > 0 {
+				fields = append(fields, field.String())
+				field.Reset()
+			}
+		default:
+			field.WriteRune(char)
+		}
+	}
+	if field.Len() > 0 {
+		fields = append(fields, field.String())
+	}
+	return fields
 }

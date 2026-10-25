@@ -6,7 +6,7 @@ test('Remote HTTP keeps the trust notice and updates warnings without losing for
  let definition;const fields=new Map();
  const el=(tag,cls,text='')=>({tag,cls,textContent:text,children:[],append(...nodes){this.children.push(...nodes);},setAttribute(){}});
  const field=(label,value,type)=>{const input={value,checked:type==='checkbox'?value:false,events:{},addEventListener(k,fn){this.events[k]=fn;}};const result={input,wrap:el('div')};fields.set(label,result);return result;};
- mount({ui:{el,field,serviceModule:(ctx,d)=>{definition=d;}}});
+ mount({ui:{el,field,adornmentButton:(text)=>el('button',null,text),button:(text)=>el('button',null,text),moduleViews:()=>({overview:el('section'),configuration:el('section'),actions:el('div')}),serviceModule:(ctx,d)=>{definition=d;}}});
  const form=definition.fields({target_url:'https://example.test/service',rewrite_origin:true});
  const [notice,,,warning]=form.element.children;
  assert.equal(notice.textContent,'Only proxy services you trust. A localhost secure context does not guarantee a secure upstream connection. Avoid banking and other sensitive websites.');

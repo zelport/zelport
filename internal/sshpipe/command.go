@@ -1,7 +1,6 @@
 package sshpipe
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,15 +23,19 @@ func Arguments(host string, port int) []string {
 
 // The same -F file is inherited by OpenSSH's implicit ProxyJump children.
 // Only references are stored. User keys and configuration are never copied.
-func writeConfig() (string, error) {
-	home, err := os.UserHomeDir()
+func writeConfig(configFile ...string) (string, error) {
+	selected := ""
+	if len(configFile) > 0 {
+		selected = configFile[0]
+	}
+	selected, err := ResolveConfigPath(selected)
 	if err != nil {
 		return "", err
 	}
-	if strings.ContainsAny(home, "\r\n") {
-		return "", errors.New("invalid home directory")
-	}
 	quote := func(s string) string { return "\"" + strings.NewReplacer("\\", "\\\\", "\"", "\\\"").Replace(s) + "\"" }
+	// Include expands environment variables and globs even in quoted strings.
+	// A bracketed dollar survives both older and newer OpenSSH Include parsers.
+	selected = strings.NewReplacer("\\", "\\\\", "[", "\\[", "]", "\\]", "*", "\\*", "?", "\\?", "$", "[$]").Replace(filepath.ToSlash(selected))
 	f, err := os.CreateTemp("", "zelport-ssh-*.conf")
 	if err != nil {
 		return "", err
@@ -46,7 +49,7 @@ func writeConfig() (string, error) {
 		}
 	}
 	content += "  RequestTTY no\n  ForwardAgent no\n  ForwardX11 no\n"
-	content += "Include " + quote(filepath.Join(home, ".ssh", "config")) + "\nHost *\nInclude /etc/ssh/ssh_config\n"
+	content += "Include " + quote(selected) + "\nHost *\nInclude /etc/ssh/ssh_config\n"
 	_, err = f.WriteString(content)
 	closeErr := f.Close()
 	if err == nil {

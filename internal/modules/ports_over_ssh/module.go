@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/zelport/zelport/internal/configfile"
 	"github.com/zelport/zelport/internal/feature"
 	"github.com/zelport/zelport/internal/modulekit"
 	"github.com/zelport/zelport/internal/sshpipe"
@@ -13,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"sync"
@@ -33,15 +33,17 @@ type poolEntry struct {
 }
 type Module struct {
 	modulekit.Base
-	mu     sync.Mutex
-	pools  map[string]poolEntry
-	closed bool
+	fileEditor configfile.Editor
+	configMu   sync.RWMutex // Serializes saved path changes and editor launches with pool selection.
+	mu         sync.Mutex
+	pools      map[string]poolEntry
+	closed     bool
 }
 
 func New() feature.Module {
 	files, _ := fs.Sub(assets, "assets")
 	m := &Module{pools: map[string]poolEntry{}}
-	m.Desc = feature.Descriptor{Maturity: feature.Experimental, ID: "ports_over_ssh", Name: "Ports over SSH", TabID: "ssh", Order: 50, Exportable: true, DefaultEnabled: true, PollInterval: 15e9, Assets: files}
+	m.Desc = feature.Descriptor{Maturity: feature.Experimental, ID: "ports_over_ssh", Name: "Ports over SSH", TabID: "ssh", Order: 50, Exportable: true, PollInterval: 15e9, Assets: files}
 	m.Summary = func(r feature.Route) feature.Summary {
 		var s Settings
 		feature.Decode(r.Settings, &s)
@@ -59,98 +61,116 @@ func (m *Module) ValidateRoute(r feature.Route) error {
 	}
 	return nil
 }
-func (m *Module) Admin() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/hosts" {
-			http.NotFound(w, r)
-			return
-		}
-		if r.Method != http.MethodGet {
-			w.Header().Set("Allow", http.MethodGet)
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		w.Header().Set("Cache-Control", "no-store")
-		home, err := os.UserHomeDir()
-		if err != nil {
-			http.Error(w, "SSH hosts couldn't be read. Enter the SSH host manually.", http.StatusServiceUnavailable)
-			return
-		}
-		hosts, err := sshpipe.HostAliases(filepath.Join(home, ".ssh", "config"))
-		if err != nil {
-			http.Error(w, "SSH hosts couldn't be read. Enter the SSH host manually.", http.StatusServiceUnavailable)
-			return
-		}
-		modulekit.JSON(w, map[string]any{"hosts": hosts})
-	})
-}
+
 func (m *Module) Start(ctx context.Context, h feature.Host) error {
 	m.Base.Start(ctx, h)
-	m.Run(ctx, func(context.Context) {
-		rs := h.Snapshot().Routes
-		m.mu.Lock()
-		defer m.mu.Unlock()
-		for id, p := range m.pools {
-			found := false
-			for _, r := range rs {
-				if id == r.ID && p.settings == string(r.Settings)+r.Domain {
-					found = true
-				}
-			}
-			if !found {
-				p.pool.Close()
-				delete(m.pools, id)
-			}
-		}
-	}, 15e9)
+	m.Run(ctx, func(context.Context) { m.prunePools() }, 15e9)
 	return nil
 }
 func (m *Module) Close() error {
 	m.Base.Close()
+	m.configMu.Lock()
+	defer m.configMu.Unlock()
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.closed = true
-	for _, p := range m.pools {
-		p.pool.Close()
-	}
+	m.mu.Unlock()
+	m.retirePools()
 	return nil
 }
-func (m *Module) State() feature.State {
-	s := m.Base.State()
+func (m *Module) retirePools() {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	statuses := map[string]sshpipe.Status{}
-	for id, p := range m.pools {
-		statuses[id] = p.pool.Status()
+	pools := m.pools
+	m.pools = map[string]poolEntry{}
+	m.mu.Unlock()
+	for _, entry := range pools {
+		entry.pool.Close()
 	}
-	for i := range s.Routes {
-		if status, ok := statuses[s.Routes[i].ID]; ok && status.State == "error" {
-			s.Routes[i].Summary.State = "unavailable"
-			s.Routes[i].Summary.Detail = "SSH connection unavailable. Verify the host with the system ssh command."
+}
+func poolKey(route feature.Route, path string) string {
+	return string(route.Settings) + "\x00" + route.Domain + "\x00" + path
+}
+func (m *Module) prunePools() {
+	m.configMu.RLock()
+	_, snapshot, err := m.configSnapshot()
+	path, pathErr := m.selectedConfig()
+	keys := map[string]string{}
+	if err == nil && pathErr == nil {
+		for _, route := range snapshot.Routes {
+			keys[route.ID] = poolKey(route, path)
 		}
 	}
-	s.Data, _ = json.Marshal(map[string]any{"connections": statuses})
+	var retired []*sshpipe.Pool
+	m.mu.Lock()
+	for id, entry := range m.pools {
+		if keys[id] != entry.settings {
+			retired = append(retired, entry.pool)
+			delete(m.pools, id)
+		}
+	}
+	m.mu.Unlock()
+	m.configMu.RUnlock()
+	for _, pool := range retired {
+		pool.Close()
+	}
+}
+
+func (m *Module) State() feature.State {
+	value, snapshot, configErr := m.configSnapshot()
+	s := feature.State{Revision: snapshot.Revision, Routes: []feature.RouteView{}}
+	statuses := map[string]sshpipe.Status{}
+	m.mu.Lock()
+	for id, entry := range m.pools {
+		statuses[id] = entry.pool.Status()
+	}
+	m.mu.Unlock()
+	for _, route := range snapshot.Routes {
+		view := feature.View(route, m.Summary(route))
+		if status, ok := statuses[route.ID]; ok && status.State == "error" {
+			view.Summary.State = "unavailable"
+			view.Summary.Detail = "SSH connection unavailable. Verify the host with the selected SSH configuration."
+		}
+		s.Routes = append(s.Routes, view)
+	}
+	path, err := sshpipe.ResolveConfigPath(value.SSHConfigPath)
+	if configErr != nil {
+		err = configErr
+	}
+	exists := false
+	if err == nil {
+		info, statErr := os.Stat(path)
+		exists = statErr == nil && info.Mode().IsRegular()
+	}
+	s.Data, _ = json.Marshal(map[string]any{"connections": statuses, "ssh_config_path": value.SSHConfigPath, "effective_config_path": path, "config_exists": exists})
 	return s
 }
 func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Route) {
 	var s Settings
 	feature.Decode(v.Settings, &s)
+	m.configMu.RLock()
+	path, err := m.selectedConfig()
+	if err != nil {
+		m.configMu.RUnlock()
+		feature.Status(w, r, 503, "SSH configuration unavailable", "Review the SSH configuration file in Configuration.")
+		return
+	}
 	m.mu.Lock()
 	if m.closed || r.Context().Err() != nil {
 		m.mu.Unlock()
+		m.configMu.RUnlock()
 		feature.Status(w, r, 503, "SSH unavailable", "The route is closing.")
 		return
 	}
-	key := string(v.Settings) + v.Domain
+	key := poolKey(v, path)
 	p, ok := m.pools[v.ID]
 	if !ok || p.settings != key {
 		if ok {
 			p.pool.Close()
 		}
-		p = poolEntry{key, sshpipe.New(s.SSHHost, s.SSHPort)}
+		p = poolEntry{key, sshpipe.NewWithConfig(s.SSHHost, s.SSHPort, path)}
 		m.pools[v.ID] = p
 	}
 	m.mu.Unlock()
+	m.configMu.RUnlock()
 	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: "127.0.0.1:" + strconv.Itoa(s.SSHPort)}, modulekit.ProxyOptions{PreserveHost: true, Dial: p.pool.DialContext, Error: func(w http.ResponseWriter, r *http.Request, e error) {
 		code := 502
 		var failure *sshpipe.Error

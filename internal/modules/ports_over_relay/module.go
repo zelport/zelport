@@ -20,6 +20,9 @@ var assets embed.FS
 type Module struct {
 	modulekit.Base
 	store            store
+	secretMu         sync.Mutex
+	secretDigest     [32]byte
+	secretToken      string
 	mu               sync.Mutex
 	client           *client.Client
 	cancel           context.CancelFunc

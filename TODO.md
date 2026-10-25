@@ -33,3 +33,5 @@ Complete native Windows validation for configuration paths, owner-only file
 replacement, loopback listeners, shutdown, console behavior and supported
 external tools. Shared code should keep native path and process semantics in
 platform adapters rather than assuming POSIX behavior.
+
+- Restore the standard Windows build: Local Ports has no Windows `newListenerScanner` implementation. Cross-compiling the standard App currently fails there; the Remote HTTP and Ports over SSH composition builds successfully.

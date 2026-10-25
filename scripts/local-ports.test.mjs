@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as ui from '../internal/web/assets/ui.js';
 import {listenerPicker,mount} from '../internal/modules/local_ports/assets/module.js';
+import {sshHostPicker} from '../internal/modules/ports_over_ssh/assets/module.js';
 
 class Node {
- constructor(tag='div'){this.tag=tag;this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.style={};this.attrs={};this.events=new Map();this.className='';this.textContent='';this.hidden=false;this.disabled=false;this.value='';}
+ constructor(tag='div'){this.tag=tag;this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.style={setProperty(k,v){this[k]=v;}};this.attrs={};this.events=new Map();this.className='';this.textContent='';this.hidden=false;this.disabled=false;this.value='';}
  get childElementCount(){return this.children.length;}
  append(...nodes){for(const node of nodes){if(node.parentElement)node.parentElement.children=node.parentElement.children.filter(child=>child!==node);node.parentElement=this;this.children.push(node);}}
  prepend(...nodes){for(const node of [...nodes].reverse()){node.parentElement=this;this.children.unshift(node);}}
@@ -64,7 +65,7 @@ test('Local Ports service rows expose four headed columns and the public port in
   const table=byClass(panel,'local-service-list'),head=byClass(table,'service-list-header'),row=byClass(table,'service');
   assert.equal(table.getAttribute('role'),'table');
   assert.deepEqual(head.children.map(cell=>[cell.getAttribute('role'),cell.textContent]),[
-   ['columnheader','Service'],['columnheader','Local (Aux) port'],['columnheader','Info'],['columnheader','Actions']
+   ['columnheader','Service'],['columnheader','Service port'],['columnheader','Info'],['columnheader','Actions']
   ]);
   assert.equal(row.getAttribute('role'),'row');
   assert.deepEqual(row.children.map(cell=>cell.getAttribute('role')),['cell','cell','cell','cell']);
@@ -122,7 +123,7 @@ test('persistent port stepper exposes vertical increment and decrement controls'
  let events=0;port.input.addEventListener('input',()=>events++);fire(port.increment,'click');assert.equal(port.input.value,'3001');fire(port.decrease,'click');assert.equal(port.input.value,'3000');assert.equal(events,2);
 });
 
-test('listener inventory loads immediately and only its explicit action fills the Aux port',async()=>{
+test('listener inventory loads immediately and only its explicit action fills the service port',async()=>{
  let calls=0;
  const listeners=[
   {port:8080,processes:[{pid:42,name:'web'}],listens_beyond_loopback:true},
@@ -154,9 +155,7 @@ test('listener inventory loads immediately and only its explicit action fills th
  let inputEvents=0;port.input.addEventListener('input',()=>inputEvents++);fire(rows[0],'click');
  assert.equal(port.input.value,3000,'the row itself must not change the field');
  const useButtons=allByClass(picker.menu,'listener-use-port');
- assert.equal(useButtons[0].textContent,'');assert.equal(useButtons[0].getAttribute('aria-label'),'Choose port 8080');assert.equal(useButtons[0].title,undefined);
- const chooseTooltip=byClass(useButtons[0],'choose-port-tooltip');assert.ok(chooseTooltip);assert.equal(chooseTooltip.textContent,'Choose port 8080');fire(useButtons[0],'mouseenter');assert.equal(chooseTooltip.hidden,true);await new Promise(resolve=>setTimeout(resolve,275));assert.equal(chooseTooltip.hidden,false);fire(useButtons[0],'mouseleave');assert.equal(chooseTooltip.hidden,true);
- const chooseIcon=walk(useButtons[0]).find(node=>node.tagName==='SVG');assert.ok(chooseIcon,'the action uses an explicit choose icon instead of clipboard copy');assert.ok(useButtons[0].className.includes('adornment-button'),'Choose uses the same transparent utility control as Refresh');assert.equal(useButtons[0].className.includes('secondary'),false);fire(useButtons[0],'click');
+ assert.equal(useButtons[0].textContent,'Use');assert.equal(useButtons[0].getAttribute('aria-label'),'Use port 8080');assert.equal(useButtons[0].getAttribute('aria-pressed'),'false');fire(useButtons[0],'click');
  assert.equal(port.input.value,'8080');assert.equal(inputEvents,1);assert.equal(document.activeElement,port.input);assert.equal(picker.menu.hidden,false);
 
  const refresh=byClass(picker.menu,'listener-picker-refresh');fire(refresh,'click');await flush();
@@ -171,7 +170,7 @@ test('listener picker shows spinner then a non-blocking retry state',async()=>{
  assert.ok(byClass(picker.menu,'boot-spinner'),'loading state must use the shared spinner');
  rejectRequest(new Error('private operating-system diagnostic'));await flush();
  const message=byClass(picker.menu,'listener-picker-message');
- assert.equal(message.textContent,"Listening ports couldn't be detected. Enter the Aux port manually.");
+ assert.equal(message.textContent,"Listening ports couldn't be detected. Enter the service port manually.");
  assert.equal(port.input.disabled,false);assert.equal(port.input.value,'4321');assert.ok(byClass(picker.menu,'listener-picker-refresh'));
  picker.dispose();
 });
@@ -205,7 +204,7 @@ test('background refresh preserves rows and selection until the completed snapsh
  rows=allByClass(picker.menu,'listener-option');assert.deepEqual(rows.map(row=>row.dataset.port),['1212'],'a blocked refresh must retain the cached rows');
  assert.equal(port.input.value,'1212');assert.equal(allByClass(picker.menu,'listener-use-port')[0].disabled,false);assert.ok(refreshSignal);
  finishRefresh({});await flush();await flush();
- rows=allByClass(picker.menu,'listener-option');assert.deepEqual(rows.map(row=>row.dataset.port),['1313']);assert.equal(port.input.value,'1212','refresh must not overwrite the selected Aux port');
+ rows=allByClass(picker.menu,'listener-option');assert.deepEqual(rows.map(row=>row.dataset.port),['1313']);assert.equal(port.input.value,'1212','refresh must not overwrite the selected service port');
  picker.dispose();
 });
 
@@ -228,4 +227,130 @@ test('disposing a listener picker aborts discovery and ignores a late response',
  picker.dispose();assert.equal(requestSignal.aborted,true);
  resolveRequest({listeners:[{port:7777,processes:[],listens_beyond_loopback:false}]});await flush();
  assert.equal(allByClass(picker.menu,'listener-option').length,0);
+});
+
+
+test('listener search matches ports and full process names without changing the manual service port',async()=>{
+ const {port,picker}=createPicker(async()=>({listeners:[
+  {port:8080,processes:[{pid:1,name:'Long development command --PROJECT-ALPHA'}]},
+  {port:9000,processes:[{pid:2,name:'api'}]}
+ ]}));
+ await flush();
+ try{
+  const search=byClass(picker.menu,'listener-picker-search');
+  assert.ok(search,'listener discovery exposes a search input');
+  port.input.value='4567';fire(port.input,'input');
+  search.value='project-alpha';fire(search,'input');
+  assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['8080']);
+  assert.equal(port.input.value,'4567');
+  let use=byClass(picker.menu,'listener-use-port');assert.equal(use.textContent,'Use');fire(use,'click');
+  assert.equal(port.input.value,'8080');
+  let row=byClass(picker.menu,'listener-option');assert.equal(row.dataset.selected,'true');
+  use=byClass(row,'listener-use-port');assert.equal(use.textContent,'Selected');assert.equal(use.getAttribute('aria-pressed'),'true');
+  search.value='900';fire(search,'input');assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['9000']);
+  assert.equal(port.input.value,'8080');
+  search.value='no match';fire(search,'input');assert.equal(allByClass(picker.menu,'listener-option').length,0);
+  assert.match(byClass(picker.menu,'listener-picker-message').textContent,/No listening ports match/);
+  port.input.value='9000';fire(port.input,'input');search.value='';fire(search,'input');
+  assert.equal(byClass(allByClass(picker.menu,'listener-option')[1],'listener-use-port').textContent,'Selected');
+ }finally{picker.dispose();}
+});
+
+function createHostPicker(api){
+ setup();const host=ui.field('SSH host','manual-server'),controller=new AbortController();
+ const picker=sshHostPicker({moduleId:'ports_over_ssh',api,signal:controller.signal,ui},host);
+ return {host,picker,controller};
+}
+
+test('SSH host search is case insensitive and only Use changes the manual host',async()=>{
+ const {host,picker}=createHostPicker(async()=>({hosts:['Office-Server','build-server']}));await flush();
+ try{
+  const search=byClass(picker.menu,'ssh-host-picker-search');assert.ok(search,'SSH discovery exposes a search input');
+  search.value='OFFICE';fire(search,'input');assert.deepEqual(allByClass(picker.menu,'ssh-host-option').map(row=>row.dataset.host),['Office-Server']);
+  assert.equal(host.input.value,'manual-server');
+  let use=byClass(picker.menu,'ssh-host-use');assert.equal(use.textContent,'Use');fire(use,'click');assert.equal(host.input.value,'Office-Server');
+  assert.equal(use.textContent,'Selected');assert.equal(use.getAttribute('aria-pressed'),'true');
+  assert.equal(byClass(picker.menu,'ssh-host-option').dataset.selected,'true');
+  search.value='unknown';fire(search,'input');assert.equal(allByClass(picker.menu,'ssh-host-option').length,0);
+  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/No SSH hosts match/);assert.equal(host.input.value,'Office-Server');
+  host.input.value='build-server';fire(host.input,'input');search.value='';fire(search,'input');
+  assert.equal(byClass(allByClass(picker.menu,'ssh-host-option')[1],'ssh-host-use').textContent,'Selected');
+ }finally{picker.dispose();}
+});
+
+test('SSH loading and failed refresh retain manual input and expose retry',async()=>{
+ let fail=false;
+ const {host,picker}=createHostPicker(async()=>{if(fail)throw Error('private SSH details');return {hosts:['office-server']};});await flush();
+ try{
+  host.input.value='custom-host';fire(host.input,'input');fail=true;
+  fire(byClass(picker.menu,'ssh-host-refresh'),'click');await flush();
+  assert.equal(host.input.value,'custom-host');assert.equal(host.input.disabled,false);
+  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/couldn't be read/);
+  assert.equal(byClass(picker.menu,'ssh-host-refresh').disabled,false);
+  fail=false;fire(byClass(picker.menu,'ssh-host-refresh'),'click');await flush();
+  assert.equal(allByClass(picker.menu,'ssh-host-option').length,1);assert.equal(host.input.value,'custom-host');
+ }finally{picker.dispose();}
+});
+
+test('SSH picker disposal aborts discovery and ignores late hosts',async()=>{
+ let resolveRequest,requestSignal;
+ const {picker,controller}=createHostPicker((_path,options)=>{requestSignal=options.signal;return new Promise(resolve=>resolveRequest=resolve);});
+ assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/Loading/);
+ controller.abort();assert.equal(requestSignal.aborted,true);
+ resolveRequest({hosts:['late-server']});await flush();
+ assert.equal(allByClass(picker.menu,'ssh-host-option').length,0);
+});
+
+for(const [label,create,searchClass,inputName] of [
+ ['listener',()=>createPicker(async()=>({listeners:[]})),'listener-picker-search','port'],
+ ['SSH host',()=>createHostPicker(async()=>({hosts:[]})),'ssh-host-picker-search','host']
+]){
+ test(`${label} search prevents implicit form submission on Enter and releases its key handler`,async()=>{
+  const result=create();await flush();
+  const search=byClass(result.picker.menu,searchClass),keydown=(input,key)=>{
+   const event=new Event('keydown',{cancelable:true});Object.defineProperty(event,'key',{value:key});input.dispatchEvent(event);return event.defaultPrevented;
+  };
+  try{
+   assert.equal(keydown(search,'Enter'),true,'searching must never implicitly save the service');
+   for(const key of ['Escape','ArrowDown','a','Tab'])assert.equal(keydown(search,key),false,`${key} retains its normal behavior`);
+   assert.equal(keydown(result[inputName].input,'Enter'),false,'the manual field retains its normal form behavior');
+  }finally{result.picker.dispose();}
+  assert.equal(keydown(search,'Enter'),false,'disposing removes the search key handler');
+ });
+}
+
+test('Local Ports can reopen Overview after Configuration',()=>{
+ const h=createServiceList(async()=>({listeners:[]}),[]);h.view.openSettings();h.view.openOverview();
+ assert.equal(walk(h.panel).find(n=>n.textContent==='Overview').getAttribute('aria-current'),'page');h.view.dispose();
+});
+
+
+test('configured listener metadata remains visible when that port is excluded from suggestions',async()=>{
+ const route={id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:3000},summary:{state:'configured',target:'3000'}};
+ const h=createServiceList(async()=>({listeners:[],configured_listeners:[{port:3000,processes:[{name:'web',pid:8}],listens_beyond_loopback:true}],discovery_enabled:true}),[route]);await flush();
+ assert.equal(walk(h.panel).some(n=>/No listener currently detected/.test(n.textContent)),false);assert.ok(byClass(h.panel,'service-warning'));h.view.dispose();
+});
+
+test('route port changes abort old configured-listener snapshots and retain accurate indicators',async()=>{
+ const route=port=>({id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:port},summary:{state:'configured',target:String(port)}});
+ const requests=[];const h=createServiceList((_path,options)=>new Promise(resolve=>requests.push({resolve,signal:options.signal})),[route(3000)]);
+ h.view.render({routes:[route(4000)],data:{}});assert.equal(requests[0].signal.aborted,true);assert.equal(requests.length,2);
+ requests[1].resolve({listeners:[],configured_listeners:[{port:4000,processes:[{name:'new-web',pid:8}],listens_beyond_loopback:true}],discovery_enabled:true});await flush();
+ requests[0].resolve({listeners:[],configured_listeners:[{port:3000,processes:[]}],discovery_enabled:true});await flush();
+ assert.equal(byClass(h.panel,'no-listener-indicator'),undefined);assert.ok(byClass(h.panel,'local-port-tooltip').textContent.includes('new-web'));h.view.dispose();
+});
+
+test('Dashboard notices reuse discovery observations and invalidate on settings or lookup failure',async()=>{
+ const route={id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:5411},summary:{target:'Local port 5411'}};
+ let failed=false,calls=0;
+ const h=createServiceList(async()=>{calls++;if(failed)throw Error('unavailable');return {listeners:[]};},[route]);
+ await flush();assert.match(h.view.routeNotice(route),/Last detected: no listener on port 5411/);
+ h.view.deactivate();assert.match(h.view.routeNotice(route),/Last detected/);assert.equal(calls,1,'Dashboard reuses results without another probe');
+ failed=true;h.view.activate();await flush();assert.equal(h.view.routeNotice(route),'');
+ h.view.render({routes:[route],data:{discovery_enabled:false}});assert.equal(h.view.routeNotice(route),'');h.view.dispose();
+});
+
+test('cached non-loopback notices are explicitly last observations',async()=>{
+ const route={id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:5411},summary:{target:'Local port 5411'}};
+ const h=createServiceList(async()=>({listeners:[{port:5411,listens_beyond_loopback:true,processes:[]}]}),[route]);await flush();h.view.deactivate();assert.match(h.view.routeNotice(route),/^Last detected:/);h.view.dispose();
 });

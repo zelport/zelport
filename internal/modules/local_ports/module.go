@@ -1,9 +1,7 @@
 package local_ports
 
 import (
-	"context"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"github.com/zelport/zelport/internal/feature"
 	"github.com/zelport/zelport/internal/modulekit"
@@ -12,7 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
+	"sync"
 )
 
 //go:embed assets/*
@@ -23,7 +21,8 @@ type Settings struct {
 }
 type Module struct {
 	modulekit.Base
-	scanner listenerScanner
+	scanner  listenerScanner
+	configMu sync.RWMutex
 }
 
 func New() feature.Module {
@@ -37,48 +36,9 @@ func newModule(scanner listenerScanner) *Module {
 	m.Summary = func(r feature.Route) feature.Summary {
 		var s Settings
 		feature.Decode(r.Settings, &s)
-		return feature.Summary{State: "configured", Target: fmt.Sprintf("Local (Aux) port %d", s.AuxPort)}
+		return feature.Summary{State: "configured", Target: fmt.Sprintf("Local service port %d", s.AuxPort)}
 	}
 	return m
-}
-
-func (m *Module) Admin() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/listeners/refresh" {
-			if r.Method != http.MethodPost {
-				w.Header().Set("Allow", http.MethodPost)
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			w.Header().Set("Cache-Control", "no-store")
-			modulekit.JSON(w, map[string]any{})
-			return
-		}
-		if r.URL.Path != "/listeners" {
-			http.NotFound(w, r)
-			return
-		}
-		if r.Method != http.MethodGet {
-			w.Header().Set("Allow", http.MethodGet)
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		w.Header().Set("Cache-Control", "no-store")
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-		listeners, err := discoverListeners(ctx, m.scanner, authorityPort(m.Host))
-		cancel()
-		w.Header().Set("Content-Type", "application/json")
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Listening ports couldn't be detected. Enter the Aux port manually."})
-			return
-		}
-		response := struct {
-			Listeners []Listener `json:"listeners"`
-		}{Listeners: listeners}
-		_ = json.NewEncoder(w).Encode(response)
-	})
 }
 
 func authorityPort(host feature.Host) int {
@@ -102,10 +62,10 @@ func (m *Module) ValidateRoute(r feature.Route) error {
 		return e
 	}
 	if s.AuxPort < 1 || s.AuxPort > 65535 {
-		return fmt.Errorf("Aux port must be between 1 and 65535")
+		return fmt.Errorf("Service port must be between 1 and 65535")
 	}
 	if m.Host != nil && m.Host.ListenerAuthority("localhost") == "localhost:"+strconv.Itoa(s.AuxPort) || m.Host != nil && s.AuxPort == 80 && m.Host.ListenerAuthority("localhost") == "localhost" {
-		return fmt.Errorf("Aux port cannot be the Zelport Localhost port")
+		return fmt.Errorf("Service port cannot be the Zelport localhost port")
 	}
 	return nil
 }
@@ -114,7 +74,7 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 	feature.Decode(v.Settings, &s)
 	target := &url.URL{Scheme: "http", Host: "localhost:" + strconv.Itoa(s.AuxPort)}
 	if modulekit.SelfTarget(target, m.Host.ListenerAuthority("localhost")) {
-		feature.Status(w, r, 503, "Invalid Aux port", "The Aux port cannot be the Zelport Localhost port.")
+		feature.Status(w, r, 503, "Invalid service port", "The Service port cannot be the Zelport localhost port.")
 		return
 	}
 	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: "localhost:" + strconv.Itoa(s.AuxPort)}, modulekit.ProxyOptions{PreserveHost: true, ListenerAuthority: m.Host.ListenerAuthority("localhost")})

@@ -3,6 +3,7 @@ package modulekit
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"github.com/zelport/zelport/internal/feature"
 	"net"
@@ -17,6 +18,8 @@ import (
 type ProxyOptions struct {
 	PreserveHost, RewriteOrigin, SkipTLSVerify bool
 	ListenerAuthority                          string
+	RootCAs                                    *x509.CertPool
+	ProxyURL                                   *url.URL
 	Dial                                       func(context.Context, string, string) (net.Conn, error)
 	Error                                      func(http.ResponseWriter, *http.Request, error)
 }
@@ -25,9 +28,12 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 	l := feature.RequestLease(r)
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
+	if o.ProxyURL != nil {
+		transport.Proxy = http.ProxyURL(o.ProxyURL)
+	}
 	transport.DisableKeepAlives = true
 	transport.ResponseHeaderTimeout = 30 * time.Second
-	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: o.SkipTLSVerify}
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: o.SkipTLSVerify, RootCAs: o.RootCAs}
 	dial := o.Dial
 	if dial == nil {
 		_, listenerPort, _ := net.SplitHostPort(o.ListenerAuthority)
@@ -53,7 +59,7 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 			return dialer.DialContext(ctx, network, address)
 		}
 	}
-	transport.DialContext = func(ctx context.Context, n, a string) (net.Conn, error) {
+	trackedDial := func(ctx context.Context, n, a string) (net.Conn, error) {
 		c, e := dial(ctx, n, a)
 		if e != nil {
 			return nil, e
@@ -65,9 +71,34 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 		}
 		return c, nil
 	}
+	transport.DialContext = trackedDial
+	// Go otherwise reuses TLSClientConfig for the HTTPS proxy and the origin.
+	// Origin's opt-out must never weaken TLS verification of the proxy itself.
+	if o.ProxyURL != nil && o.ProxyURL.Scheme == "https" {
+		transport.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+			conn, err := trackedDial(ctx, network, address)
+			if err != nil {
+				return nil, err
+			}
+			server, _, err := net.SplitHostPort(address)
+			if err != nil {
+				conn.Close()
+				return nil, err
+			}
+			secure := tls.Client(conn, &tls.Config{RootCAs: o.RootCAs, ServerName: server})
+			handshakeCtx, cancel := context.WithTimeout(ctx, transport.TLSHandshakeTimeout)
+			defer cancel()
+			if err = secure.HandshakeContext(handshakeCtx); err != nil {
+				conn.Close()
+				return nil, err
+			}
+			return secure, nil
+		}
+	}
 	defer transport.CloseIdleConnections()
 	proxy := httputil.ReverseProxy{Transport: transport, FlushInterval: -1, Rewrite: func(p *httputil.ProxyRequest) {
 		p.SetURL(target)
+		p.Out.Header.Del("Proxy-Authorization")
 		if o.PreserveHost {
 			p.Out.Host = p.In.Host
 		}

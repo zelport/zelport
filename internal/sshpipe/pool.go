@@ -30,13 +30,20 @@ type Pool struct {
 	conns      map[*conn]bool
 	closed     bool
 	configPath string
+	configFile string
 	failure    *Error
 	failures   int
 	retry      time.Time
 }
 
 func New(host string, port int) *Pool {
-	return &Pool{host: host, port: port, conns: make(map[*conn]bool), command: func(args ...string) *exec.Cmd { return exec.Command("ssh", args...) }}
+	return NewWithConfig(host, port, "")
+}
+
+// NewWithConfig uses configFile as the source for a separate hardened wrapper.
+// A blank source selects the usual ~/.ssh/config. The pool owns only its wrapper.
+func NewWithConfig(host string, port int, configFile string) *Pool {
+	return &Pool{host: host, port: port, configFile: configFile, conns: make(map[*conn]bool), command: func(args ...string) *exec.Cmd { return exec.Command("ssh", args...) }}
 }
 func (p *Pool) Status() Status {
 	p.mu.Lock()
@@ -92,7 +99,7 @@ func (p *Pool) DialContext(ctx context.Context, _, _ string) (net.Conn, error) {
 		return nil, err
 	}
 	if p.configPath == "" {
-		p.configPath, err = writeConfig()
+		p.configPath, err = writeConfig(p.configFile)
 		if err != nil {
 			inRead.Close()
 			inWrite.Close()

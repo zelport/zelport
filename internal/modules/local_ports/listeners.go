@@ -12,6 +12,7 @@ type ProcessIdentity struct {
 }
 
 type Listener struct {
+	unknownOwner          bool
 	Port                  int               `json:"port"`
 	Processes             []ProcessIdentity `json:"processes"`
 	ListensBeyondLoopback bool              `json:"listens_beyond_loopback"`
@@ -38,9 +39,10 @@ func discoverListeners(ctx context.Context, scanner listenerScanner, excludedPor
 	}
 
 	type group struct {
-		candidate bool
-		beyond    bool
-		processes map[ProcessIdentity]struct{}
+		candidate    bool
+		unknownOwner bool
+		beyond       bool
+		processes    map[ProcessIdentity]struct{}
 	}
 	groups := make(map[int]*group)
 	for _, record := range records {
@@ -59,6 +61,9 @@ func discoverListeners(ctx context.Context, scanner listenerScanner, excludedPor
 		}
 		if !record.Address.IsLoopback() {
 			current.beyond = true
+		}
+		if record.Process == "" {
+			current.unknownOwner = true
 		}
 		if record.PID > 0 || record.Process != "" {
 			current.processes[ProcessIdentity{PID: record.PID, Name: record.Process}] = struct{}{}
@@ -80,7 +85,7 @@ func discoverListeners(ctx context.Context, scanner listenerScanner, excludedPor
 			}
 			return processes[i].PID < processes[j].PID
 		})
-		listeners = append(listeners, Listener{Port: port, Processes: processes, ListensBeyondLoopback: current.beyond})
+		listeners = append(listeners, Listener{unknownOwner: current.unknownOwner, Port: port, Processes: processes, ListensBeyondLoopback: current.beyond})
 	}
 	sort.Slice(listeners, func(i, j int) bool { return listeners[i].Port < listeners[j].Port })
 	return listeners, nil

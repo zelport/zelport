@@ -162,6 +162,7 @@ func TestInheritedConfigAppliesToJumpHosts(t *testing.T) {
 	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	if err = os.Mkdir(filepath.Join(home, ".ssh"), 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -198,6 +199,117 @@ Host jump
 		if host == "office" && !strings.Contains(string(out), "user fixture\n") {
 			t.Fatal("user config not inherited")
 		}
+	}
+}
+
+func TestSelectedConfigAppliesToJumpHostsAndSurvivesClose(t *testing.T) {
+	binary, err := exec.LookPath("ssh")
+	if err != nil {
+		t.Skip("SSH client unavailable")
+	}
+	name := `custom "SSH" config`
+	if runtime.GOOS == "windows" {
+		name = "custom SSH config"
+	}
+	selected := filepath.Join(t.TempDir(), name)
+	content := []byte("Host office\n HostName 192.0.2.1\n User custom-user\n ProxyJump jump\nHost jump\n HostName 192.0.2.2\n User jump-user\n BatchMode no\n StrictHostKeyChecking no\n ControlMaster auto\n ControlPersist yes\n")
+	if err := os.WriteFile(selected, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+	p := NewWithConfig("office", 3000, selected)
+	t.Cleanup(p.Close)
+	var wrapper string
+	p.command = func(args ...string) *exec.Cmd {
+		if len(args) < 2 || args[0] != "-F" || args[1] == selected {
+			t.Fatalf("SSH needs a separate hardened wrapper: %q", args)
+		}
+		wrapper = args[1]
+		return helper("echo")(args...)
+	}
+	c, err := p.DialContext(context.Background(), "tcp", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	info, err := os.Stat(wrapper)
+	if err != nil || info.Mode().Perm() != 0600 {
+		t.Fatalf("wrapper permissions: %v, %v", info, err)
+	}
+	for host, user := range map[string]string{"office": "custom-user", "jump": "jump-user"} {
+		out, err := exec.Command(binary, "-G", "-F", wrapper, host).CombinedOutput()
+		if err != nil {
+			t.Fatalf("ssh -G: %v: %s", err, out)
+		}
+		for _, expected := range []string{"user " + user, "batchmode yes", "stricthostkeychecking true", "controlmaster false", "controlpersist no", "permitlocalcommand no", "forwardagent no"} {
+			if !strings.Contains(string(out), expected+"\n") {
+				t.Errorf("%s missing %q in %s", host, expected, out)
+			}
+		}
+	}
+	p.Close()
+	if _, err := os.Stat(wrapper); !os.IsNotExist(err) {
+		t.Fatalf("wrapper remains after Close: %v", err)
+	}
+	if got, err := os.ReadFile(selected); err != nil || string(got) != string(content) {
+		t.Fatalf("selected user config changed after Close: %q, %v", got, err)
+	}
+}
+
+func TestSelectedConfigPathIsLiteral(t *testing.T) {
+	binary, err := exec.LookPath("ssh")
+	if err != nil {
+		t.Skip("SSH client unavailable")
+	}
+	for _, name := range []string{"config [literal]", "config * literal", "config ? literal", "config ${HOME}"} {
+		t.Run(name, func(t *testing.T) {
+			if runtime.GOOS == "windows" && strings.ContainsAny(name, "*?") {
+				t.Skip("Windows forbids wildcard characters in filenames")
+			}
+			selected := filepath.Join(t.TempDir(), name)
+			if err := os.WriteFile(selected, []byte("Host literal\n User literal-user\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			decoy := strings.NewReplacer("[literal]", "l", "*", "x", "?", "x", "${HOME}", "expanded").Replace(name)
+			if err := os.WriteFile(filepath.Join(filepath.Dir(selected), decoy), []byte("Host literal\n IdentityFile /zelport-decoy\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			wrapper, err := writeConfig(selected)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(wrapper)
+			out, err := exec.Command(binary, "-G", "-F", wrapper, "literal").CombinedOutput()
+			if err != nil || !strings.Contains(string(out), "user literal-user\n") || strings.Contains(string(out), "identityfile /zelport-decoy\n") {
+				t.Fatalf("selected file not read literally: %v: %s", err, out)
+			}
+		})
+	}
+}
+
+func TestPoolRejectsInvalidSourceAndAcceptsMissingSource(t *testing.T) {
+	for _, path := range []string{"relative/config", t.TempDir()} {
+		p := NewWithConfig("office", 3000, path)
+		p.command = func(...string) *exec.Cmd {
+			t.Fatal("SSH started with invalid configuration path")
+			return nil
+		}
+		if _, err := p.DialContext(context.Background(), "tcp", ""); err == nil {
+			t.Errorf("invalid configuration %q accepted", path)
+		}
+		p.Close()
+	}
+	missing := filepath.Join(t.TempDir(), "missing")
+	p := NewWithConfig("office", 3000, missing)
+	t.Cleanup(p.Close)
+	p.command = helper("echo")
+	c, err := p.DialContext(context.Background(), "tcp", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Close()
+	p.Close()
+	if _, err := os.Stat(missing); !os.IsNotExist(err) {
+		t.Fatalf("Dial created selected source: %v", err)
 	}
 }
 
