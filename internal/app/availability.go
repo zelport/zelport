@@ -33,7 +33,7 @@ func (m *Manager) availability(c configuration, mod feature.Module) Availability
 		if a.Services == 1 {
 			noun = "service"
 		}
-		a.Reason = fmt.Sprintf("Remove %d configured %s before disabling this module.", a.Services, noun)
+		a.Reason = fmt.Sprintf("Remove its %d %s to hide this source.", a.Services, noun)
 	}
 	if guard, ok := mod.(feature.AvailabilityGuard); ok {
 		raw := c.Modules[d.ID]

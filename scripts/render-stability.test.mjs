@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import * as ui from '../internal/web/assets/ui.js';
 import {mount as relayMount} from '../internal/modules/ports_over_relay/assets/module.js';
 import {createDashboard} from '../internal/web/assets/dashboard.js';
+import {createSources} from '../internal/web/assets/sources.js';
 import {renderHeaderStatus as renderRuntimeHeaderStatus,renderAvailability as renderRuntimeAvailability} from '../internal/web/assets/runtime.js';
 test('initial boot hides the incomplete shell and delays an accessible spinner',()=>{
  const html=readFileSync(new URL('../internal/web/assets/index.html',import.meta.url),'utf8');
@@ -94,65 +95,49 @@ test('relay client preserves separate sections and updates expiration without ne
  sameNodes(tree(setup),setupBefore);
 });
 
-test('relay local navigation uses unique labels in the shared module toolbar',()=>{
- const ctx=context(),view=relayMount(ctx),navigation=tree(ctx.toolbar).find(n=>n.className==='module-view-nav');
- assert.ok(navigation,'the relay view navigation belongs in the shared module toolbar');
- assert.equal(tree(ctx.panel).includes(navigation),false);
- assert.equal(navigation['aria-label'],'Ports over Relay views');
- const buttons=tree(navigation).filter(n=>n.tag==='button');
- assert.deepEqual(buttons.map(n=>n.textContent),['Overview','Configuration']);
- const [overview,configuration]=buttons;
- assert.equal(overview['aria-current'],'page');assert.equal(configuration['aria-current'],'false');
- assert.equal(buttons.some(n=>n.textContent==='Services'),false);
+test('relay page has no view switch and keeps Refresh catalog in the shared toolbar',()=>{
+ const ctx=context(),view=relayMount(ctx);
+ assert.equal(tree(ctx.toolbar).some(n=>n.className==='module-view-nav'),false);
  const refresh=tree(ctx.toolbar).find(n=>n['aria-label']==='Refresh catalog');
  assert.ok(refresh);assert.equal(refresh.hidden,false);
- configuration.events.click({preventDefault(){}});assert.equal(refresh.hidden,true);
- overview.events.click({preventDefault(){}});assert.equal(refresh.hidden,false);
- view.dispose();assert.equal(tree(ctx.toolbar).includes(navigation),false);assert.equal(tree(ctx.toolbar).includes(refresh),false);
+ view.dispose();assert.equal(tree(ctx.toolbar).includes(refresh),false);
 });
 
-test('relay client separates service lists from inline configuration',()=>{
+test('relay page shows configuration first and the device catalog after it, without an imports list',()=>{
  const ctx=context(),view=relayMount(ctx);
  view.render({revision:1,routes:[],data:{has_identity:false,enabled:false,publish:false,administration_peers:[],status:{connected:false,records:[]}}});
  const nodes=tree(ctx.panel),services=nodes.find(n=>n.className==='relay-services-view'),configuration=nodes.find(n=>n.className==='relay-configuration-view');
- assert.ok(services&&configuration,'the module needs distinct service and configuration views');
- assert.equal(services.hidden,false);assert.equal(configuration.hidden,true);
- const configure=tree(ctx.toolbar).find(n=>n.tag==='button'&&n.textContent==='Configuration');
- configure.events.click({preventDefault(){}});
- assert.equal(services.hidden,true);assert.equal(configuration.hidden,false);
+ assert.ok(services&&configuration);assert.equal(services.hidden,false);assert.equal(configuration.hidden,false);
+ assert.ok(ctx.panel.children.indexOf(configuration)<ctx.panel.children.indexOf(services));
  assert.ok(tree(configuration).some(n=>n.tag==='form'),'configuration uses an inline form');
  assert.ok(tree(configuration).some(n=>n.textContent==='E2E secret'));
+ assert.equal(nodes.find(n=>n.tag==='h2'&&n.textContent==='Imported services').hidden,true);
 });
 
-test('relay client hides a revealed E2E secret when leaving Configuration',async()=>{
+test('relay client hides a revealed E2E secret when leaving the page',async()=>{
  const ctx=context();ctx.signal=new AbortController().signal;ctx.api=async()=>({group_token:'test-only'});ctx.mutate=work=>work();
  const view=relayMount(ctx);view.render({revision:1,routes:[],data:{has_identity:true,enabled:false,publish:false,administration_peers:[],status:{connected:false,records:[]}}});view.activate();
- const controls=tree(ctx.toolbar),configuration=controls.find(n=>n.tag==='button'&&n.textContent==='Configuration'),overview=controls.find(n=>n.tag==='button'&&n.textContent==='Overview');
- configuration.events.click({preventDefault(){}});
  const reveal=tree(ctx.panel).find(n=>n['aria-label']==='Reveal E2E secret');await reveal.events.click({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));
  assert.ok(tree(ctx.panel).some(n=>n.value==='test-only'));
- overview.events.click({preventDefault(){}});
+ view.deactivate();
  assert.equal(tree(ctx.panel).some(n=>n.value==='test-only'),false);
 });
 
 test('relay configuration can discard a stale draft after a conflict',()=>{
  const ctx=context(),view=relayMount(ctx);view.render({revision:1,routes:[],data:{relay_url:'wss://old.example.test',has_identity:false,enabled:false,publish:false,administration_peers:[],status:{connected:false,records:[]}}});
- tree(ctx.toolbar).find(n=>n.tag==='button'&&n.textContent==='Configuration').events.click({preventDefault(){}});
  const form=tree(ctx.panel).find(n=>n.className==='relay-configuration-form'),url=tree(form).find(n=>n.tag==='input'&&n.value==='wss://old.example.test');
  url.value='wss://draft.example.test';form.events.input({});
  view.render({revision:2,routes:[],data:{relay_url:'wss://new.example.test',has_identity:false,enabled:false,publish:false,administration_peers:[],status:{connected:false,records:[]}}});
  assert.equal(url.value,'wss://draft.example.test','polling must preserve the draft');
- tree(ctx.panel).find(n=>n.tag==='button'&&n.textContent==='Discard changes').events.click({preventDefault(){}});
+ tree(ctx.panel).find(n=>n.tag==='button'&&n.textContent==='Discard').events.click({preventDefault(){}});
  assert.ok(tree(ctx.panel).some(n=>n.tag==='input'&&n.value==='wss://new.example.test'));
 });
 
-test('relay configuration preserves unsaved secret fields when switching views',()=>{
+test('relay configuration preserves unsaved secret fields when leaving and returning',()=>{
  const ctx=context(),view=relayMount(ctx);view.render({revision:1,routes:[],data:{relay_url:'wss://relay.example.test',has_identity:false,has_access_token:false,enabled:false,publish:false,administration_peers:[],status:{connected:false,records:[]}}});
- const configuration=tree(ctx.toolbar).find(n=>n.tag==='button'&&n.textContent==='Configuration'),overview=tree(ctx.toolbar).find(n=>n.tag==='button'&&n.textContent==='Overview');
- configuration.events.click({preventDefault(){}});
  const form=tree(ctx.panel).find(n=>n.className==='relay-configuration-form'),secrets=tree(form).filter(n=>n.tag==='input'&&n.type==='password');
  assert.equal(secrets.length,2);secrets[0].value='draft-access';secrets[1].value='draft-group';form.events.input({});
- overview.events.click({preventDefault(){}});configuration.events.click({preventDefault(){}});
+ view.deactivate();view.activate();
  assert.deepEqual(secrets.map(n=>n.value),['draft-access','draft-group']);
  view.deactivate();assert.deepEqual(secrets.map(n=>n.value),['draft-access','draft-group']);
 });
@@ -160,13 +145,13 @@ test('relay configuration preserves unsaved secret fields when switching views',
 test('relay configuration retries a conflicted draft with the latest revision',async()=>{
  const ctx=context(),view=relayMount(ctx),requests=[];
  let state={revision:1,routes:[],data:{relay_url:'wss://old.example.test',has_identity:true,has_access_token:false,enabled:false,publish:false,administration_peers:[],status:{connected:false,records:[]}}};
- ctx.setState(state);view.render(state);tree(ctx.toolbar).find(n=>n.tag==='button'&&n.textContent==='Configuration').events.click({preventDefault(){}});
+ ctx.setState(state);view.render(state);
  const form=tree(ctx.panel).find(n=>n.className==='relay-configuration-form'),url=tree(form).find(n=>n.tag==='input'&&n.value==='wss://old.example.test');
  url.value='wss://draft.example.test';form.events.input({});
  ctx.api=async(_path,options)=>{const body=JSON.parse(options.body);requests.push(body);if(requests.length===1){const error=Error('Conflict');error.status=409;throw error;}return {};};
  ctx.mutate=async work=>{try{return await work();}catch(error){state={...state,revision:2,data:{...state.data,relay_url:'wss://new.example.test'}};ctx.setState(state);view.render(state);throw error;}};
  await form.events.submit({preventDefault(){}});
- assert.ok(tree(form).some(n=>n.textContent?.includes('save again')),'the conflict must explain how to retry without losing the draft');
+ assert.ok(tree(form).some(n=>n.textContent?.includes('Save again')),'the conflict must explain how to retry without losing the draft');
  assert.equal(url.value,'wss://draft.example.test');
  await form.events.submit({preventDefault(){}});
  assert.deepEqual(requests.map(r=>r.revision),[1,2]);assert.equal(requests[1].relay_url,'wss://draft.example.test');
@@ -174,22 +159,21 @@ test('relay configuration retries a conflicted draft with the latest revision',a
 
 test('Dashboard retains rows and runtime nodes across polling and uptime changes',()=>{
  const nodes=new Map(),get=id=>{if(!nodes.has(id))nodes.set(id,new Node('section'));return nodes.get(id)};
- const context={ui,createDashboard,renderRuntimeHeaderStatus,renderRuntimeAvailability,document:{getElementById:get,body:new Node('body'),addEventListener(){},querySelectorAll(){return []}},window:{addEventListener(){},innerHeight:800},history:{replaceState(){}},setTimeout(){},clearTimeout(){},location:{hash:''}};
+ const context={ui,createDashboard,createSources,renderRuntimeHeaderStatus,renderRuntimeAvailability,document:{getElementById:get,body:new Node('body'),addEventListener(){},querySelectorAll(){return []}},window:{addEventListener(){},innerHeight:800},history:{replaceState(){}},setTimeout(){},clearTimeout(){},location:{hash:''}};
  const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
- runInNewContext(source+`\nglobalThis.update=s=>{state=s;client={state:()=>state};dashboard??=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui});render()};`,context);
+ runInNewContext(source+`\nglobalThis.update=s=>{state=s;client={state:()=>state};dashboard??=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui});sources??=createSources({root:$('sources-list'),modules,client,navigate,ui});render()};`,context);
  const state={port:8080,modules:[],states:{test:{routes:[{id:'one',module:'test',domain:'test.localhost',summary:{state:'ready',target:'localhost'}},{id:'remote',module:'remote_http',domain:'remote.localhost',summary:{state:'configured',target:'https://example.test',detail:'Certificate verification is disabled'}}]}},runtime:{version:'dev',hostname:'test-host',built_at:'unknown',uptime_seconds:1,listeners:[],config_path:'test'}};
  context.update(state);const rows=tree(get('dashboard-services')),runtime=tree(get('runtime-info'));
  assert.equal(rows.filter(n=>n.tag==='thead').length,1);assert.equal(rows.filter(n=>n.tag==='tbody').length,1);
  assert.ok(rows.find(n=>n.tag==='table').className.includes('data-table'));
- assert.deepEqual(rows.filter(n=>n.tag==='th').map(n=>n.textContent),['Domain','Source type','Data flow','Actions']);
+ assert.deepEqual(rows.filter(n=>n.tag==='th').map(n=>n.textContent),['Address','Source','Target','Status','Actions']);
  assert.ok(!rows.some(n=>n.className.includes('status-badge')));
- const warning=rows.find(n=>n.className==='service-warning'&&!n.hidden);assert.ok(warning,'connection warning needs the shared indicator');
- assert.ok(warning.parentElement.className.includes('dashboard-actions'),'warning belongs beside the row actions');
- assert.equal(warning.parentElement.parentElement.dataset.label,'Actions');
- assert.ok(tree(warning).some(n=>n.tag==='button'&&n['aria-label']==='Service warning'));
+ const warning=rows.find(n=>n.className==='service-status'&&n.dataset.tone==='warning');assert.ok(warning,'a route detail is a warning status');
+ assert.equal(warning.parentElement.dataset.label,'Status');
  assert.ok(tree(warning).some(n=>n.role==='tooltip'&&n.textContent==='Certificate verification is disabled'&&n.hidden));
+ assert.ok(rows.some(n=>n.className==='service-status'&&n.dataset.tone==='ok'),'a ready route is available');
  assert.ok(rows.some(n=>n.tag==='button'&&n['aria-label']==='Actions for test.localhost'&&n.textContent==='⋮'));
- assert.ok(rows.some(n=>n.tag==='button'&&n.textContent==='Edit'&&n.role==='menuitem'));
+ assert.ok(rows.some(n=>n.tag==='button'&&n.textContent==='Edit'&&n.role==='menuitem'));assert.ok(rows.some(n=>n.tag==='button'&&n.textContent==='Remove'&&n.role==='menuitem'));
  assert.deepEqual(get('runtime-info').children.map(c=>c.dataset.label),['Version','Hostname','Configuration','Listeners','Modules']);
  const moduleCell=get('runtime-info').children.at(-1),moduleNodes=tree(moduleCell);assert.ok(moduleCell.className.includes('runtime-modules'));
  assert.ok(moduleNodes.some(n=>n.className.includes('runtime-modules-trigger')&&n.textContent==='Core only'));
@@ -226,13 +210,12 @@ for(const lifecycle of ['deactivate','dispose'])test(`relay client discards a la
  assert.ok(!tree(ctx.panel).some(n=>n.value==='test-only'));
 });
 
-for(const id of ['local_ports','remote_http','ports_over_ssh','ports_over_relay','built_in_relay'])test(`${id}: shared module views expose Configuration and retain its nodes`,async()=>{
+for(const id of ['local_ports','remote_http','ports_over_ssh','ports_over_relay','built_in_relay'])test(`${id}: source page shows Configuration without a view switch and retains its nodes`,async()=>{
  const {mount}=await import(`../internal/modules/${id}/assets/module.js`),ctx=context(),view=mount(ctx);
  view.render({revision:1,routes:[],data:{status:{state:'Stopped',clients:0,listeners:[],records:[]},port:8090,bind_address:'',config_exists:true}});
- const navigation=tree(id==='built_in_relay'?ctx.panel:ctx.toolbar).find(n=>n.className==='module-view-nav');assert.ok(navigation);assert.equal(typeof view.openSettings,'function');
- view.openSettings();const config=tree(ctx.panel).filter(n=>n.tag==='input');
- const controls=tree(ctx.panel);assert.ok(controls.length);
- navigation.children[0].events.click({preventDefault(){}});view.openSettings();sameNodes(tree(ctx.panel).filter(n=>n.tag==='input'),config);view.dispose();
+ assert.equal(tree(ctx.panel).concat(tree(ctx.toolbar)).some(n=>n.className==='module-view-nav'),false);assert.equal(typeof view.openSettings,'function');
+ view.openSettings();const config=tree(ctx.panel).filter(n=>n.tag==='input');assert.ok(config.length);
+ view.render({revision:2,routes:[],data:{status:{state:'Stopped',clients:0,listeners:[],records:[]},port:8090,bind_address:'',config_exists:true}});view.openSettings();sameNodes(tree(ctx.panel).filter(n=>n.tag==='input'),config);view.dispose();
 });
 
 test('navigation events during boot wait for composed module controls',()=>{

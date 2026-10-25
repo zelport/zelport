@@ -34,9 +34,9 @@ function harness(data={}){
 }
 function edit(h,label,value){const input=h.input(label);assert.ok(input,label);if(input.type==='checkbox')input.checked=value;else input.value=value;fire(input,'input',{bubbles:true});return input;}
 
-test('Remote HTTP Configuration preserves CA, proxy and password drafts through polling and view changes',()=>{
+test('Remote HTTP Configuration preserves CA, proxy and password drafts through polling',()=>{
  const h=harness({has_proxy_password:true});h.view.openSettings();edit(h,'Proxy URL','http://proxy.example.test:8080');const ca=edit(h,'Additional CA certificate file','/tmp/team.pem'),password=edit(h,'Proxy password','new-secret');ca.selectionStart=3;ca.focus();
- h.render({},2);fire(tree(h.toolbar).find(n=>n.textContent==='Overview'),'click');h.view.openSettings();
+ h.render({},2);h.view.openSettings();
  assert.equal(h.input('Additional CA certificate file'),ca);assert.equal(ca.value,'/tmp/team.pem');assert.equal(ca.selectionStart,3);assert.equal(password.value,'new-secret');assert.equal(h.all().some(n=>n.textContent==='new-secret'),false);h.view.dispose();
 });
 
@@ -44,7 +44,7 @@ test('Remote HTTP settings send typed credentials once and clear password inputs
  const h=harness();h.view.openSettings();edit(h,'Additional CA certificate file','/tmp/ca.pem');edit(h,'Proxy URL','socks5://proxy.example.test:1080');edit(h,'Proxy username','account');edit(h,'Proxy password','test-only-secret');
  h.ctx.mutate=async work=>{const result=await work();h.render({ca_cert_path:'/tmp/ca.pem',proxy_url:'socks5://proxy.example.test:1080',proxy_username:'account',has_proxy_password:true},2);return result;};
  fire(h.form(),'submit');await tick();assert.deepEqual(h.requests[0],{path:'/api/modules/remote_http/settings',method:'PUT',body:{revision:1,ca_cert_path:'/tmp/ca.pem',proxy_url:'socks5://proxy.example.test:1080',proxy_username:'account',proxy_password:'test-only-secret',clear_proxy_password:false}});
- assert.equal(h.input('Proxy password').value,'');assert.equal(h.find('Save settings').disabled,true);h.view.dispose();
+ assert.equal(h.input('Proxy password').value,'');assert.equal(h.find('Save').disabled,true);h.view.dispose();
 });
 
 test('Remote HTTP conflicts retain drafts and the original revision until explicit retry',async()=>{
@@ -54,7 +54,7 @@ test('Remote HTTP conflicts retain drafts and the original revision until explic
 });
 
 test('Remote HTTP discard clears entered secrets and restores the latest saved fields',()=>{
- const h=harness({proxy_url:'http://old.example.test:8080',has_proxy_password:true});h.view.openSettings();edit(h,'Proxy password','draft-secret');h.render({proxy_url:'http://new.example.test:8080'},2);fire(h.find('Discard changes'),'click');
+ const h=harness({proxy_url:'http://old.example.test:8080',has_proxy_password:true});h.view.openSettings();edit(h,'Proxy password','draft-secret');h.render({proxy_url:'http://new.example.test:8080'},2);fire(h.find('Discard'),'click');
  assert.equal(h.input('Proxy URL').value,'http://new.example.test:8080');assert.equal(h.input('Proxy password').value,'');h.view.dispose();
 });
 
@@ -75,15 +75,11 @@ test('reloading certificates refreshes saved state without discarding proxy draf
 
 test('web CA editor is available remotely, blocks drafts and preserves settings during polling',async()=>{
  const h=harness();h.render({},1,{remote_admin:{hostname:'remote-test'}});h.view.openSettings();const browser=h.find('Edit file');assert.equal(browser.disabled,false);
- edit(h,'Proxy URL','http://proxy.example.test:8080');assert.equal(browser.disabled,true);fire(h.find('Discard changes'),'click');
+ edit(h,'Proxy URL','http://proxy.example.test:8080');assert.equal(browser.disabled,true);fire(h.find('Discard'),'click');
  assert.equal(h.input('Additional CA certificate file').placeholder,'~/.config/zelport/additional-ca.pem');
  const calls=[];h.ctx.ui.fileEditor=(_ctx,options)=>{calls.push(options);return {dispose(){}};};fire(browser,'click');fire(browser,'click');assert.equal(calls.length,1);assert.equal(calls[0].endpoint,'/api/modules/remote_http/ca-file');h.render({},2);assert.equal(browser.disabled,true);calls[0].onClose();assert.equal(browser.disabled,false);h.view.dispose();
 });
 
-test('opening Remote HTTP Overview retains a configuration draft for explicit return',()=>{
- const h=harness();h.view.openSettings();const draft=edit(h,'Proxy URL','http://draft.example.test:8080');h.view.openOverview();
- assert.equal(tree(h.toolbar).find(n=>n.textContent==='Overview').getAttribute('aria-current'),'page');h.view.openSettings();assert.equal(h.input('Proxy URL'),draft);assert.equal(draft.value,'http://draft.example.test:8080');h.view.dispose();
-});
 
 test('proxy URL errors mentioning a path focus the proxy field, never the CA path',async()=>{
  const h=harness();h.view.openSettings();const proxy=edit(h,'Proxy URL','ftp://proxy.example.test');

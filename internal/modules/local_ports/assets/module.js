@@ -55,7 +55,7 @@ export function listenerPicker(ctx,port){
   else if(loading&&!rows.length)state('',{spinner:true});
   else if(error)state(discoveryFailure,{warning:true});
   else if(!rows.length)state('No listening ports found. Enter the service port manually.');
-  else if(!filtered.length)state('No listening ports match your search. Change the search or enter the service port manually.');
+  else if(!filtered.length)state('No matching ports.');
   for(const listener of enabled?filtered:[]){
    const process=processLabels(listener.processes),row=el('div','listener-option'),actions=el('div','listener-option-actions'),processNode=process.truncated?textTooltip(process.text,process.full,'listener-process').root:el('span','listener-process',process.text);row.dataset.port=String(listener.port);row.setAttribute('role','listitem');row.setAttribute('aria-label',`Port ${listener.port}: ${process.full}`);
    row.append(el('strong','listener-port',String(listener.port)),processNode);
@@ -101,6 +101,7 @@ export function listenerPicker(ctx,port){
  return {menu,refresh,configure,dispose};
 }
 
+export function sourceFacts(state){const d=state?.data||{},ignored=(d.ignored_ports||[]).length+(d.ignored_processes||[]).length;return [{label:'Port detection',value:d.discovery_enabled===false?'Off':ignored?`On · ${ignored} ignored`:'On'}];}
 export function mount(ctx){
  const {el,noListenerIndicator,numberStepperField,serviceModule,warningIndicator}=ctx.ui;
  let latest={routes:[],data:{}},visible=false,disposed=false,request=null,timer=null,routePorts='',discoveryKey='',pickers=new Set(),inventory={health:'unknown',byPort:new Map()};
@@ -128,7 +129,7 @@ export function mount(ctx){
   emptyState:{kind:'not-configured',message:'No local services yet. Add a domain and the port where your service listens on this computer.',actionLabel:'+ Add service'},
   fields(s){
    const element=el('div'),port=numberStepperField('Service port',s.aux_port||3000,{min:1,max:65535});port.input.required=true;
-   const picker=listenerPicker(ctx,port);pickers.add(picker);element.append(port.wrap,el('p','small muted','The port where your service listens on this computer.'));
+   const picker=listenerPicker(ctx,port);pickers.add(picker);element.append(port.wrap,el('p','small muted','The port on this computer.'));
    return {element,read:()=>({aux_port:Number(port.input.value)}),dispose(){pickers.delete(picker);picker.dispose();}};
   }
  });
@@ -149,15 +150,26 @@ export function mount(ctx){
  function stop(){visible=false;clearTimeout(timer);timer=null;request?.abort();request=null;}
  return {
   ...view,
+  routeTarget(route){
+   const port=Number(route.editor?.aux_port),listener=inventory.health==='ready'?inventory.byPort.get(port):null;
+   return port>0?`Port ${port}${listener?.processes?.length?` · ${processLabels(listener.processes).text}`:''}`:'';
+  },
+  routeStatus(route){
+   const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return {tone:'neutral',label:'Configured'};
+   const listener=inventory.byPort.get(port);
+   if(!listener)return {tone:'warning',label:'No listener',detail:`Nothing listens on port ${port}.`};
+   if(listener.listens_beyond_loopback)return {tone:'warning',label:'Exposed',detail:nonLoopbackWarning};
+   return {tone:'ok',label:'Listening'};
+  },
   routeNotice(route){
    const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return '';
    const listener=inventory.byPort.get(port);
    return !listener?`Last detected: no listener on port ${port}.`:listener.listens_beyond_loopback?'Last detected: this port also listens on non-loopback interfaces.':'';
   },
-  openOverview(){views.show('overview');},
+
   openSettings(){views.show('configuration');settings.open();},
   render(s){
-   latest=s;settings.render(s);const key=discoverySignature(s.data),ports=JSON.stringify((s.routes||[]).map(route=>route.editor?.aux_port));
+   latest=s;settings.render(s);settings.open();const key=discoverySignature(s.data),ports=JSON.stringify((s.routes||[]).map(route=>route.editor?.aux_port));
    const settingsChanged=key!==discoveryKey,portsChanged=ports!==routePorts;
    if(settingsChanged||portsChanged){
     discoveryKey=key;routePorts=ports;clearTimeout(timer);request?.abort();request=null;inventory={health:'unknown',byPort:new Map()};

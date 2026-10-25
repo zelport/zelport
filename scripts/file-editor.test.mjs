@@ -26,10 +26,10 @@ test('file editor loads only on opening and saves loaded version and revision, n
  assert.deepEqual(h.requests[1],{path:'/api/modules/test/config-file',method:'PUT',body:{revision:7,version:'v1',content:'Host edited\n'}});assert.equal(h.saved(),1);assert.equal(h.textarea(),undefined);assert.equal(h.listeners.size,0);
 });
 test('errors and conflicts keep drafts and prevent blind overwrite retries',async()=>{
- const h=setup();await tick();const area=h.textarea();area.value='draft';area.selectionStart=2;fire(area,'input');h.ctx.api=async()=>{throw Object.assign(Error('file changed'),{status:409});};fire(h.find('Save'),'click');await tick();assert.equal(h.textarea(),area);assert.equal(area.value,'draft');assert.equal(area.selectionStart,2);assert.equal(h.find('Save').disabled,true);assert.ok(h.find('Reload file'));assert.equal(document.activeElement.getAttribute('role'),'alert');fire(h.find('Cancel'),'click');assert.ok(h.find('Discard changes'));fire(h.find('Keep editing'),'click');assert.equal(area.value,'draft');h.editor.dispose();
+ const h=setup();await tick();const area=h.textarea();area.value='draft';area.selectionStart=2;fire(area,'input');h.ctx.api=async()=>{throw Object.assign(Error('file changed'),{status:409});};fire(h.find('Save'),'click');await tick();assert.equal(h.textarea(),area);assert.equal(area.value,'draft');assert.equal(area.selectionStart,2);assert.equal(h.find('Save').disabled,true);assert.ok(h.find('Reload file'));assert.equal(document.activeElement.getAttribute('role'),'alert');fire(h.find('Cancel'),'click');assert.ok(h.find('Discard'));fire(h.find('Keep editing'),'click');assert.equal(area.value,'draft');h.editor.dispose();
 });
 test('dirty cancel and Escape require explicit discard; clean cancel closes',async()=>{
- const h=setup();await tick();h.textarea().value='draft';fire(h.textarea(),'input');fire(h.all().find(n=>n.tag==='dialog'),'cancel');assert.ok(h.textarea());fire(h.find('Discard changes'),'click');assert.equal(h.textarea(),undefined);
+ const h=setup();await tick();h.textarea().value='draft';fire(h.textarea(),'input');fire(h.all().find(n=>n.tag==='dialog'),'cancel');assert.ok(h.textarea());fire(h.find('Discard'),'click');assert.equal(h.textarea(),undefined);
  const clean=setup();await tick();fire(clean.find('Cancel'),'click');assert.equal(clean.textarea(),undefined);
 });
 test('keyboard save serializes requests and closing is blocked while writing',async()=>{
@@ -46,7 +46,7 @@ test('CRLF files start clean and retain their newline convention after editing',
 });
 
 test('failed explicit reload preserves the old draft after a conflict',async()=>{
- const h=setup();await tick();h.textarea().value='copyable draft';fire(h.textarea(),'input');h.ctx.api=async()=>{throw Object.assign(Error('Conflict'),{status:409});};fire(h.find('Save'),'click');await tick();fire(h.find('Reload file'),'click');fire(h.find('Discard changes'),'click');await tick();assert.equal(h.textarea().value,'copyable draft');assert.equal(h.find('Save').disabled,true);h.editor.dispose();
+ const h=setup();await tick();h.textarea().value='copyable draft';fire(h.textarea(),'input');h.ctx.api=async()=>{throw Object.assign(Error('Conflict'),{status:409});};fire(h.find('Save'),'click');await tick();fire(h.find('Reload file'),'click');fire(h.find('Discard'),'click');await tick();assert.equal(h.textarea().value,'copyable draft');assert.equal(h.find('Save').disabled,true);h.editor.dispose();
 });
 
 

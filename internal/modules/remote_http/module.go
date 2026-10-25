@@ -44,7 +44,7 @@ func New() feature.Module {
 		detail := ""
 		if u, err := ParseRemoteURL(s.TargetURL); err == nil {
 			if u.Scheme == "http" {
-				detail = "Unencrypted upstream connection. Traffic can be read or modified in transit."
+				detail = "Traffic to this target is unencrypted."
 			} else if s.SkipTLSVerify {
 				detail = "TLS certificate verification is disabled. The remote server's identity is not verified."
 			}

@@ -35,10 +35,8 @@ test('SSH configuration navigation retains a draft, input node, focus and select
  const h=harness();assert.equal(typeof h.view.openSettings,'function');h.view.openSettings();
  const input=h.input();assert.equal(input.value,'');assert.equal(input.placeholder,'~/.ssh/config');assert.equal(document.activeElement,input);
  input.value='/tmp/draft config';input.selectionStart=4;fire(input,'input',{bubbles:true});
- fire(h.action('Overview'),'click');h.view.deactivate();h.render({},2);h.view.activate();h.view.openSettings();
+ h.view.deactivate();h.render({},2);h.view.activate();h.view.openSettings();
  assert.equal(h.input(),input);assert.equal(input.value,'/tmp/draft config');assert.equal(input.selectionStart,4);assert.equal(document.activeElement,input);
- assert.equal(h.action('Add service').parentElement.hidden,true);
- fire(h.action('Overview'),'click');assert.equal(h.action('Add service').parentElement.hidden,false);
  h.view.dispose();assert.equal(h.toolbar.children.length,0);
 });
 
@@ -60,7 +58,7 @@ test('polling a changed saved path preserves a draft and stale revision conflict
 
 test('discard restores the latest saved path and blank can be saved as the default',async()=>{
  const h=harness({ssh_config_path:'/tmp/old'});h.view.openSettings();h.input().value='/tmp/draft';fire(h.input(),'input',{bubbles:true});h.render({ssh_config_path:'/tmp/new'},2);
- fire(h.find('Discard changes'),'click');assert.equal(h.input().value,'/tmp/new');h.input().value='';fire(h.input(),'input',{bubbles:true});fire(h.form(),'submit');await tick();assert.equal(h.requests[0].body.ssh_config_path,'');
+ fire(h.find('Discard'),'click');assert.equal(h.input().value,'/tmp/new');h.input().value='';fire(h.input(),'input',{bubbles:true});fire(h.form(),'submit');await tick();assert.equal(h.requests[0].body.ssh_config_path,'');
 });
 
 test('saving disables the form, preserves pending drafts and surfaces errors',async()=>{
@@ -84,15 +82,11 @@ test('SSH file editor works remotely and refreshes saved hosts after save',async
  const calls=[];h.ctx.ui.fileEditor=(_ctx,options)=>{calls.push(options);return {dispose(){}};};fire(browser,'click');assert.equal(calls[0].endpoint,'/api/modules/ports_over_ssh/config-file');assert.equal(browser.disabled,true);calls[0].onClose();await calls[0].onSaved();assert.equal(h.requests.at(-1).path,'/api/modules/ports_over_ssh/hosts');assert.ok(h.find('File saved.'));h.view.dispose();
 });
 
-test('opening SSH Overview preserves the configuration draft for explicit return',()=>{
- const h=harness();h.view.openSettings();h.input().value='/tmp/draft ssh';fire(h.input(),'input',{bubbles:true});h.view.openOverview();
- assert.equal(h.action('Overview').getAttribute('aria-current'),'page');h.view.openSettings();assert.equal(h.input().value,'/tmp/draft ssh');h.view.dispose();
-});
 
  test('SSH file editor requires saved settings and opens only once',()=>{
  const h=harness();h.view.openSettings();const button=h.find('Edit file');let calls=0,options;
  h.ctx.ui.fileEditor=(_ctx,value)=>{calls++;options=value;return {dispose(){}};};
  h.input().value='/tmp/draft';fire(h.input(),'input',{bubbles:true});fire(button,'click');assert.equal(calls,0);
- fire(h.find('Discard changes'),'click');fire(button,'click');fire(button,'click');assert.equal(calls,1);assert.equal(h.input().disabled,true);
+ fire(h.find('Discard'),'click');fire(button,'click');fire(button,'click');assert.equal(calls,1);assert.equal(h.input().disabled,true);
  options.onClose();assert.equal(button.disabled,false);assert.equal(h.input().disabled,false);h.view.dispose();
 });

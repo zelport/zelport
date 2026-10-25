@@ -16,7 +16,7 @@ test('Built-in Relay diagnostics are disclosed separately from status facts',()=
 });
 test('client distinguishes connected, connecting and failed connections without exposing URL credentials',()=>{
  const get=status('ports_over_relay');assert.equal(typeof get,'function');
- const disconnected=get({data:{enabled:false,status:{error:'Previous failure'}}});assert.equal(disconnected.status,'Not configured');assert.equal(disconnected.tone,'neutral');assert.doesNotMatch(disconnected.rows.map(r=>r.value).join(' '),/Previous failure|reported an error/);
+ assert.equal(get({data:{enabled:false,status:{error:'Previous failure'}}}),null,'an unconfigured relay has no header indicator');
  const data={enabled:true,relay_url:'wss://secret:password@relay.example.com:8090/path?token=private',status:{connected:true}};
  const s=get({data});assert.equal(s.tone,'ok');assert.match(s.rows.map(r=>r.value).join(' '),/relay.example.com:8090/);assert.doesNotMatch(s.rows.map(r=>r.value).join(' '),/secret|password|private/);
  assert.equal(get({data:{...data,status:{}}}).tone,'pending');assert.equal(get({data:{...data,status:{error:'Unavailable'}}}).tone,'error');

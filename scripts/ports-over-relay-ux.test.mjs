@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import * as ui from '../internal/web/assets/ui.js';
-import {headerStatus,mount} from '../internal/modules/ports_over_relay/assets/module.js';
+import {headerStatus,sourceFacts,mount} from '../internal/modules/ports_over_relay/assets/module.js';
 
 test('Overview section headings use one vertical rhythm',async()=>{
  const css=await readFile(new URL('../internal/modules/ports_over_relay/assets/style.css',import.meta.url),'utf8');
@@ -47,25 +47,24 @@ for(const scenario of [
  {data:{enabled:true,relay_url:'wss://relay.example.test',status:{connected:true}},label:'Connected',tone:'ok'},
  {data:{enabled:true,relay_url:'wss://relay.example.test',status:{error:'failed'}},label:'Connection failed',tone:'error'}
 ])test(`Relay header and Configuration show ${scenario.label}`,async()=>{
- const status=headerStatus({data:scenario.data});assert.equal(status.status,scenario.label);assert.equal(status.tone,scenario.tone);
- const h=harness(scenario.data);await click(h.toolbar('Configuration'));
+ const status=headerStatus({data:scenario.data});
+ if(scenario.label==='Not configured')assert.equal(status,null,'an unconfigured relay has no header indicator');else{assert.equal(status.status,scenario.label);assert.equal(status.tone,scenario.tone);}
+ const h=harness(scenario.data);
  assert.ok(h.nodes().some(n=>n.className.includes('status-badge')&&n.textContent===scenario.label&&n.dataset.tone===scenario.tone));
 });
 
-for(const data of [{relay_url:''},{relay_url:'wss://relay.example.test',enabled:false}])test(`Relay first-use overview explains the next step for ${data.relay_url?'disabled':'unconfigured'} connection`,async()=>{
- const h=harness(data),setup=h.nodes().find(n=>n.tag==='button'&&visible(n)&&n.textContent==='Go to Configuration');
- assert.ok(setup,'empty overview needs a settings action');
- assert.equal(setup.className,'primary','relay onboarding uses the same primary empty-state action');
- assert.ok(h.nodes().some(n=>visible(n)&&n.tag==='p'&&/relay|devices/i.test(n.textContent)));
- assert.equal(h.nodes().filter(n=>visible(n)&&/No services imported|No other Zelport|No shared services/.test(n.textContent)).length,0);
- await click(setup);assert.equal(h.nodes().find(n=>n.className==='relay-configuration-view').hidden,false);
+for(const data of [{relay_url:''},{relay_url:'wss://relay.example.test',enabled:false}])test(`Relay ${data.relay_url?'disabled':'unconfigured'} connection shows the form without an onboarding detour`,()=>{
+ const h=harness(data);
+ assert.equal(h.nodes().some(n=>n.tag==='button'&&visible(n)&&n.textContent==='Go to Configuration'),false);
+ assert.ok(h.nodes().some(n=>n.tag==='form'&&visible(n)));
+ assert.equal(h.nodes().filter(n=>visible(n)&&/No services imported/.test(n.textContent)).length,0);
 });
 
-test('openSettings opens Configuration, focuses Relay URL, and keeps an edited draft across polling and navigation',async()=>{
+test('openSettings focuses Relay URL and keeps an edited draft across polling',async()=>{
  const h=harness({relay_url:'wss://relay.example.test'});assert.equal(typeof h.view.openSettings,'function');h.view.openSettings();
  const url=document.activeElement;assert.equal(url.value,'wss://relay.example.test');
  const form=h.nodes().find(n=>n.tag==='form');url.value='wss://draft.example.test';form.events.input({});
- await click(h.toolbar('Overview'));h.render({relay_url:'wss://changed.example.test'},2);h.view.openSettings();
+ h.render({relay_url:'wss://changed.example.test'},2);h.view.openSettings();
  assert.equal(document.activeElement,url);assert.equal(url.value,'wss://draft.example.test');
 });
 
@@ -84,27 +83,27 @@ test('first save requires an explicit secret instead of silently creating a grou
 });
 test('generation is a discardable draft and is only persisted by Save',async()=>{
  const h=harness();h.view.openSettings();await click(h.find('Generate E2E secret'));const draft=input(h,'E2E secret').value;
- assert.match(draft,/^[A-Za-z0-9]{40}$/);assert.equal(h.requests.length,0);assert.equal(h.find('Save settings').disabled,false);
- await click(h.find('Discard changes'));assert.equal(input(h,'E2E secret').value,'');assert.equal(h.find('Save settings').disabled,true);
+ assert.match(draft,/^[A-Za-z0-9]{40}$/);assert.equal(h.requests.length,0);assert.equal(h.find('Save').disabled,false);
+ await click(h.find('Discard'));assert.equal(input(h,'E2E secret').value,'');assert.equal(h.find('Save').disabled,true);
  await click(h.find('Generate E2E secret'));const next=input(h,'E2E secret').value;await h.nodes().find(n=>n.tag==='form').events.submit({preventDefault(){}});
  assert.equal(h.requests.length,1);assert.equal(h.requests[0].group_token,next);assert.match(h.requests[0].path,/settings$/);
 });
 test('Change edits the same E2E field and Discard restores its stored state',async()=>{
  const h=harness({has_identity:true});h.view.openSettings();const original=input(h,'E2E secret');assert.equal(original.readOnly,true);
  await click(h.find('Change E2E secret'));assert.equal(input(h,'E2E secret'),original);assert.equal(original.readOnly,false);
- original.value='replacement';h.nodes().find(n=>n.tag==='form').events.input({});await click(h.find('Discard changes'));
+ original.value='replacement';h.nodes().find(n=>n.tag==='form').events.input({});await click(h.find('Discard'));
  assert.equal(input(h,'E2E secret').readOnly,true);assert.equal(input(h,'E2E secret').value,'');assert.equal(h.requests.length,0);
 });
 test('revealing a stored secret never marks it as a replacement draft',async()=>{
  const h=harness({has_identity:true,relay_url:'ws://relay.example.test'});h.view.openSettings();await click(h.nodes().find(n=>n['aria-label']==='Reveal E2E secret'));
- assert.equal(input(h,'E2E secret').value,'test-only-secret');assert.equal(h.find('Save settings').disabled,true);
+ assert.equal(input(h,'E2E secret').value,'test-only-secret');assert.equal(h.find('Save').disabled,true);
  const form=h.nodes().find(n=>n.tag==='form');input(h,'Relay URL').value='ws://other.example.test';form.events.input({});await form.events.submit({preventDefault(){}});
  assert.equal(h.requests.at(-1).group_token,'');
 });
-for(const leave of ['overview','deactivate','dispose','change'])test(`late revealed secret cannot overwrite state after ${leave}`,async()=>{
+for(const leave of ['deactivate','dispose','change'])test(`late revealed secret cannot overwrite state after ${leave}`,async()=>{
  const h=harness({has_identity:true});h.view.openSettings();let finish;h.ctx.api=()=>new Promise(resolve=>finish=resolve);
  await click(h.nodes().find(n=>n['aria-label']==='Reveal E2E secret'));const secret=input(h,'E2E secret');
- if(leave==='overview')await click(h.toolbar('Overview'));else if(leave==='change'){await click(h.find('Change E2E secret'));secret.value='replacement';}else h.view[leave]();
+ if(leave==='change'){await click(h.find('Change E2E secret'));secret.value='replacement';}else h.view[leave]();
  finish({group_token:'late-secret'});await new Promise(resolve=>setImmediate(resolve));assert.equal(secret.value,leave==='change'?'replacement':'');
 });
 test('replacement drafts retain their original revision across external credential changes',async()=>{
@@ -123,31 +122,28 @@ test('connected relay reports zero devices without claiming an E2E mismatch',()=
  assert.equal(h.nodes().some(n=>/wrong E2E|invalid E2E/i.test(n.textContent)),false);
 });
 
-test('Ports over Relay can reopen Overview after Configuration',()=>{
- const h=harness();h.view.openSettings();h.view.openOverview();assert.equal(h.toolbar('Overview')['aria-current'],'page');h.view.dispose();
-});
 
 test('Relay configuration tracks edits, reverts, discard, and a successful save',async()=>{
  const h=harness({has_identity:true});h.view.openSettings();let form=h.nodes().find(n=>n.tag==='form'),url=document.activeElement;
- assert.equal(h.find('Save settings').disabled,true);assert.equal(h.find('Discard changes').disabled,true);
- url.value='wss://draft.example.test';form.events.input({});assert.equal(h.find('Save settings').disabled,false);
- url.value='';form.events.input({});assert.equal(h.find('Save settings').disabled,true);
- url.value='wss://draft.example.test';form.events.input({});await click(h.find('Discard changes'));assert.equal(document.activeElement.value,'');assert.equal(h.find('Save settings').disabled,true);
+ assert.equal(h.find('Save').disabled,true);assert.equal(h.find('Discard').disabled,true);
+ url.value='wss://draft.example.test';form.events.input({});assert.equal(h.find('Save').disabled,false);
+ url.value='';form.events.input({});assert.equal(h.find('Save').disabled,true);
+ url.value='wss://draft.example.test';form.events.input({});await click(h.find('Discard'));assert.equal(document.activeElement.value,'');assert.equal(h.find('Save').disabled,true);
  form=h.nodes().find(n=>n.tag==='form');url=document.activeElement;url.value='wss://saved.example.test';form.events.input({});
  h.ctx.mutate=async work=>{await work();h.render({relay_url:'wss://saved.example.test'},2);};
- await form.events.submit({preventDefault(){}});assert.equal(h.find('Save settings').disabled,true);assert.equal(document.activeElement.value,'wss://saved.example.test');
+ await form.events.submit({preventDefault(){}});assert.equal(h.find('Save').disabled,true);assert.equal(document.activeElement.value,'wss://saved.example.test');
 });
 
 test('Change can be discarded before entering a replacement',async()=>{
  const h=harness({has_identity:true});h.view.openSettings();await click(h.find('Change E2E secret'));
- assert.equal(h.find('Discard changes').disabled,false);await click(h.find('Discard changes'));
+ assert.equal(h.find('Discard').disabled,false);await click(h.find('Discard'));
  assert.equal(input(h,'E2E secret').readOnly,true);assert.equal(h.requests.length,0);
 });
 
 test('access mode changes are explicit, discardable, and clear only on Save',async()=>{
  const h=harness({has_identity:true,has_access_token:true});h.view.openSettings();const form=h.nodes().find(n=>n.tag==='form'),mode=input(h,'Relay access');
  mode.value='none';form.events.change({});assert.equal(input(h,'Relay access token').disabled,true);assert.equal(h.requests.length,0);
- await click(h.find('Discard changes'));assert.equal(mode.value,'token');assert.equal(input(h,'Relay access token').disabled,false);
+ await click(h.find('Discard'));assert.equal(mode.value,'token');assert.equal(input(h,'Relay access token').disabled,false);
  mode.value='none';form.events.change({});await form.events.submit({preventDefault(){}});assert.equal(h.requests.at(-1).clear_access_token,true);assert.equal(h.requests.at(-1).access_token,'');
 });
 test('token mode requires a token when none is stored',async()=>{
@@ -161,8 +157,8 @@ for(const action of ['change','generate','discard','navigation','revision'])test
  if(action==='change'){await click(h.find('Change E2E secret'));input(h,'E2E secret').value='replacement';h.nodes().find(n=>n.tag==='form').events.input({});}
  if(action==='generate'){await click(h.find('Change E2E secret'));await click(h.find('Generate E2E secret'));}
  const expected=action==='generate'?input(h,'E2E secret').value:action==='change'?'replacement':'';
- if(action==='discard'){await click(h.find('Change E2E secret'));await click(h.find('Discard changes'));}
- if(action==='navigation'){await click(h.toolbar('Overview'));h.view.openSettings();}
+ if(action==='discard'){await click(h.find('Change E2E secret'));await click(h.find('Discard'));}
+ if(action==='navigation'){h.view.deactivate();h.view.activate();h.view.openSettings();}
  if(action==='revision')h.render({},2);
  reject(Error('Clipboard unavailable'));await new Promise(resolve=>setImmediate(resolve));
  assert.equal(input(h,'E2E secret').value,expected);assert.equal(input(h,'E2E secret').type,'password');
@@ -188,10 +184,10 @@ test('remote device has one card for services and administration',()=>{
  const before=cards[0];h.render({});assert.equal(h.nodes().find(n=>n.className==='relay-provider'),before);
 });
 
-test('Overview updates local sharing independently of connection status',()=>{
- const h=harness({enabled:true,relay_url:'ws://relay.example.test',status:{connected:true,records:[]}});
- assert.ok(h.nodes().some(n=>visible(n)&&n.textContent==='Your services: Not shared'));
- h.render({publish:true});assert.ok(h.nodes().some(n=>visible(n)&&n.textContent==='Your services: Shared'));
+test('Sources card reports connection, devices and sharing independently',()=>{
+ const facts=data=>Object.fromEntries(sourceFacts({data}).map(row=>[row.label,row.value]));
+ assert.deepEqual(facts({relay_url:''}),{Relay:'Not configured',Devices:'0',Sharing:'Off'});
+ assert.deepEqual(facts({enabled:true,relay_url:'ws://relay.example.test',publish:true,status:{connected:true},administration_peers:[{available:true},{available:false}]}),{Relay:'Connected',Devices:'1',Sharing:'On'});
 });
 test('offline devices keep their card but cannot open administration or import',()=>{
  const peer={device_id:'linux',hostname:'sandbox',available:false,uuid_url:'http://linux.zelport.localhost:7270/'};

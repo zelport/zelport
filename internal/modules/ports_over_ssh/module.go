@@ -47,7 +47,7 @@ func New() feature.Module {
 	m.Summary = func(r feature.Route) feature.Summary {
 		var s Settings
 		feature.Decode(r.Settings, &s)
-		return feature.Summary{State: "configured", Target: fmt.Sprintf("%s → 127.0.0.1:%d", s.SSHHost, s.SSHPort)}
+		return feature.Summary{State: "configured", Target: fmt.Sprintf("%s · port %d", s.SSHHost, s.SSHPort)}
 	}
 	return m
 }
@@ -127,7 +127,7 @@ func (m *Module) State() feature.State {
 		view := feature.View(route, m.Summary(route))
 		if status, ok := statuses[route.ID]; ok && status.State == "error" {
 			view.Summary.State = "unavailable"
-			view.Summary.Detail = "SSH connection unavailable. Verify the host with the selected SSH configuration."
+			view.Summary.Detail = "SSH connection failed. Check the host in your SSH configuration."
 		}
 		s.Routes = append(s.Routes, view)
 	}

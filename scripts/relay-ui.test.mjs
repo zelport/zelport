@@ -52,7 +52,7 @@ test('discard restores saved fields and revision after a conflicted draft',async
  h.ctx.mutate=async(work)=>{try{await work();}finally{h.render(2)}};
  h.ctx.refresh=async()=>h.render(2);
  h.fields.Port.input.value=8091;h.form.events.input({});await h.form.events.submit({preventDefault(){}});
- const reload=h.all.find(e=>e.textContent==='Discard changes');
+ const reload=h.all.find(e=>e.textContent==='Discard');
  assert.ok(reload,'a conflicted draft needs a recovery action');
  await reload.click();assert.equal(h.fields.Port.input.value,'8090');h.fields.Port.input.value=8092;h.form.events.input({});await h.form.events.submit({preventDefault(){}});
  assert.deepEqual(revisions,[1,2]);
@@ -139,16 +139,16 @@ test('token rotation requires an explicit action before submitting',async()=>{
  assert.equal(h.fields['New access token'].input.required,true);
 });
 
-test('switching Built-in Relay to Overview clears revealed and pending tokens',async()=>{
+test('leaving Built-in Relay clears revealed and pending tokens',async()=>{
  const h=harness();h.m.openSettings();h.ctx.api=async()=>({access_token:'test-only'});
  await h.all.find(e=>e.textContent==='Reveal access token').click();assert.equal(h.fields['Relay access token'].input.value,'test-only');
- const nav=h.ctx.panel.children[0].children.find(n=>n.tag==='nav');nav.children[0].events.click({preventDefault(){}});assert.equal(h.fields['Relay access token'].input.value,'');
+ h.m.deactivate();assert.equal(h.fields['Relay access token'].input.value,'');
  h.m.openSettings();let finish;h.ctx.api=()=>new Promise(resolve=>finish=resolve);const pending=h.all.find(e=>e.textContent==='Reveal access token').click();
- nav.children[0].events.click({preventDefault(){}});finish({access_token:'late-test-only'});await pending;assert.equal(h.fields['Relay access token'].input.value,'');h.m.dispose();
+ h.m.deactivate();finish({access_token:'late-test-only'});await pending;assert.equal(h.fields['Relay access token'].input.value,'');h.m.dispose();
 });
 
 test('relay Save and Discard follow actual changes, including reverting a field',()=>{
- const h=harness(),save=h.all.find(n=>n.textContent==='Save settings'),discard=h.all.find(n=>n.textContent==='Discard changes');
+ const h=harness(),save=h.all.find(n=>n.textContent==='Save'),discard=h.all.find(n=>n.textContent==='Discard');
  assert.equal(save.disabled,true);assert.equal(discard.disabled,true);
  h.fields.Port.input.value='8091';h.form.events.input({});assert.equal(save.disabled,false);assert.equal(discard.disabled,false);
  h.fields.Port.input.value='8090';h.form.events.input({});assert.equal(save.disabled,true);assert.equal(discard.disabled,true);
@@ -164,5 +164,5 @@ test('reverting to submitted values while save completes leaves a clean form',as
  h.fields.Port.input.value='8091';h.form.events.input({});
  finish();await pending;h.render(2);
  assert.equal(h.fields.Port.input.value,'8091');
- assert.equal(h.all.find(n=>n.textContent==='Save settings').disabled,true,'no remaining change to save');
+ assert.equal(h.all.find(n=>n.textContent==='Save').disabled,true,'no remaining change to save');
 });

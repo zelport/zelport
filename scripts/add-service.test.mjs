@@ -25,32 +25,41 @@ function setup(){
  globalThis.document={body:new Node('body'),activeElement:null,createElement:tag=>new Node(tag),createElementNS:(_,tag)=>new Node(tag)};
 }
 
-test('service location dialog offers the two approved choices and restores focus',()=>{
- setup();const trigger=new Node('button');let local=0,remote=0;
- const dialog=ui.serviceLocationDialog({trigger,options:[
-  {label:'This computer',available:true,run:()=>local++},
-  {label:'Development server',available:false,run:()=>remote++}
- ]});
- assert.equal(dialog.getAttribute('aria-labelledby')?.startsWith('dialog-title-'),true);
- assert.equal(dialog.children[0].children[0].textContent,'Where does the service run?');
- const choices=dialog.children[1].children;
- assert.deepEqual(choices.map(choice=>choice.children[0].textContent),['This computer','Development server']);
- assert.equal(choices[1].children[0].disabled,true);
- const click={preventDefault(){}};
- choices[1].children[0].events.click(click);assert.equal(remote,0);
- choices[0].children[0].events.click(click);assert.equal(local,1);assert.equal(dialog.open,false);
- assert.equal(document.activeElement,trigger);
+
+
+function sourceModules(state){
+ const calls=[],modules=new Map();
+ for(const [id,tab,name] of [['local_ports','local','Local Ports'],['ports_over_ssh','ssh','Ports over SSH'],['remote_http','remote','Remote HTTP'],['ports_over_relay','relay','Ports over Relay']])
+  modules.set(id,{descriptor:{id,tab_id:tab,name},instance:{edit:(route,group,options)=>{calls.push({id,options});return {id};}}});
+ return {calls,modules};
+}
+
+test('Add service opens one form with every available source and no separate chooser',()=>{
+ const state={module_availability:{ports_over_ssh:{enabled:false}}},{calls,modules}=sourceModules(state),navigated=[];
+ const dashboard=createDashboard({root:new Node(),modules,client:{state:()=>state},navigate:id=>navigated.push(id),ui});
+ dashboard.openAddService({focus(){}});
+ assert.equal(calls.length,1);assert.equal(calls[0].id,'local_ports');
+ assert.deepEqual(calls[0].options.sources.map(source=>source.label),['Local Ports','Remote HTTP','Ports over Relay']);
+ assert.equal(calls[0].options.sourceId,'local_ports');assert.deepEqual(navigated,[]);
 });
 
-test('shell maps service locations to their module forms and disables unavailable modules',()=>{
- let spec,local=0,remote=0;const navigated=[],state={module_availability:{local_ports:{enabled:true},ports_over_ssh:{enabled:false}}},modules=new Map([
-  ['local_ports',{descriptor:{id:'local_ports',tab_id:'local_ports'},instance:{edit:()=>local++}}],
-  ['ports_over_ssh',{descriptor:{id:'ports_over_ssh',tab_id:'ports_over_ssh'},instance:{edit:()=>remote++}}]
- ]),dashboard=createDashboard({root:new Node(),modules,client:{state:()=>state},navigate:id=>navigated.push(id),ui:{serviceLocationDialog:value=>{spec=value;return value}}});
- dashboard.openAddService({focus(){}});
- assert.equal(JSON.stringify(spec.options.filter(option=>!option.secondary).map(option=>[option.label,option.available])),JSON.stringify([['This computer',true],['Development server',false]]));
- spec.options[0].run();assert.equal(local,1);assert.deepEqual(navigated,[]);
- spec.options[1].run();assert.equal(remote,0);
+test('switching the source keeps the address draft; Ports over Relay opens its source page',()=>{
+ const state={},{calls,modules}=sourceModules(state),navigated=[];
+ const dashboard=createDashboard({root:new Node(),modules,client:{state:()=>state},navigate:id=>navigated.push(id),ui});
+ dashboard.openAddService({focus(){}});calls[0].options.onSource('remote_http',{domain:'my-app'});
+ assert.equal(calls[1].id,'remote_http');assert.equal(calls[1].options.domain,'my-app');assert.equal(calls[1].options.sourceId,'remote_http');
+ calls[1].options.onSource('ports_over_relay',{domain:'my-app'});assert.deepEqual(navigated,['relay']);assert.equal(calls.length,2);
+ calls[1].options.onSaved();assert.deepEqual(navigated,['relay','dashboard']);
+});
+
+test('service form lists sources as radios and reports a change with the current address',()=>{
+ setup();const state={port:7070,revision:1,states:{local_ports:{routes:[]}}},changes=[];
+ const source=ui.serviceModule({moduleId:'local_ports',moduleName:'Local Ports',signal:new AbortController().signal,ui:{...ui,state:()=>state},api:async()=>{},mutate:work=>work()},{fields:()=>({element:ui.el('div'),read:()=>({})})});
+ const dialog=source.edit(null,null,{sources:[{id:'local_ports',label:'Local Ports',description:'A port on this computer'},{id:'remote_http',label:'Remote HTTP',description:'Any HTTP or HTTPS URL'}],sourceId:'local_ports',onSource:(id,draft)=>changes.push([id,draft.domain])});
+ const form=dialog.children[0];assert.equal(form.children[0].children[0].textContent,'Add service');
+ const radios=dialog.querySelectorAll('input').filter(input=>input.type==='radio');assert.deepEqual(radios.map(radio=>[radio.value,radio.checked]),[['local_ports',true],['remote_http',false]]);
+ const address=dialog.querySelectorAll('input').find(input=>input.type!=='radio');address.value='my-app';
+ radios[1].checked=true;radios[1].events.change();assert.deepEqual(changes,[['remote_http','my-app']]);assert.equal(dialog.open,false);source.dispose();
 });
 
 test('dashboard contains one unified Add service action',()=>{
@@ -67,22 +76,7 @@ test('first unnamed service starts with service-1 and increments around existing
  const second=source.edit(),secondDomain=second.querySelectorAll('input')[0];assert.equal(secondDomain.value,'service-2');second.close();source.dispose();
 });
 
-test('dashboard location forms stay on the original page and Back carries the draft',()=>{
- let spec,editOptions;const navigated=[],draft={fields:[{value:'my-app'}]},module={descriptor:{id:'local_ports',tab_id:'local',name:'Local Ports'},instance:{edit:(route,group,options)=>{editOptions=options;}}};
- const dashboard=createDashboard({root:new Node(),modules:new Map([['local_ports',module]]),client:{state:()=>({})},navigate:id=>navigated.push(id),ui:{serviceLocationDialog:value=>{spec=value;return value;}}});
- dashboard.openAddService({focus(){}});spec.options[0].run();
- assert.deepEqual(navigated,[],'opening a form must not navigate');
- assert.equal(typeof editOptions.onBack,'function');editOptions.onBack(draft);
- spec.options[0].run();assert.equal(editOptions.draft,draft);
- editOptions.onSaved();assert.deepEqual(navigated,['local']);
-});
 
-test('location choices explain SSH and expose other service sources',()=>{
- let spec;createDashboard({root:new Node(),modules:new Map(),client:{state:()=>({})},navigate(){},ui:{serviceLocationDialog:value=>{spec=value;}}}).openAddService();
- assert.match(spec.options[1].description,/SSH/);
- assert.ok(spec.options.some(option=>option.label==='Remote HTTP'&&option.secondary));
- assert.ok(spec.options.some(option=>option.label==='Ports over Relay'&&option.secondary));
-});
 
 
 test('service form Back restores all draft fields and details without submitting',()=>{

@@ -250,7 +250,7 @@ test('listener search matches ports and full process names without changing the 
   search.value='900';fire(search,'input');assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['9000']);
   assert.equal(port.input.value,'8080');
   search.value='no match';fire(search,'input');assert.equal(allByClass(picker.menu,'listener-option').length,0);
-  assert.match(byClass(picker.menu,'listener-picker-message').textContent,/No listening ports match/);
+  assert.match(byClass(picker.menu,'listener-picker-message').textContent,/No matching ports/);
   port.input.value='9000';fire(port.input,'input');search.value='';fire(search,'input');
   assert.equal(byClass(allByClass(picker.menu,'listener-option')[1],'listener-use-port').textContent,'Selected');
  }finally{picker.dispose();}
@@ -272,7 +272,7 @@ test('SSH host search is case insensitive and only Use changes the manual host',
   assert.equal(use.textContent,'Selected');assert.equal(use.getAttribute('aria-pressed'),'true');
   assert.equal(byClass(picker.menu,'ssh-host-option').dataset.selected,'true');
   search.value='unknown';fire(search,'input');assert.equal(allByClass(picker.menu,'ssh-host-option').length,0);
-  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/No SSH hosts match/);assert.equal(host.input.value,'Office-Server');
+  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/No matching SSH hosts/);assert.equal(host.input.value,'Office-Server');
   host.input.value='build-server';fire(host.input,'input');search.value='';fire(search,'input');
   assert.equal(byClass(allByClass(picker.menu,'ssh-host-option')[1],'ssh-host-use').textContent,'Selected');
  }finally{picker.dispose();}
@@ -319,10 +319,6 @@ for(const [label,create,searchClass,inputName] of [
  });
 }
 
-test('Local Ports can reopen Overview after Configuration',()=>{
- const h=createServiceList(async()=>({listeners:[]}),[]);h.view.openSettings();h.view.openOverview();
- assert.equal(walk(h.panel).find(n=>n.textContent==='Overview').getAttribute('aria-current'),'page');h.view.dispose();
-});
 
 
 test('configured listener metadata remains visible when that port is excluded from suggestions',async()=>{

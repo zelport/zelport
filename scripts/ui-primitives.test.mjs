@@ -5,8 +5,8 @@ import {renderHeaderStatus} from '../internal/web/assets/runtime.js';
 const moduleUIContract=[
  'accordion','adornedField','adornmentButton','button','dialogHeader','disclosureMenu','el','emptyState',
  'experimentalBadge','field','formActions','icon','localPortIndicator','moduleHeading','noListenerIndicator',
- 'moduleViews','numberStepperField','picker','refreshButton','refreshControl','renderChanged','routeEditRevision','serviceLocationDialog',
- 'serviceModule','serviceNavigation','serviceTargetIndicator','serviceURL','setTooltip','setText','showDialog','statusBadge','statusTone',
+ 'moduleViews','numberStepperField','picker','refreshButton','refreshControl','renderChanged','routeEditRevision',
+ 'serviceModule','serviceTargetIndicator','serviceURL','setTooltip','setText','showDialog','statusBadge','statusTone',
  'switchField','textTooltip','warningIndicator'
 ];
 class Node {
@@ -112,9 +112,9 @@ test('route edits accept unrelated revisions but reject changed and removed serv
  assert.equal(ui.routeEditRevision(null,state),2);
  assert.equal(ui.routeEditRevision({...original,id:''},state),2);
  state.states.local_ports.routes[0]={...original,editor:{aux_port:4000}};
- assert.throws(()=>ui.routeEditRevision(original,state),e=>e.currentRoute.editor.aux_port===4000&&/changed/.test(e.message));
+ assert.throws(()=>ui.routeEditRevision(original,state),e=>e.currentRoute.editor.aux_port===4000&&/Changed/.test(e.message));
  state.states.local_ports.routes=[];
- assert.throws(()=>ui.routeEditRevision(original,state),/removed/);
+ assert.throws(()=>ui.routeEditRevision(original,state),/Removed/);
 });
 
 test('service dialogs dispose field resources exactly once when closed',()=>{
@@ -139,20 +139,13 @@ test('service dialogs use the shared form-field layout for domain and module fie
  dialog.close();
 });
 
-test('flat service modules keep an accessible plus in the toolbar for empty and populated states',()=>{
+test('service modules add no toolbar action; Add service lives on Services',()=>{
  setup();const controller=new AbortController(),panel=new Node(),toolbar=new Node(),state={port:9090,revision:0,states:{local_ports:{routes:[]}}};
- const view=ui.serviceModule({moduleId:'local_ports',panel,toolbar,signal:controller.signal,ui:{...ui,state:()=>state},api:async()=>{},mutate:async work=>work()},{
-  emptyState:{kind:'not-configured',message:'No local ports yet.',actionLabel:'+ Add service'},
-  fields(){return {element:new Node(),read:()=>({aux_port:3000})};}
- });
- const add=toolbar.children.find(node=>node.getAttribute('aria-label')==='Add service');assert.ok(add);assert.equal(add.className,'module-action-icon module-add-icon');assert.equal(add.textContent,'');assert.equal(add.children[0].tag,'svg');
- view.render({routes:[],data:{}});assert.equal(panel.children[0].children.at(-1).textContent,'+ Add service');assert.equal(toolbar.children.includes(add),true);
- const route={id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:3000},summary:{state:'configured',detail:'',target:'Aux port 3000'}};state.states.local_ports.routes=[route];view.render({routes:[route],data:{}});
- assert.equal(panel.children[0].children.some(node=>node.tag==='button'&&node.textContent==='+ Add service'),false);assert.equal(toolbar.children.includes(add),true);
- add.events.click({preventDefault(){}});assert.equal(document.body.children.at(-1).open,true);
+ const view=ui.serviceModule({moduleId:'local_ports',panel,toolbar,signal:controller.signal,ui:{...ui,state:()=>state},api:async()=>{},mutate:async work=>work()},{fields(){return {element:new Node(),read:()=>({aux_port:3000})};}});
+ assert.deepEqual(toolbar.children,[]);assert.equal(typeof view.remove,'function');view.dispose();
 });
 
-test('removal dialog explains mapping scope and ends with Cancel then Remove',()=>{
+test('removal dialog explains scope and ends with Cancel then Remove',()=>{
  setup();const controller=new AbortController(),panel=new Node(),state={port:8080,revision:0,states:{local_ports:{routes:[]}}};
  const view=ui.serviceModule({moduleId:'local_ports',panel,signal:controller.signal,ui:{...ui,state:()=>state},api:async()=>{},mutate:async work=>work()},{
   fields(){return {element:new Node(),read:()=>({aux_port:3000})};}
@@ -163,7 +156,7 @@ test('removal dialog explains mapping scope and ends with Cancel then Remove',()
  assert.equal(removeButton.className,'danger-text');removeButton.events.click({preventDefault(){}});
  const dialog=document.body.children.at(-1),address=dialog.children[1],options=dialog.children[4];
  assert.equal(address.className,'remove-service-address');assert.equal(address.textContent,'http://forman.localhost:8080');
- assert.match(dialog.children[2].textContent,/mapping.*application will keep running/i);
+ assert.match(dialog.children[2].textContent,/service itself keeps running/i);
  assert.equal(options.className,'dialog-actions');assert.equal(options.children[0].textContent,'Cancel');
  assert.equal(options.children.at(-1).textContent,'Remove');assert.equal(options.children.at(-1).className,'danger');
 });
@@ -182,16 +175,17 @@ test('security tooltips close on scroll and resize instead of covering unrelated
  listeners.get('resize')();assert.equal(tip.open,false);assert.equal(tip.hidden,true);
 });
 
- test('module views keep navigation last, preserve draft nodes and hide Overview actions',()=>{
+ test('source views always show Configuration and place module content by request',()=>{
  setup();const panel=new Node('section'),toolbar=new Node('div'),changes=[];
- const views=ui.moduleViews({panel,toolbar,moduleName:'Example'},{onChange:view=>changes.push(view)});
- const draft=new Node('input');draft.value='draft';views.configuration.append(draft);const action=new Node('button');views.actions.append(action);
- assert.deepEqual(toolbar.children,[views.actions,views.navigation]);assert.equal(views.navigation.getAttribute('aria-label'),'Example views');
- assert.deepEqual(views.navigation.children.map(n=>n.textContent),['Overview','Configuration']);assert.equal(views.configuration.hidden,true);assert.equal(views.actions.hidden,false);
- views.navigation.children[1].events.click({preventDefault(){}});assert.equal(views.overview.hidden,true);assert.equal(views.configuration.hidden,false);assert.equal(views.actions.hidden,true);
- views.show('overview');views.show('configuration');assert.equal(views.configuration.children[0],draft);assert.equal(draft.value,'draft');assert.deepEqual(changes,['configuration','overview','configuration']);
- views.dispose();assert.equal(views.navigation.removed,true);assert.equal(views.actions.removed,true);
+ const hidden=ui.moduleViews({panel,toolbar,moduleName:'Example'},{onChange:view=>changes.push(view)});
+ assert.deepEqual(toolbar.children,[hidden.actions]);assert.deepEqual(panel.children,[hidden.configuration,hidden.overview]);
+ assert.equal(hidden.configuration.hidden,false);assert.equal(hidden.overview.hidden,true);assert.equal(hidden.actions.hidden,true);
+ hidden.show('overview');hidden.show('configuration');hidden.show('configuration');assert.deepEqual(changes,['configuration']);
+ hidden.dispose();assert.equal(hidden.actions.removed,true);
+ const before=ui.moduleViews({panel:new Node('section'),toolbar:new Node('div')},{overviewPlacement:'before'});
+ assert.equal(before.overview.hidden,false);assert.equal(before.actions.hidden,false);
  });
+
 
 function tooltipFixture(anchor,{width=100,height=40,viewportWidth=400,viewportHeight=300}={}){
  setup();globalThis.window={innerWidth:viewportWidth,innerHeight:viewportHeight,addEventListener(){}};

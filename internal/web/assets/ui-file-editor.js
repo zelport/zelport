@@ -12,7 +12,7 @@ export function fileEditor(ctx,{endpoint,title,trigger,onSaved=()=>{},onClose=()
  error.setAttribute('role','alert');status.setAttribute('role','status');
  let documentValue=null,baseline='',loading=true,saving=false,closed=false,conflict=false,discardAction='close',lineEnding='\n';
  const cancel=button('Cancel',()=>requestClose()),save=button('Save',saveFile,'primary'),reload=button('Reload file',()=>requestClose('reload'));
- const discard=button('Discard changes',()=>{confirm.hidden=true;if(discardAction==='reload')load();else dialog.close();},'danger'),keep=button('Keep editing',()=>{confirm.hidden=true;area.focus();});
+ const discard=button('Discard',()=>{confirm.hidden=true;if(discardAction==='reload')load();else dialog.close();},'danger'),keep=button('Keep editing',()=>{confirm.hidden=true;area.focus();});
  confirm.append(el('span',null,'Discard unsaved changes?'),keep,discard);confirm.hidden=true;reload.hidden=true;actions.append(reload,cancel,save);
  dialog.append(header,target,path,label,area,error,status,confirm,actions);
  const validation=formFeedback(dialog,error);

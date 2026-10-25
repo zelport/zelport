@@ -36,7 +36,7 @@ func newModule(scanner listenerScanner) *Module {
 	m.Summary = func(r feature.Route) feature.Summary {
 		var s Settings
 		feature.Decode(r.Settings, &s)
-		return feature.Summary{State: "configured", Target: fmt.Sprintf("Local service port %d", s.AuxPort)}
+		return feature.Summary{State: "configured", Target: fmt.Sprintf("Port %d", s.AuxPort)}
 	}
 	return m
 }

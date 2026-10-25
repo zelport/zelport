@@ -12,7 +12,7 @@ func TestUpstreamSecuritySummary(t *testing.T) {
 		skip bool
 		want string
 	}{
-		{"http://example.test/service", false, "Unencrypted upstream connection. Traffic can be read or modified in transit."},
+		{"http://example.test/service", false, "Traffic to this target is unencrypted."},
 		{"https://example.test/service", false, ""},
 		{"https://example.test/service", true, "TLS certificate verification is disabled. The remote server's identity is not verified."},
 	} {

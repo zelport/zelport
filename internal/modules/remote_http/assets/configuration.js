@@ -3,8 +3,8 @@ export function mountConfiguration(ctx,panel){
  let validation,current={},form,ca,proxy,username,password,clear,revision,baseline='',dirty=false,saving=false,reloading=false,disposed=false,webEditor=null;
  const error=el('p','route-error'),runtime=el('p','route-error'),feedback=el('p','small muted'),editorReason=el('p','small muted');
  error.setAttribute('role','alert');runtime.setAttribute('role','status');feedback.setAttribute('role','status');
- const save=el('button','primary','Save settings');save.type='submit';
- const discard=button('Discard changes',()=>{if(saving||reloading)return;sync();validation?.clear();feedback.textContent='';update();});
+ const save=el('button','primary','Save');save.type='submit';
+ const discard=button('Discard',()=>{if(saving||reloading)return;sync();validation?.clear();feedback.textContent='';update();});
  const editWeb=adornmentButton('Edit file','edit',openWebEditor),reloadCA=adornmentButton('Reload certificates','rotate',reloadCertificates);
  const signature=()=>JSON.stringify([current.ca_cert_path||'',current.proxy_url||'',current.proxy_username||'',!!current.has_proxy_password]);
  function sync(){
@@ -24,19 +24,19 @@ export function mountConfiguration(ctx,panel){
   editorReason.textContent=dirty?'Save or discard changes before editing.':'';reloadCA.disabled=busy;
   save.disabled=discard.disabled=busy||!dirty;form.setAttribute('aria-busy',String(busy));runtime.textContent=current.configuration_error||'';
  }
- function open(){
+ function open(focus=true){
   if(disposed)return;
   if(!form){
    form=el('form','remote-configuration-form');ca=adornedField('Additional CA certificate file','','text',{actions:[editWeb,reloadCA]});proxy=field('Proxy URL','','url');username=field('Proxy username');password=field('Proxy password','','password');clear=field('Clear stored password',false,'checkbox');
    proxy.input.placeholder='http://proxy.example.com:8080';
    ca.input.spellcheck=proxy.input.spellcheck=username.input.spellcheck=false;ca.input.autocomplete=proxy.input.autocomplete=username.input.autocomplete='off';password.input.autocomplete='new-password';
    const auth=el('details','remote-proxy-auth'),actions=el('div','remote-settings-actions');auth.append(el('summary',null,'Authentication'),username.wrap,password.wrap,clear.wrap);actions.append(discard,save);
-   form.append(ca.wrap,el('p','small muted','Additional trusted certificates for Remote HTTP connections.'),editorReason,runtime,proxy.wrap,el('p','small muted','HTTP(S) or SOCKS5. Blank connects directly.'),auth,error,actions,feedback);
+   form.append(ca.wrap,el('p','small muted','Trusted in addition to system certificates.'),editorReason,runtime,proxy.wrap,el('p','small muted','HTTP(S) or SOCKS5. Blank connects directly.'),auth,error,actions,feedback);
    form.addEventListener('input',()=>{dirty=ca.input.value!==(current.ca_cert_path||'')||proxy.input.value!==(current.proxy_url||'')||username.input.value!==(current.proxy_username||'')||!!password.input.value||clear.input.checked;feedback.textContent='';update();});
    validation=ctx.ui.formFeedback(form,error,[{input:ca.input,matches:/certificate|PEM|CA /i},{input:proxy.input,matches:/proxy|URL|scheme/i}]);
    form.addEventListener('submit',submit);panel.append(form);sync();update();
   }
-  ca.input.focus();
+  if(focus)ca.input.focus();
  }
  async function submit(event){
   event.preventDefault();if(disposed||saving||reloading||!dirty)return;
@@ -46,7 +46,7 @@ export function mountConfiguration(ctx,panel){
    if(disposed)return;sync();feedback.textContent='Settings saved.';
   }catch(cause){
    if(disposed)return;
-   if(cause.status===409){revision=ctx.ui.state().revision;error.textContent='Settings changed elsewhere. Draft kept. Review, then Save again or Discard changes.';}
+   if(cause.status===409){revision=ctx.ui.state().revision;error.textContent='Changed elsewhere. Your draft is kept. Save again or discard.';}
    else error.textContent=cause.message;
   }finally{saving=false;if(!disposed){update();if(error.textContent)validation.show(error.textContent);}}
  }

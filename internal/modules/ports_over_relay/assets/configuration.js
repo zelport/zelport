@@ -55,8 +55,8 @@ export function mountConfiguration(ctx) {
  group.wrap.append(el('p','small muted','At least 32 characters. Use the same secret on your devices.'),feedback);
  const enabled=field('Connect to relay',false,'checkbox'),publish=field('Share my services',false,'checkbox');
  const switches=el('div','relay-connection-options');switches.append(enabled.wrap,publish.wrap,el('p','small muted','Devices with this E2E secret can always administer each other.'));
- const error=el('p','route-error'),actions=el('div','relay-actions'),save=el('button','primary','Save settings');save.type='submit';
- const discard=button('Discard changes',()=>{if(saving)return;sync();validation.clear();url.input.focus();});
+ const error=el('p','route-error'),actions=el('div','relay-actions'),save=el('button','primary','Save');save.type='submit';
+ const discard=button('Discard',()=>{if(saving)return;sync();validation.clear();url.input.focus();});
  actions.append(discard,save);form.append(url.wrap,modeWrap,access.wrap,group.wrap,switches,error,actions);
  url.input.placeholder='ws://relay.example.com:8070';access.input.autocomplete=group.input.autocomplete='off';group.input.spellcheck=false;
  const validation=ctx.ui.formFeedback(form,error,[{input:url.input,matches:/url|scheme|wss?:/i},{input:access.input,matches:/access token/i},{get input(){return secretInput();},matches:/E2E|group token/i}]);
@@ -112,7 +112,7 @@ export function mountConfiguration(ctx) {
   try{
    await ctx.mutate(()=>ctx.api(`/api/modules/${ctx.moduleId}/settings`,{method:'PUT',body:JSON.stringify(body)}),{reportError:false});
    saved={...saved,relay_url:body.relay_url,enabled:body.enabled,publish:body.publish,has_identity:true,has_access_token:mode.value==='token'};sync();
-  }catch(cause){if(cause.status===409){revision=ctx.ui.state().revision;failure='Settings changed elsewhere. Review your draft, then save again or discard.';}else failure=cause.message.replace(/^ports_over_relay settings: /,'');}
+  }catch(cause){if(cause.status===409){revision=ctx.ui.state().revision;failure='Changed elsewhere. Your draft is kept. Save again or discard.';}else failure=cause.message.replace(/^ports_over_relay settings: /,'');}
   finally{saving=false;update();if(failure)validation.show(failure);}
  });
  return {element:form,render(state){

@@ -14,7 +14,7 @@ export function connectionMessage(data){
  return 'Relay connection failed. Check the connection settings.';
 }
 export function headerStatus(state) {
- const d=state?.data;if(!d)return null;
+ const d=state?.data;if(!d||!d.relay_url?.trim())return null;
  let endpoint='Not configured';
  try{endpoint=new URL(d.relay_url).host;}catch{}
  const rows=[{label:'Relay',value:endpoint},{label:'Devices',value:String((d.administration_peers||[]).filter(p=>p.available).length)},{label:'Sharing',value:d.publish?'Enabled':'Disabled'},{label:'Imports',value:String(state.routes?.length||0)}];
@@ -22,6 +22,7 @@ export function headerStatus(state) {
  if(connection.tone==='error')rows.push({label:'Connection',value:connectionMessage(d)});
  return {...connection,rows};
 }
+export function sourceFacts(state){const d=state?.data||{},c=connectionStatus(d),devices=(d.administration_peers||[]).filter(p=>p.available).length;return [{label:'Relay',value:c.status,tone:c.tone==='error'?'warning':undefined},{label:'Devices',value:String(devices)},{label:'Sharing',value:d.publish?'On':'Off'}];}
 export function mount(ctx) {
  const {el,button,field,serviceModule,renderChanged,statusBadge,refreshButton}=ctx.ui;
  let current,configuration,servicePicker=null,active=false,refreshing=false;
@@ -30,10 +31,8 @@ export function mount(ctx) {
  const importsHeading=el('h2',null,'Imported services'),onboarding=el('section','relay-onboarding empty-state empty-state-not-configured');
  overviewView.append(overviewStatus,importsHeading,routePanel,catalog,onboarding);
  configurationView.append(setup,settingsPanel);configurationView.hidden=true;
- const views=ctx.ui.moduleViews({...ctx,moduleName:ctx.moduleName||'Ports over Relay'},{overview:overviewView,configuration:configurationView,onChange(view){
-  refresh.hidden=view==='configuration';
-  if(view==='configuration'){ensureConfiguration();if(active)configuration?.activate();configuration?.focus();}
-  else configuration?.deactivate();
+ const views=ctx.ui.moduleViews({...ctx,moduleName:ctx.moduleName||'Ports over Relay'},{overview:overviewView,configuration:configurationView,overviewPlacement:'after',onChange(view){
+  ensureConfiguration();if(active)configuration?.activate();
  }});
  const api=path=>`/api/modules/${ctx.moduleId}/${path}`;
  const routes=serviceModule({...ctx,panel:routePanel},{
@@ -86,15 +85,13 @@ export function mount(ctx) {
  async function refreshCatalog(){if(refreshing)return;refreshing=true;refresh.disabled=true;try{await ctx.mutate(()=>ctx.api(api('refresh'),{method:'POST',body:'{}'}));}finally{refreshing=false;refresh.disabled=false;}}
  const refresh=refreshButton('Refresh catalog',refreshCatalog);refresh.hidden=false;views.actions.append(refresh);
  function render(state){current=state;routes.render(state);const d=state.data||{},status=d.status||{records:[]};
-  renderConnection(setup,d);renderConnection(overviewStatus,d);configuration?.render(state);
+  renderConnection(setup,d);renderConnection(overviewStatus,d);if(configuration)configuration.render(state);else{ensureConfiguration();if(active)configuration?.activate();}
   const providers=(status.records||[]).filter(r=>r.device_id!==d.device_id&&r.publish&&r.services.some(s=>s.kind==='application'));
   const byDevice=new Map((d.administration_peers||[]).filter(p=>p.device_id!==d.device_id).map(peer=>[peer.device_id,{id:peer.device_id,hostname:peer.hostname,peer}]));
   for(const provider of providers){const device=byDevice.get(provider.device_id)||{id:provider.device_id,hostname:provider.hostname};device.provider=provider;byDevice.set(device.id,device);}
   const devices=[...byDevice.values()].sort((a,b)=>a.hostname.localeCompare(b.hostname)||a.id.localeCompare(b.id));
   const connection=connectionStatus(d),needsSetup=connection.status==='Not configured'||connection.status==='Disabled';
-  onboarding.hidden=!needsSetup;
-  importsHeading.hidden=routePanel.hidden=!(state.routes||[]).length;
-  overviewStatus.hidden=needsSetup;
+  onboarding.hidden=true;importsHeading.hidden=routePanel.hidden=true;overviewStatus.hidden=true;refresh.hidden=needsSetup&&!devices.length;
   catalog.hidden=needsSetup&&!devices.length;
   renderChanged(onboarding,{status:connection.status},()=>{
    onboarding.replaceChildren();if(!needsSetup)return;
@@ -139,5 +136,5 @@ export function mount(ctx) {
    }
   });
  }
- return {render,openOverview(){views.show('overview');},openSettings,edit:routes.edit,activate(){active=true;if(!configurationView.hidden)configuration?.activate();},deactivate(){active=false;configuration?.deactivate();},dispose(){active=false;servicePicker?.close();configuration?.dispose();routes.dispose();views.dispose();}};
+ return {render,openSettings,edit:routes.edit,remove:routes.remove,activate(){active=true;if(!configurationView.hidden)configuration?.activate();},deactivate(){active=false;configuration?.deactivate();},dispose(){active=false;servicePicker?.close();configuration?.dispose();routes.dispose();views.dispose();}};
 }

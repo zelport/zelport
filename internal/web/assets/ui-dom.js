@@ -68,3 +68,14 @@ export function emptyState({kind='no-results',message='No resources found.',acti
 export function statusTone(value){const state=String(value||'').toLowerCase();if(['ready','running','listening','connected','available'].includes(state))return 'ok';if(['error','failed','unavailable'].includes(state))return 'error';if(['stale','waiting','connecting','pending'].includes(state))return 'pending';return 'neutral';}
 export function statusBadge(value){const badge=el('span','badge status-badge',value);badge.dataset.tone=statusTone(value);return badge;}
 export function experimentalBadge(){return el('span','badge maturity-experimental','Experimental');}
+// One-line service status. Detail is a tooltip on wide screens and a line on phones.
+export function serviceStatus(){
+ const root=el('span','service-status'),mark=el('span','service-status-mark'),label=el('span','service-status-label'),detail=el('span','service-status-detail'),tip=el('span','ui-tooltip status-tooltip');
+ const tooltip=attachTooltip(root,label,tip);root.append(mark,label,detail,tip);
+ function update({tone='neutral',label:text='',detail:more=''}={}){
+  if(root.dataset.tone!==tone){root.dataset.tone=tone;mark.replaceChildren(...(tone==='warning'?[icon('warning',{className:'warning-glyph'})]:[]));}
+  setText(label,text);setText(detail,more);setText(tip,more);detail.hidden=!more;
+  if(more)label.tabIndex=0;else{label.removeAttribute('tabindex');tooltip.close();}
+ }
+ return {root,update};
+}

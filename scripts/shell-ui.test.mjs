@@ -11,7 +11,7 @@ function shell(){
  const element=id=>{if(!elements.has(id))elements.set(id,{hidden:false,textContent:'',children:[],setAttribute(){},removeAttribute(){},append(...children){for(const child of children){if(child.parentElement)child.parentElement.children=child.parentElement.children.filter(item=>item!==child);this.children.push(child);child.parentElement=this;}},querySelector(){return element('fallback')},querySelectorAll(){return []}});return elements.get(id)};
  const context={renderRuntimeHeaderStatus,renderRuntimeAvailability,document:{getElementById:element,body:element('body'),hidden:false,addEventListener(){},querySelectorAll(){return dialogs}},window:{addEventListener(){}},location:{hash:''},history:{pushState(){},replaceState(){}},clearTimeout(){},setTimeout(){},ui:{setTooltip(){},setText,renderChanged,el(){return {append(){}}}}};
  const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
- runInNewContext(source+`\ncomposed=true;let testRefresh=async()=>{};client={refresh:(force)=>testRefresh(force),mutate:async(work,{reportError=true}={})=>{const owner=active;message('',owner);try{const result=await work();await testRefresh(true);return result;}catch(e){if(reportError)message(e.message,owner);await testRefresh(true).catch(()=>{});throw e;}},state:()=>state};globalThis.shell={setRefreshControls(toolbar,button){fallbackToolbar=toolbar;fallbackRefresh=button},navigate,message,mutate,refreshVisible,setRefresh(fn){testRefresh=fn},renderAvailability,renderHeaderStatus,addModule(m){modules.set(m.descriptor.id,m)},setState(s){state=s},active(){return active}};`,context);
+ runInNewContext(source+`\ncomposed=true;let testRefresh=async()=>{};client={refresh:(force)=>testRefresh(force),mutate:async(work,{reportError=true}={})=>{const owner=active;message('',owner);try{const result=await work();await testRefresh(true);return result;}catch(e){if(reportError)message(e.message,owner);await testRefresh(true).catch(()=>{});throw e;}},state:()=>state};globalThis.shell={navigate,message,mutate,refreshVisible,setRefresh(fn){testRefresh=fn},renderAvailability,renderHeaderStatus,addModule(m){modules.set(m.descriptor.id,m)},setState(s){state=s},active(){return active}};`,context);
  return {...context.shell,dialogs,error:element('error'),settings:element('panel-settings'),moduleActions:element('module-actions'),moduleHeading:element('module-heading')};
 }
 
@@ -47,7 +47,7 @@ test('unavailable deep links redirect to Settings and deactivate the module',()=
  const s=shell();let deactivated=0;
  const m={descriptor:{id:'test',tab_id:'test'},panel:{},tab:{setAttribute(){}},instance:{deactivate(){deactivated++}}};
  s.addModule(m);s.setState({modules:[m.descriptor],module_availability:{test:{enabled:false}}});s.navigate('test');
- assert.equal(s.active(),'settings');assert.equal(m.tab.hidden,true);assert.equal(m.panel.hidden,true);assert.equal(deactivated,1);
+ assert.equal(s.active(),'settings');assert.equal(m.panel.hidden,true);assert.equal(deactivated,1);
 });
 test('polling can hide the current tab and return it when enabled again',()=>{
  const s=shell();const m={descriptor:{id:'test',tab_id:'test'},panel:{},tab:{setAttribute(){}},instance:{activate(){},deactivate(){}}};
@@ -109,7 +109,7 @@ test('remote administration uses a distinct page canvas in light and dark themes
 
 test('Settings keeps the concise module availability label without explanatory filler',()=>{
  const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8');
- assert.match(app,/ui\.accordion\('Module UI availability'\)/);
+ assert.match(app,/ui\.accordion\('Sources in Add service'\)/);
  assert.doesNotMatch(app,/Choose which service sources|Changes apply immediately|source can be hidden/);
 });
 
@@ -127,22 +127,12 @@ test('recovery preserves a form error even when it matches the refresh error',as
 });
 
 
-test('fallback Refresh is shown only on the Dashboard',()=>{
- const node=()=>({hidden:false,children:[],append(...children){for(const child of children){if(child.parentElement)child.parentElement.children=child.parentElement.children.filter(item=>item!==child);this.children.push(child);child.parentElement=this;}},prepend(...children){this.append(...children);for(const child of children){this.children=this.children.filter(item=>item!==child);this.children.unshift(child);}},querySelector(selector){return this.children.find(child=>selector==='.refresh-icon'&&child.className?.includes('refresh-icon'))||null;}});
- const s=shell(),toolbar=node(),button={className:'module-action-icon refresh-icon',setAttribute(name,value){this[name]=value;}};toolbar.append(button);
- s.setRefreshControls(toolbar,button);
- s.navigate('dashboard');assert.equal(toolbar.hidden,false);assert.equal(button.disabled,false);
- s.navigate('settings');assert.equal(toolbar.hidden,true);assert.equal(button.parentElement,toolbar);
- const moduleToolbar=node(),moduleRefresh={className:'module-action-icon refresh-icon'};moduleToolbar.append(moduleRefresh);
+test('source pages place their toolbar in the shared heading; top-level pages have no heading',()=>{
+ const node=()=>({hidden:false,children:[],append(...children){for(const child of children){if(child.parentElement)child.parentElement.children=child.parentElement.children.filter(item=>item!==child);this.children.push(child);child.parentElement=this;}}});
+ const s=shell(),moduleToolbar=node(),moduleRefresh={className:'module-action-icon refresh-icon'};moduleToolbar.append(moduleRefresh);
  s.addModule({descriptor:{id:'discovery',tab_id:'discovery'},panel:{},toolbar:moduleToolbar});
- s.navigate('discovery');assert.equal(toolbar.hidden,true);assert.equal(moduleToolbar.hidden,false);assert.equal(moduleToolbar.parentElement,s.moduleActions);assert.equal(s.moduleHeading.hidden,false);
- const staticToolbar=node(),add={className:'module-action-icon module-add-icon'};staticToolbar.append(add);
- s.addModule({descriptor:{id:'static',tab_id:'static'},panel:{},toolbar:staticToolbar});
- s.navigate('static');assert.equal(toolbar.hidden,true);assert.equal(button.disabled,true);assert.equal(staticToolbar.parentElement,s.moduleActions);
- assert.equal(button.parentElement,toolbar);assert.deepEqual(staticToolbar.children,[add]);
- assert.equal(button['aria-label'],'Nothing to refresh');assert.equal(button.title,undefined);
- s.navigate('static');assert.equal(button.parentElement,toolbar);assert.deepEqual(staticToolbar.children,[add]);
- s.navigate('dashboard');assert.equal(button.parentElement,toolbar);assert.deepEqual(toolbar.children,[button]);assert.equal(s.moduleHeading.hidden,true);
+ s.navigate('discovery');assert.equal(moduleToolbar.hidden,false);assert.equal(moduleToolbar.parentElement,s.moduleActions);assert.equal(s.moduleHeading.hidden,false);
+ for(const page of ['dashboard','sources','settings']){s.navigate(page);assert.equal(s.moduleHeading.hidden,true);assert.equal(moduleToolbar.hidden,true);}
 });
 
 test('changing views closes open dialogs, but polling the same view preserves them',()=>{
@@ -166,12 +156,12 @@ test('header Open settings invokes module configuration after navigation',()=>{
  module.indicator.settings.click();assert.deepEqual(calls,['closed','relay','configuration']);
 });
 
-test('entering or reselecting a service opens Overview while polling preserves Configuration',()=>{
- const s=shell();let selected='configuration';const activated=[];
- const m={descriptor:{id:'ssh',tab_id:'ssh'},panel:{},tab:{setAttribute(){}},instance:{openOverview(){selected='overview'},activate(){activated.push(selected)},deactivate(){}}};
- s.addModule(m);s.setState({modules:[m.descriptor],module_availability:{ssh:{enabled:true}}});
- s.navigate('ssh');assert.equal(selected,'overview');assert.deepEqual(activated,['overview']);
- selected='configuration';s.renderAvailability();assert.equal(selected,'configuration');
- s.navigate('dashboard');s.navigate('ssh',false);assert.equal(selected,'overview');
- selected='configuration';s.navigate('ssh');assert.equal(selected,'overview');
+test('Services keeps route-notice discovery active; source pages activate only their own module',()=>{
+ const s=shell(),activated=[],deactivated=[];
+ const notice={descriptor:{id:'local',tab_id:'local'},panel:{},instance:{routeNotice(){return ''},activate(){activated.push('local')},deactivate(){deactivated.push('local')}}};
+ const plain={descriptor:{id:'remote',tab_id:'remote'},panel:{},instance:{activate(){activated.push('remote')},deactivate(){deactivated.push('remote')}}};
+ s.addModule(notice);s.addModule(plain);s.setState({modules:[notice.descriptor,plain.descriptor],module_availability:{}});
+ s.navigate('dashboard');assert.deepEqual(activated,['local']);assert.deepEqual(deactivated,['remote']);
+ activated.length=deactivated.length=0;s.navigate('remote');assert.deepEqual(activated,['remote']);assert.deepEqual(deactivated,['local']);
+ activated.length=deactivated.length=0;s.navigate('sources');assert.deepEqual(activated,[]);assert.equal(s.active(),'sources');
 });
