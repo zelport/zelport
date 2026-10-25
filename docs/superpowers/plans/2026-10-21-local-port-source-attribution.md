@@ -231,7 +231,7 @@ Commit the five task files with message `feat(local-ports): render cached source
 
 **Interfaces:**
 - Consumes: the completed source-attribution behavior from Tasks 1–4.
-- Produces: a macOS arm64 test binary at `/Users/zdeneksvarc/Git/github.com/zelport/zelport-darwin-arm64-test` after automated verification succeeds.
+- Produces: a macOS arm64 test binary at `../zelport-darwin-arm64-test` (sibling of the repository checkouts) after automated verification succeeds.
 
 - [ ] **Step 1: Run the complete automated verification**
 
@@ -247,7 +247,7 @@ Expected: every command exits 0 with no race report, vet error, test failure, or
 
 - [ ] **Step 2: Copy and launch the verified macOS binary**
 
-Copy the sandbox-built artifact to `/Users/zdeneksvarc/Git/github.com/zelport/zelport-darwin-arm64-test`, preserve executable mode, stop only the test process previously started from that exact path if necessary, and launch it on port 7070 with the user's existing configuration.
+Copy the sandbox-built artifact to `../zelport-darwin-arm64-test` (sibling of the repository checkouts), preserve executable mode, stop only the test process previously started from that exact path if necessary, and launch it on port 7070 with the user's existing configuration.
 
 - [ ] **Step 3: Verify the native macOS acceptance case**
 
