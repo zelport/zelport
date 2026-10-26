@@ -37,7 +37,7 @@ export function fileEditor(ctx,{endpoint,title,trigger,onSaved=()=>{},onClose=()
    await ctx.api(endpoint,{method:'PUT',body:JSON.stringify({revision:documentValue.revision,version:documentValue.version,content:lineEnding==='\r\n'?area.value.replace(/\n/g,'\r\n'):area.value})});
    if(closed)return;baseline=area.value;saving=false;dialog.close();await onSaved();
   }catch(cause){
-   if(!closed){error.textContent=cause.status===409?'The file or settings changed. Copy your draft or reload the file before saving.':cause.message;conflict=cause.status===409;reload.hidden=!conflict;status.textContent='';}
+   if(!closed){error.textContent=cause.status===409?'The file changed. Copy your draft or reload the file.':cause.message;conflict=cause.status===409;reload.hidden=!conflict;status.textContent='';}
   }finally{saving=false;if(!closed){update();if(error.textContent)validation.show(error.textContent);}}
  }
  const beforeUnload=event=>{if(dirty()||saving){event.preventDefault();event.returnValue='';}};

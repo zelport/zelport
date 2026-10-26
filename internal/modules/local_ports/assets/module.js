@@ -51,10 +51,10 @@ export function listenerPicker(ctx,port){
  function render(rows=listeners,error=renderError){
   const scroll=menu.scrollTop;clearRows();heading.hidden=search.wrap.hidden=!enabled;refresh.disabled=loading||!enabled;refresh.setAttribute('aria-busy',String(loading));
   const query=search.input.value.trim().toLowerCase(),filtered=rows.filter(listener=>`${listener.port} ${processLabels(listener.processes).full}`.toLowerCase().includes(query));
-  if(!enabled)state('Port detection is off. Enter the service port manually.');
+  if(!enabled)state('Port detection is off.');
   else if(loading&&!rows.length)state('',{spinner:true});
   else if(error)state(discoveryFailure,{warning:true});
-  else if(!rows.length)state('No listening ports found. Enter the service port manually.');
+  else if(!rows.length)state('No listening ports found.');
   else if(!filtered.length)state('No matching ports.');
   for(const listener of enabled?filtered:[]){
    const process=processLabels(listener.processes),row=el('div','listener-option'),actions=el('div','listener-option-actions'),processNode=process.truncated?textTooltip(process.text,process.full,'listener-process').root:el('span','listener-process',process.text);row.dataset.port=String(listener.port);row.setAttribute('role','listitem');row.setAttribute('aria-label',`Port ${listener.port}: ${process.full}`);

@@ -87,10 +87,10 @@ test('relay client preserves separate sections and updates expiration without ne
  const ctx=context(),view=relayMount(ctx),provider={group:'group',device_id:'other',hostname:'peer',port:8080,public_key:'key',publish:true,expires_at:2,services:[{id:'service',kind:'application',domain:'app.localhost'}]};
  const state={revision:1,routes:[],data:{device_id:'self',has_identity:true,enabled:true,publish:false,administration_peers:[],status:{connected:true,records:[provider]}}};
  view.render(state);const services=tree(ctx.panel).find(n=>n.className==='relay-services-view'),setup=tree(ctx.panel).find(n=>n.className==='relay-setup');
- const [,,routes,catalog]=services.children,original=tree(ctx.panel),setupBefore=tree(setup);
+ const [routes,catalog]=services.children,original=tree(ctx.panel),setupBefore=tree(setup);
  view.render({...state,revision:2,data:{...state.data,status:{...state.data.status,metadata_counter:7}}});sameNodes(tree(ctx.panel),original);
  now=3000;view.render(state);
- assert.equal(services.children[2],routes);assert.equal(services.children[3],catalog);
+ assert.equal(services.children[0],routes);assert.equal(services.children[1],catalog);
  assert.equal(tree(catalog).find(n=>n.tag==='button').disabled,true);
  sameNodes(tree(setup),setupBefore);
 });
@@ -111,7 +111,7 @@ test('relay page shows configuration first and the device catalog after it, with
  assert.ok(ctx.panel.children.indexOf(configuration)<ctx.panel.children.indexOf(services));
  assert.ok(tree(configuration).some(n=>n.tag==='form'),'configuration uses an inline form');
  assert.ok(tree(configuration).some(n=>n.textContent==='E2E secret'));
- assert.equal(nodes.find(n=>n.tag==='h2'&&n.textContent==='Imported services').hidden,true);
+ assert.equal(nodes.some(n=>n.tag==='h2'&&n.textContent==='Imported services'),false);
 });
 
 test('relay client hides a revealed E2E secret when leaving the page',async()=>{

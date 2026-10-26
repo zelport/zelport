@@ -69,8 +69,7 @@ test('SSH host picker explains non-interactive keys and fills only the chosen al
   await new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(paths,['/api/modules/ports_over_ssh/hosts']);
   assert.equal(byClass(picker.menu,'ssh-host-picker-title').textContent,'Configured SSH hosts');
-  assert.match(byClass(picker.menu,'ssh-host-help-tooltip').textContent,/physical confirmation prompts are not supported/i);
-  assert.match(byClass(picker.menu,'ssh-host-help-tooltip').textContent,/system ssh command/i);
+  assert.match(byClass(picker.menu,'ssh-host-help-tooltip').textContent,/passphrase prompts are not supported/i);
   assert.match(byClass(picker.menu,'ssh-host-help-tooltip').textContent,/Source: ~\/\.ssh\/config/);
   assert.doesNotMatch(byClass(picker.menu,'ssh-host-help-tooltip').textContent,/Include files/);
   const option=walk(picker.menu).find(node=>node.dataset.host==='tv.example.test');

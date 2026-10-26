@@ -1,4 +1,4 @@
-const sshHostHelp=path=>`Uses the SSH configuration on this computer. Verify the same host with the system ssh command. Password, passphrase, and physical confirmation prompts are not supported.\nSource: ${path}`;
+const sshHostHelp=path=>`Uses your SSH configuration. Password and passphrase prompts are not supported.\nSource: ${path}`;
 
 export function sshHostPicker(ctx,host){
  const {adornmentButton,button,el,field,serviceTargetIndicator}=ctx.ui;
@@ -13,7 +13,7 @@ export function sshHostPicker(ctx,host){
  function render(){
   const scroll=menu.scrollTop;clearRows();refresh.disabled=loading;refresh.setAttribute('aria-busy',String(loading));
   const query=search.input.value.trim().toLowerCase(),filtered=hosts.filter(alias=>alias.toLowerCase().includes(query));
-  const message=loading&&!hosts.length?'Loading SSH hosts…':renderError||(!hosts.length?'No SSH hosts found. Enter the SSH host manually.':!filtered.length?'No matching SSH hosts.':'');
+  const message=loading&&!hosts.length?'Loading SSH hosts…':renderError||(!hosts.length?'No SSH hosts found.':!filtered.length?'No matching SSH hosts.':'');
   if(message){const state=el('div','ssh-host-picker-state',message);state.setAttribute('role','status');menu.append(state);}
   for(const alias of filtered){
    const row=el('div','ssh-host-option');row.dataset.host=alias;row.setAttribute('role','listitem');

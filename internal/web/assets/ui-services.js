@@ -55,7 +55,7 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
   const reload=button('Reload saved values',()=>{if(changedRoute)edit(changedRoute,group,{...options,draft:null});});reload.hidden=true;
   body.append(error,reload);form.append(actions);
   const feedback=formFeedback(form,error,[{input,matches:/domain/i}]);
-  input.addEventListener('invalid',event=>{event.preventDefault();feedback.show(input.validity.valueMissing?'Enter a domain name.':'Use letters, numbers, hyphens and dots.',input);});
+  input.addEventListener('invalid',event=>{event.preventDefault();feedback.show(input.validity.valueMissing?'Enter an address.':'Use letters, numbers, hyphens and dots.',input);});
   d.addEventListener('cancel',event=>{if(save.disabled)event.preventDefault();});
   form.addEventListener('submit',async event=>{
    event.preventDefault();if(save.disabled)return;
@@ -67,7 +67,7 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
     await ctx.mutate(()=>ctx.api('/api/routes',{method:'POST',body:JSON.stringify({revision,route:{id:route?.id||'',module:ctx.moduleId,domain:input.value.toLowerCase()+'.localhost',settings}})}),{reportError:false});
     if(!ctx.signal?.aborted&&d.open){d.close();options.onSaved?.();}
    }catch(cause){
-    if(cause.status===409){try{const latestRevision=routeEditRevision(route,getState());cause=Error(latestRevision!==revision?'Changed elsewhere. Your draft is kept. Save again or discard.':'This domain is already in use. Choose another domain name.');}catch(conflict){cause=conflict;}}
+    if(cause.status===409){try{const latestRevision=routeEditRevision(route,getState());cause=Error(latestRevision!==revision?'Changed elsewhere. Your draft is kept. Save again or discard.':'This address is already in use.');}catch(conflict){cause=conflict;}}
     failure=cause.message;changedRoute=cause.currentRoute||null;reload.hidden=!changedRoute;
    }finally{
     controls.forEach((control,index)=>{control.disabled=disabled[index];});save.disabled=false;form.setAttribute('aria-busy','false');if(failure&&d.open)feedback.show(failure);

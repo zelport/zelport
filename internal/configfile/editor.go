@@ -20,7 +20,7 @@ import (
 const MaxSize = 1 << 20
 
 var (
-	ErrConflict    = errors.New("The file or settings changed. Copy your draft or reload the file before saving.")
+	ErrConflict    = errors.New("The file changed. Copy your draft or reload the file.")
 	ErrUnavailable = errors.New("The configuration file could not be read or written.")
 	ErrInvalid     = errors.New("Use a UTF-8 text file without NUL characters, at most 1 MiB.")
 )

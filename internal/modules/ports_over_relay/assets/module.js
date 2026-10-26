@@ -27,9 +27,9 @@ export function mount(ctx) {
  const {el,button,field,serviceModule,renderChanged,statusBadge,refreshButton}=ctx.ui;
  let current,configuration,servicePicker=null,active=false,refreshing=false;
  const overviewView=el('section','relay-services-view'),configurationView=el('section','relay-configuration-view');
- const routePanel=el('section'),setup=el('section','relay-setup'),overviewStatus=el('section','relay-setup'),catalog=el('section','relay-catalog'),settingsPanel=el('section','relay-settings-panel');
- const importsHeading=el('h2',null,'Imported services'),onboarding=el('section','relay-onboarding empty-state empty-state-not-configured');
- overviewView.append(overviewStatus,importsHeading,routePanel,catalog,onboarding);
+ const routePanel=el('section'),setup=el('section','relay-setup'),catalog=el('section','relay-catalog'),settingsPanel=el('section','relay-settings-panel');
+ // Imports are listed on Services; routePanel only hosts the shared import form state.
+ routePanel.hidden=true;overviewView.append(routePanel,catalog);
  configurationView.append(setup,settingsPanel);configurationView.hidden=true;
  const views=ctx.ui.moduleViews({...ctx,moduleName:ctx.moduleName||'Ports over Relay'},{overview:overviewView,configuration:configurationView,overviewPlacement:'after',onChange(view){
   ensureConfiguration();if(active)configuration?.activate();
@@ -78,26 +78,22 @@ export function mount(ctx) {
   const message=connectionMessage(data);
   renderChanged(root,{connection,count,message,publish:!!data.publish,error:data.status?.error},()=>{
    root.replaceChildren();const row=el('div','relay-connection-summary'),badge=statusBadge(connection.status);badge.dataset.tone=connection.tone;
-   row.append(el('strong',null,'Relay server'),badge,el('span','small muted',`${count} ${count===1?'device':'devices'}`));if(root===overviewStatus)row.append(el('span','small muted',data.publish?'Your services: Shared':'Your services: Not shared'));root.append(row);
+   row.append(el('strong',null,'Relay server'),badge,el('span','small muted',`${count} ${count===1?'device':'devices'}`));root.append(row);
    if(message){root.append(el('p','route-error',message));const details=el('details','relay-diagnostic');details.append(el('summary',null,'Technical details'),el('p','small muted',data.status.error));root.append(details);}
   });
  }
  async function refreshCatalog(){if(refreshing)return;refreshing=true;refresh.disabled=true;try{await ctx.mutate(()=>ctx.api(api('refresh'),{method:'POST',body:'{}'}));}finally{refreshing=false;refresh.disabled=false;}}
  const refresh=refreshButton('Refresh catalog',refreshCatalog);refresh.hidden=false;views.actions.append(refresh);
  function render(state){current=state;routes.render(state);const d=state.data||{},status=d.status||{records:[]};
-  renderConnection(setup,d);renderConnection(overviewStatus,d);if(configuration)configuration.render(state);else{ensureConfiguration();if(active)configuration?.activate();}
+  renderConnection(setup,d);if(configuration)configuration.render(state);else{ensureConfiguration();if(active)configuration?.activate();}
   const providers=(status.records||[]).filter(r=>r.device_id!==d.device_id&&r.publish&&r.services.some(s=>s.kind==='application'));
   const byDevice=new Map((d.administration_peers||[]).filter(p=>p.device_id!==d.device_id).map(peer=>[peer.device_id,{id:peer.device_id,hostname:peer.hostname,peer}]));
   for(const provider of providers){const device=byDevice.get(provider.device_id)||{id:provider.device_id,hostname:provider.hostname};device.provider=provider;byDevice.set(device.id,device);}
   const devices=[...byDevice.values()].sort((a,b)=>a.hostname.localeCompare(b.hostname)||a.id.localeCompare(b.id));
   const connection=connectionStatus(d),needsSetup=connection.status==='Not configured'||connection.status==='Disabled';
-  onboarding.hidden=true;importsHeading.hidden=routePanel.hidden=true;overviewStatus.hidden=true;refresh.hidden=needsSetup&&!devices.length;
+  refresh.hidden=needsSetup&&!devices.length;
   catalog.hidden=needsSetup&&!devices.length;
-  renderChanged(onboarding,{status:connection.status},()=>{
-   onboarding.replaceChildren();if(!needsSetup)return;
-   const configured=connection.status==='Disabled';
-   onboarding.append(el('p','empty-state-message',configured?'Enable the relay connection in Configuration.':'Connect your devices using a relay and a shared E2E secret.'),button('Go to Configuration',openSettings,'primary'));
-  });
+
   const remote=!!ctx.ui.state().remote_admin;
   renderChanged(catalog,{devices:devices.map(v=>({id:v.id,hostname:v.hostname,peer:v.peer&&{available:v.peer.available,uuid_url:v.peer.uuid_url,hostname_url:v.peer.hostname_url,conflict:v.peer.conflict},provider:v.provider&&{port:v.provider.port,group:v.provider.group,public_key:v.provider.public_key,services:v.provider.services.filter(s=>s.kind==='application'),expired:v.provider.expires_at*1000<=Date.now()}})),remote,connected:!!status.connected,imports:(state.routes||[]).map(r=>r.editor)},()=>{
    catalog.replaceChildren();
