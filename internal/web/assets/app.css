@@ -23,7 +23,7 @@
 
 
 
-.dashboard-table-wrap{overflow:visible;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.dashboard-table{width:100%;border-collapse:collapse;text-align:left;table-layout:fixed}.dashboard-table th:first-child{width:28%}.dashboard-table th:nth-child(2){width:22%}.dashboard-table th:nth-child(3){width:42%}.dashboard-table th:nth-child(4){width:8%}.dashboard-table td .small{display:block}.dashboard-table .route-error{color:var(--danger);margin-top:5px}.dashboard-table .dashboard-actions{margin-left:0}@media(max-width:900px){.runtime-modules{grid-column:1/-1}}@media(max-width:720px){.dashboard-table{min-width:850px}}
+.dashboard-table-wrap{overflow:visible;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);overflow-x:auto;padding:0}.dashboard-table{width:100%;border-collapse:collapse;text-align:left;table-layout:fixed}.dashboard-table th:first-child{width:28%}.dashboard-table th:nth-child(2){width:18%}.dashboard-table th:nth-child(3){width:auto}.dashboard-table th:nth-child(4){width:18%}.dashboard-table td .small{display:block}.dashboard-table .route-error{color:var(--danger);margin-top:5px}.dashboard-table .dashboard-actions{margin-left:0;justify-content:flex-end}@media(max-width:900px){.runtime-modules{grid-column:1/-1}}@media(max-width:720px){.dashboard-table{min-width:850px}}
 
 .route-error{color:var(--danger);overflow-wrap:anywhere}.resource>summary strong{flex:1}.resource-menu-trigger{padding:0 8px}.resource-actions{position:relative;margin-left:10px}.services>button{margin-top:16px}.local-service-list>button{margin:16px 0}dialog form>label{margin-bottom:0}
 
@@ -98,8 +98,7 @@
 dialog{max-height:calc(100dvh - 32px);overflow-y:auto}dialog form>.form-field:first-of-type{margin-top:0}
 .dialog-actions{flex-wrap:wrap;align-items:center;position:sticky;bottom:calc(-1 * var(--dialog-padding));background:var(--surface);padding:16px 0;margin-top:16px;z-index:2}
 @media(max-width:720px){
- .dashboard-table{min-width:0;table-layout:auto}.tabs{gap:8px 18px}.tabs [role=tab]{padding:10px 0}
-}
+ .dashboard-table{min-width:0;table-layout:auto}.tabs{gap:8px 18px}.tabs [role=tab]{padding:10px 0}}
 @media(max-width:480px){dialog{--dialog-padding:16px;padding:var(--dialog-padding)}.dialog-actions{bottom:calc(-1 * var(--dialog-padding))}.dialog-header{margin-bottom:20px}.input-adornment{gap:5px;padding:0 8px}.input-adornment-text{font-size:12px}}
 
 .tabs-toolbar{position:relative;min-height:49px;align-items:center}
@@ -110,13 +109,7 @@ dialog{max-height:calc(100dvh - 32px);overflow-y:auto}dialog form>.form-field:fi
 
 
 /* Shared design system. Modules own content, not component geometry. */
-:root{
- --text-body:15px;--text-help:13px;--text-label:12px;--text-heading:18px;
- --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;
- --row-padding-y:8px;--panel-padding:16px;--dialog-padding:24px;
- --radius-control:6px;--radius-panel:10px;
- --control-height:40px;--compact-height:32px;--warning:#9a6700;
-}
+:root{--text-body:15px;--text-help:13px;--text-label:12px;--text-heading:18px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--row-padding-y:8px;--panel-padding:16px;--dialog-padding:24px;--control-height:40px;--compact-height:32px;--warning:#9a6700;--header-height:72px;--page-heading-height:104px;--page-title:28px;--row-height:56px;--head-row-height:40px;--gap:24px;--radius-panel:12px;--radius-control:8px;--ok:#2f7a4a;--neutral-mark:#8f8799}
 @media(prefers-color-scheme:dark){:root{--warning:#f2cc60}}
 button,.button{min-height:var(--control-height);border-radius:var(--radius-control)}
 .service-actions button,.data-table button,.adornment-button,.resource-menu-trigger{min-height:var(--compact-height);font-size:var(--text-help)}
@@ -165,13 +158,11 @@ button,.button{min-height:var(--control-height);border-radius:var(--radius-contr
  .data-table td[data-label="Source type"],.data-table td[data-label="Data flow"],.data-table td[data-label="Localhost port"]{grid-column:1/-1;display:block;padding-left:100px;position:relative}
  .data-table td[data-label="Source type"]::before,.data-table td[data-label="Data flow"]::before,.data-table td[data-label="Localhost port"]::before{content:attr(data-label);position:absolute;left:0;width:88px;font-size:var(--text-label);font-weight:400;color:var(--muted)}
  .data-table td[data-label=State]{align-self:center}.data-table td[data-label=Actions]{grid-column:2;justify-self:end}
- .service{gap:var(--space-2)}
-}
+ .service{gap:var(--space-2)}}
 @media(pointer:coarse){
  :root{--control-height:44px;--compact-height:44px}
  button,.button,.resource-menu-trigger,.adornment-button,.connection-trigger{min-width:44px;min-height:44px}
- .switch-field{min-height:44px}.switch-field label{padding:var(--space-2) 0}
-}
+ .switch-field{min-height:44px}.switch-field label{padding:var(--space-2) 0}}
 .tabs-toolbar[data-collapsed=true] .tabs [role=tab]{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
 
 /* Three stable destinations; source modules live in the Services disclosure. */
@@ -182,7 +173,7 @@ button,.button{min-height:var(--control-height);border-radius:var(--radius-contr
 :focus:not(:focus-visible){outline:none}
 .primary-navigation>.navigation-item:focus-visible{outline:none;background:var(--accent-soft);box-shadow:inset 0 -3px 0 var(--accent)}
 button[type=submit]:focus-visible,.danger:focus-visible{outline-color:var(--ink)}
-.module-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin:var(--space-8) 0 var(--space-6)}.module-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;font-size:var(--text-heading)}.module-actions{display:flex;align-items:center;margin-left:auto}
+.module-heading{display:flex;justify-content:space-between;gap:var(--space-3);min-height:72px;margin:0 0 var(--space-6);align-items:center}.module-title{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;font-size:var(--text-heading)}.module-actions{display:flex;align-items:center;margin-left:auto}
 @media(max-width:720px){.module-heading{align-items:stretch;flex-direction:column;gap:var(--space-4)}.module-actions{width:100%;margin-left:0}.module-toolbar{width:100%;justify-content:flex-end}}
 @media(max-width:480px){.primary-navigation{gap:16px}.tabs-toolbar{gap:8px}}
 @media(max-width:360px){.primary-navigation{gap:12px}.tabs-toolbar{gap:4px}}
@@ -291,13 +282,12 @@ body[data-view=loading] #boot-status{
  .local-service-list[role=table] .mobile-target-label{display:inline;font-weight:600}
  .local-service-list[role=table] .service-port-details{grid-column:1;justify-content:flex-start}
  .local-service-list[role=table] .service-actions{grid-column:2}
- .local-service-list[role=table] .service-menu-trigger{width:44px;height:44px;min-height:44px}
-}
+ .local-service-list[role=table] .service-menu-trigger{width:44px;height:44px;min-height:44px}}
 @media(pointer:coarse){.local-service-list[role=table] .service-menu-trigger{width:44px;height:44px;min-height:44px}}
 
 /* First use explains the result before exposing diagnostic details. */
-.dashboard-empty{text-align:left;padding:var(--space-6);background:var(--surface)}
-.dashboard-empty p{max-width:640px;margin-bottom:var(--space-3)}
+.dashboard-empty{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);padding:var(--gap)}
+.dashboard-empty p{max-width:640px;margin-bottom:var(--space-3);margin:0;color:var(--muted)}
 
 /* Keep actions outside the scroll area so they cannot cover form fields. */
 dialog.service-edit-dialog{padding:0;overflow:hidden}
@@ -312,12 +302,10 @@ dialog.service-edit-dialog{padding:0;overflow:hidden}
  .adornment-button,.module-action-icon{width:44px;height:44px}
  .number-stepper-controls .adornment-button{display:none}
  .service-edit-dialog .dialog-header h2{min-width:0;overflow-wrap:anywhere}
- .service-edit-dialog .dialog-actions{gap:8px}
-}
+ .service-edit-dialog .dialog-actions{gap:8px}}
 @media(max-width:360px){
  .service-edit-dialog .dialog-actions{display:grid;grid-template-columns:1fr 1fr}
- .service-edit-dialog .dialog-back{grid-column:1/-1;justify-self:start}
-}
+ .service-edit-dialog .dialog-back{grid-column:1/-1;justify-self:start}}
 
 /* One shared module switch, anchored independently of optional icon actions. */
 .module-toolbar{align-items:center;justify-content:flex-end;gap:var(--space-4);min-width:0}
@@ -329,8 +317,7 @@ dialog.service-edit-dialog{padding:0;overflow:hidden}
  .module-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-3);align-items:center}
  .module-heading>#module-title{grid-column:1;grid-row:1}
  .module-heading>.module-actions,.module-heading .module-toolbar:not([hidden]){display:contents}
- .module-heading .module-view-actions{grid-column:2;grid-row:1;justify-self:end}
-}
+ .module-heading .module-view-actions{grid-column:2;grid-row:1;justify-self:end}}
 
 /* A bounded, dependency-free editor for module-selected configuration files. */
 dialog.file-editor-dialog{width:min(960px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:var(--dialog-padding)}
@@ -353,8 +340,8 @@ dialog.file-editor-dialog{width:min(960px,calc(100vw - 32px));max-height:calc(10
 /* Keep remote administration visibly distinct without tinting cards or controls. */
 body[data-administration=remote]{background:#fff4f4}
 @media(prefers-color-scheme:dark){body[data-administration=remote]{background:#211719}}
-/* Layout system: one rhythm for every page. Values come from these tokens only. */
-:root{--header-height:72px;--page-heading-height:104px;--page-title:28px;--row-height:56px;--head-row-height:40px;--gap:24px;--radius-panel:12px;--radius-control:8px;--ok:#2f7a4a;--neutral-mark:#8f8799}
+
+/* Page layout: Services table, service status, Sources cards and Add service source choice. */
 @media(prefers-color-scheme:dark){:root{--ok:#6cc58f;--neutral-mark:#9a91a6}}
 header{height:var(--header-height);gap:40px;border-bottom:1px solid var(--line)}
 header .tabs-toolbar{align-self:stretch;display:flex;margin:0;border:0;padding:0;flex:1;min-width:0}
@@ -367,19 +354,15 @@ header .connection-status{margin-left:auto}
 .page-heading .page-title{min-height:0}
 .page-heading #add-service{margin-left:auto}
 .module-breadcrumb{display:inline-block;margin-top:var(--space-6);font-size:var(--text-help);font-weight:600}
-.module-heading{min-height:72px;margin:0 0 var(--space-6);align-items:center}
 .module-heading .module-title{font-size:var(--page-title);letter-spacing:-.8px;font-weight:700}
-/* Services table: fixed columns, one line per row; detail lives in the status tooltip. */
-.dashboard-table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);overflow-x:auto;padding:0}
 .dashboard-table{table-layout:fixed;width:100%;min-width:760px;border-collapse:collapse}
 .dashboard-table th{height:var(--head-row-height);padding:0 var(--space-4);font-size:var(--text-label);font-weight:600;color:var(--muted);text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;width:auto}
-.dashboard-table th:nth-child(1){width:26%}.dashboard-table th:nth-child(2){width:18%}.dashboard-table th:nth-child(3){width:auto}.dashboard-table th:nth-child(4){width:18%}.dashboard-table th:nth-child(5){width:64px}
+.dashboard-table th:nth-child(1){width:26%}.dashboard-table th:nth-child(5){width:64px}
 .dashboard-table td{height:var(--row-height);padding:0 var(--space-4);border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
 .dashboard-table tbody tr:last-child td{border-bottom:0}
 .dashboard-table .service-address a,.dashboard-table .service-address span{font-weight:600}
 .dashboard-table .service-target{color:var(--muted)}
 .dashboard-table .service-status-cell,.dashboard-table .service-actions-cell{overflow:visible}
-.dashboard-table .dashboard-actions{justify-content:flex-end}
 .visually-hidden-label{font-size:0}
 .service-status{position:relative;display:inline-flex;align-items:center;gap:var(--space-2);max-width:100%}
 .service-status-mark{display:inline-flex;align-items:center;justify-content:center;width:14px;flex:none}
@@ -391,9 +374,7 @@ header .connection-status{margin-left:auto}
 .service-status-label{overflow:hidden;text-overflow:ellipsis}
 .service-status-label[tabindex]{cursor:help;text-decoration:underline dotted;text-underline-offset:4px}
 .service-status-detail{display:none}
-.dashboard-empty{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);padding:var(--gap)}
 .dashboard-empty h2{margin:0 0 var(--space-2);font-size:var(--text-heading)}
-.dashboard-empty p{margin:0;color:var(--muted)}
 /* Sources: one card per source; Configure keeps a fixed bottom-left position. */
 .source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
 .source-card{display:flex;flex-direction:column;min-height:232px;box-sizing:border-box;padding:var(--gap);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel)}
@@ -429,8 +410,7 @@ header .connection-status{margin-left:auto}
  .dashboard-table .service-status-label{text-decoration:none}
  .dashboard-table .service-status-detail{display:inline;font-weight:400;overflow:hidden;text-overflow:ellipsis}
  .dashboard-table .service-status-detail::before{content:"· "}
- .service-source-choices{grid-template-columns:minmax(0,1fr)}
-}
+ .service-source-choices{grid-template-columns:minmax(0,1fr)}}
 .dashboard-table th.visually-hidden-label{font-size:0}
 .service-source-choices .service-source-choice{display:flex;flex-direction:row;width:auto;margin:0;font-size:var(--text-body);font-weight:400}
 .service-source-choices .service-source-choice input{width:auto;min-height:0;height:auto;margin:3px 0 0;padding:0}
