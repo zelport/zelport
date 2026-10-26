@@ -63,7 +63,7 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
    body.append(choices);
   }
   body.append(domainField);
-  const fields=definition.fields(route?.editor||{},group,current,{address:input,isNew:!route?.id});body.append(fields.element);
+  const fields=definition.fields(route?.editor||{},group,current,{address:input,isNew:!route?.id});fields.element.className=`service-fields${fields.element.className?` ${fields.element.className}`:''}`;body.append(fields.element);
   let fieldsDisposed=false;const disposeFields=()=>{if(fieldsDisposed)return;fieldsDisposed=true;fields.dispose?.();};
   const {error,actions,save}=formActions(d,{submit:route?.id?'Save':definition.createSubmit||'Add service'});
   let changedRoute=null;

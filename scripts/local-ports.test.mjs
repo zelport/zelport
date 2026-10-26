@@ -39,6 +39,7 @@ function setup(){
 }
 
 function walk(node){return [node,...node.children.flatMap(walk)];}
+function text(node){return walk(node).map(item=>item.textContent).join('');}
 function byClass(node,name){return walk(node).find(item=>item.className.split(' ').includes(name));}
 function allByClass(node,name){return walk(node).filter(item=>item.className.split(' ').includes(name));}
 function fire(node,type,extra={}){node.dispatchEvent({type,detail:1,preventDefault(){},stopPropagation(){},...extra});}
@@ -141,21 +142,17 @@ test('listener inventory loads immediately and only its explicit action fills th
  await flush();
  assert.equal(calls,1);assert.equal(picker.menu.hidden,false);
  const rows=allByClass(picker.menu,'listener-option');assert.deepEqual(rows.map(row=>row.dataset.port),['8080','9000','9100']);
- const shortProcess=byClass(rows[0],'listener-process');assert.equal(shortProcess.textContent,'web');assert.equal(byClass(shortProcess,'text-tooltip'),undefined);assert.equal(rows[0].getAttribute('aria-label'),'Port 8080: web');
- const localInfo=byClass(rows[0],'local-port-indicator');assert.ok(localInfo,'a direct host listener has a dedicated local-port indicator');
- const localTip=byClass(localInfo,'local-port-tooltip');assert.equal(localTip.textContent,'Kind: Generic process\nName: web\nPID: 42');
- const warning=byClass(rows[0],'service-warning'),choose=byClass(rows[0],'listener-use-port'),actionOrder=localInfo.parentElement.children;
- assert.deepEqual([warning,localInfo,choose].map(node=>actionOrder.indexOf(node)),[0,1,2],'warning precedes the process indicator, which is immediately before Choose');
- const unknownProcess=byClass(rows[1],'listener-process');assert.equal(unknownProcess.textContent,'Unknown process');
- assert.equal(byClass(rows[1],'local-port-indicator'),undefined);
- const longProcess=byClass(rows[2],'listener-process'),processTooltip=byClass(longProcess,'text-tooltip');assert.equal(longProcess.textContent,'command -p 2345 --us…');assert.equal(longProcess.getAttribute('aria-label'),'command -p 2345 --user foo --verbose');
- assert.equal(processTooltip.textContent,'command -p 2345 --user foo --verbose');fire(longProcess,'mouseenter');assert.equal(processTooltip.hidden,true);assert.notEqual(processTooltip.open,true);assert.ok(windowListeners.get('scroll'));windowListeners.get('scroll')();await new Promise(resolve=>setTimeout(resolve,275));assert.equal(processTooltip.hidden,true);fire(longProcess,'mouseenter');await new Promise(resolve=>setTimeout(resolve,275));assert.equal(processTooltip.hidden,false);assert.equal(processTooltip.open,true);fire(longProcess,'mouseleave');assert.equal(processTooltip.hidden,true);
+ assert.equal(byClass(rows[0],'listener-process').textContent,'web');assert.equal(byClass(rows[1],'listener-process').textContent,'Unknown process');
+ assert.equal(byClass(rows[2],'listener-process').textContent,'command -p 2345 --user foo --verbose','long names stay whole and truncate in CSS');
+ assert.equal(byClass(rows[2],'listener-process').title,'command -p 2345 --user foo --verbose');
+ assert.equal(byClass(rows[0],'local-port-indicator'),undefined,'the process name is already on the row');
+ const warning=byClass(rows[0],'service-warning');assert.ok(warning);assert.equal(warning.parentElement.className,'choice-trailing','indicators sit outside the row button');
  assert.ok(walk(rows[0]).some(node=>node.textContent==='This port also listens on non-loopback interfaces.'));
 
- let inputEvents=0;port.input.addEventListener('input',()=>inputEvents++);fire(rows[0],'click');
- assert.equal(port.input.value,3000,'the row itself must not change the field');
+ let inputEvents=0;port.input.addEventListener('input',()=>inputEvents++);
  const useButtons=allByClass(picker.menu,'listener-use-port');
- assert.equal(useButtons[0].textContent,'Use');assert.equal(useButtons[0].getAttribute('aria-label'),'Use port 8080');assert.equal(useButtons[0].getAttribute('aria-pressed'),'false');fire(useButtons[0],'click');
+ assert.equal(useButtons[0].getAttribute('aria-label'),'Use port 8080: web');assert.equal(useButtons[0].getAttribute('aria-pressed'),'false');fire(useButtons[0],'click');
+ const selectedRow=allByClass(picker.menu,'listener-option')[0];assert.equal(selectedRow.dataset.selected,'true');assert.equal(byClass(selectedRow,'listener-use-port').getAttribute('aria-pressed'),'true');
  assert.equal(port.input.value,'8080');assert.equal(inputEvents,1);assert.equal(document.activeElement,port.input);assert.equal(picker.menu.hidden,false);
 
  const refresh=byClass(port.wrap,'listener-picker-refresh');fire(refresh,'click');await flush();
@@ -175,11 +172,10 @@ test('listener picker shows spinner then a non-blocking retry state',async()=>{
  picker.dispose();
 });
 
-test('local source tooltip uses Names only when the port has multiple processes',async()=>{
+test('a port with several processes lists all of their names',async()=>{
  const {picker}=createPicker(async()=>({listeners:[{port:4242,processes:[{pid:41,name:'alpha'},{pid:42,name:'beta'}],listens_beyond_loopback:false}]}));
  await flush();
- const localInfo=byClass(byClass(picker.menu,'listener-option'),'local-port-indicator');
- assert.equal(byClass(localInfo,'local-port-tooltip').textContent,'Kind: Generic process\nNames: alpha, beta\nPIDs: 41, 42');
+ assert.equal(byClass(byClass(picker.menu,'listener-option'),'listener-process').textContent,'alpha, beta');
  picker.dispose();
 });
 
@@ -240,14 +236,14 @@ test('typing in the port field filters detected ports by port or full process na
   assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['8080','9000'],'the initial value does not filter');
   port.input.value='project-alpha';fire(port.input,'input');
   assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['8080']);
-  let use=byClass(picker.menu,'listener-use-port');assert.equal(use.textContent,'Use');fire(use,'click');
+  let use=byClass(picker.menu,'listener-use-port');fire(use,'click');
   assert.equal(port.input.value,'8080');assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['8080','9000'],'Use clears the filter');
   const row=byClass(picker.menu,'listener-option');assert.equal(row.dataset.selected,'true');
-  use=byClass(row,'listener-use-port');assert.equal(use.textContent,'Selected');assert.equal(use.getAttribute('aria-pressed'),'true');
+  use=byClass(row,'listener-use-port');assert.equal(use.getAttribute('aria-pressed'),'true');
   port.input.value='900';fire(port.input,'input');assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['9000']);
   port.input.value='no match';fire(port.input,'input');assert.equal(allByClass(picker.menu,'listener-option').length,0);
-  assert.match(byClass(picker.menu,'listener-picker-message').textContent,/No detected port matches/);
-  port.input.value='9000';fire(port.input,'input');assert.equal(byClass(allByClass(picker.menu,'listener-option')[0],'listener-use-port').textContent,'Selected');
+  assert.match(text(picker.menu),/No detected port matches/);
+  port.input.value='9000';fire(port.input,'input');assert.equal(allByClass(picker.menu,'listener-option')[0].dataset.selected,'true');
  }finally{picker.dispose();}
 });
 
@@ -265,9 +261,9 @@ test('typing in the SSH host field filters configured hosts case-insensitively; 
   host.input.value='OFFICE';fire(host.input,'input');assert.deepEqual(allByClass(picker.menu,'ssh-host-option').map(row=>row.dataset.host),['Office-Server']);
   let use=byClass(picker.menu,'ssh-host-use');fire(use,'click');assert.equal(host.input.value,'Office-Server');
   assert.equal(allByClass(picker.menu,'ssh-host-option').length,2,'Use clears the filter');
-  use=byClass(allByClass(picker.menu,'ssh-host-option')[0],'ssh-host-use');assert.equal(use.textContent,'Selected');assert.equal(use.getAttribute('aria-pressed'),'true');
+  use=byClass(allByClass(picker.menu,'ssh-host-option')[0],'ssh-host-use');assert.equal(use.getAttribute('aria-pressed'),'true');
   host.input.value='unknown';fire(host.input,'input');assert.equal(allByClass(picker.menu,'ssh-host-option').length,0);
-  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/No configured host matches/);
+  assert.match(text(byClass(picker.menu,'ssh-host-picker-state')),/No configured host matches/);
  }finally{picker.dispose();}
 });
 
@@ -278,10 +274,10 @@ test('SSH loading and failed refresh retain manual input and expose retry',async
   host.input.value='custom-host';fire(host.input,'input');fail=true;
   fire(byClass(host.wrap,'ssh-host-refresh'),'click');await flush();
   assert.equal(host.input.value,'custom-host');assert.equal(host.input.disabled,false);
-  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/couldn't be read/);
+  assert.match(text(byClass(picker.menu,'ssh-host-picker-state')),/couldn't be read/);
   assert.equal(byClass(host.wrap,'ssh-host-refresh').disabled,false);
   fail=false;fire(byClass(host.wrap,'ssh-host-refresh'),'click');await flush();
-  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/No configured host matches/,'the typed host still filters the reloaded list');assert.equal(host.input.value,'custom-host');
+  assert.match(text(byClass(picker.menu,'ssh-host-picker-state')),/No configured host matches/,'the typed host still filters the reloaded list');assert.equal(host.input.value,'custom-host');
   host.input.value='';fire(host.input,'input');assert.equal(allByClass(picker.menu,'ssh-host-option').length,1);
  }finally{picker.dispose();}
 });
@@ -289,7 +285,7 @@ test('SSH loading and failed refresh retain manual input and expose retry',async
 test('SSH picker disposal aborts discovery and ignores late hosts',async()=>{
  let resolveRequest,requestSignal;
  const {picker,controller}=createHostPicker((_path,options)=>{requestSignal=options.signal;return new Promise(resolve=>resolveRequest=resolve);});
- assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/Loading/);
+ assert.match(text(byClass(picker.menu,'ssh-host-picker-state')),/Loading/);
  controller.abort();assert.equal(requestSignal.aborted,true);
  resolveRequest({hosts:['late-server']});await flush();
  assert.equal(allByClass(picker.menu,'ssh-host-option').length,0);

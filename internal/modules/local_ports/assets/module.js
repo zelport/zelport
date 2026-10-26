@@ -26,29 +26,27 @@ function processIndicator(ui,listener){
 
 // The port field is also the filter: typing digits or a process name narrows the
 // detected ports below it; Use fills the field and shows the whole list again.
-export function listenerPicker(ctx,port){
- const {adornmentButton,button,el,textTooltip,warningIndicator}=ctx.ui;
- const menu=el('section','listener-picker-menu');
- menu.setAttribute('role','list');menu.setAttribute('aria-label','Listening ports');port.wrap.append(menu);
+export function listenerPicker(ctx,port,{container=port.wrap}={}){
+ const {adornmentButton,choiceList,choiceRow,choiceState,el,warningIndicator}=ctx.ui;
+ const menu=choiceList('Listening ports');menu.className+=' listener-picker-menu';container.append(menu);
 
  let loading=false,disposed=false,generation=0,request=null,listeners=[],renderError='';
  let configuration=ctx.ui.state?.()?.states?.[ctx.moduleId]?.data||{},configurationKey=discoverySignature(configuration),enabled=configuration.discovery_enabled!==false;
  const refresh=adornmentButton('Refresh listening ports','rotate',()=>refreshInventory());refresh.className+=' listener-picker-refresh';
  const tools=el('div','input-adornment-actions');tools.append(refresh);(port.control||port.wrap).append(tools);
- menu.id ||= `listener-picker-${ctx.moduleId}-${Math.random().toString(36).slice(2)}`;port.input.setAttribute('aria-controls',menu.id);
+ port.input.setAttribute('aria-controls',menu.id);
  let options=[],query='',filling=false;
 
  function clearRows(){menu.replaceChildren();options=[];}
  function state(message,{spinner=false,warning=false}={}){
-  const row=el('div',`listener-picker-state${warning?' listener-picker-state-warning':''}`);row.disabled=true;row.setAttribute('role','status');
-  if(spinner){row.setAttribute('aria-label','Loading listening ports');const indicator=el('span','boot-spinner');indicator.setAttribute('aria-hidden','true');row.append(indicator);}
-  else row.append(el('span','listener-picker-message',message));
+  const row=choiceState(message,{warning});row.className+=' listener-picker-state';row.children[0].className+=' listener-picker-message';
+  if(spinner){row.setAttribute('aria-label','Loading listening ports');const indicator=el('span','boot-spinner');indicator.setAttribute('aria-hidden','true');row.replaceChildren(indicator);}
   menu.append(row);
  }
  function usePort(value){
   query='';filling=true;port.input.value=String(value);port.input.dispatchEvent(new Event('input',{bubbles:true}));filling=false;render();port.input.focus();
  }
- function updateSelection(){for(const {row,use,value} of options){const selected=Number(port.input.value)===value;row.dataset.selected=String(selected);use.textContent=selected?'Selected':'Use';use.setAttribute('aria-pressed',String(selected));}}
+ function updateSelection(){for(const option of options)option.select(Number(String(port.input.value).trim())===option.value);}
  function render(rows=listeners,error=renderError){
   const scroll=menu.scrollTop;clearRows();tools.hidden=!enabled;refresh.disabled=loading||!enabled;refresh.setAttribute('aria-busy',String(loading));
   const filtered=rows.filter(listener=>`${listener.port} ${processLabels(listener.processes).full}`.toLowerCase().includes(query));
@@ -58,11 +56,9 @@ export function listenerPicker(ctx,port){
   else if(!rows.length)state('No listening ports found.');
   else if(!filtered.length)state('No detected port matches.');
   for(const listener of enabled?filtered:[]){
-   const process=processLabels(listener.processes),row=el('div','listener-option'),actions=el('div','listener-option-actions'),processNode=process.truncated?textTooltip(process.text,process.full,'listener-process').root:el('span','listener-process',process.text);row.dataset.port=String(listener.port);row.setAttribute('role','listitem');row.setAttribute('aria-label',`Port ${listener.port}: ${process.full}`);
-   row.append(el('strong','listener-port',String(listener.port)),processNode);
-   if(listener.listens_beyond_loopback)actions.append(warningIndicator(nonLoopbackWarning).root);
-   const source=processIndicator(ctx.ui,listener);if(source)actions.append(source);
-   const use=button('Use',()=>usePort(listener.port),'secondary listener-use-port');use.setAttribute('aria-label',`Use port ${listener.port}`);actions.append(use);row.append(actions);menu.append(row);options.push({row,use,value:Number(listener.port)});
+   const process=processLabels(listener.processes).full,choice=choiceRow({primary:String(listener.port),secondary:process,label:`Use port ${listener.port}: ${process}`,onSelect:()=>usePort(listener.port),trailing:listener.listens_beyond_loopback?[warningIndicator(nonLoopbackWarning).root]:[]});
+   choice.row.className+=' listener-option';choice.row.dataset.port=String(listener.port);choice.row.setAttribute('role','listitem');choice.main.className+=' listener-use-port';choice.main.children[0].className+=' listener-port';if(choice.main.children[1])choice.main.children[1].className+=' listener-process';
+   menu.append(choice.row);options.push({...choice,value:Number(listener.port)});
   }
   updateSelection();menu.scrollTop=scroll;
  }
@@ -128,9 +124,9 @@ export function mount(ctx){
   },
   emptyState:{kind:'not-configured',message:'No local services yet. Add a domain and the port where your service listens on this computer.',actionLabel:'+ Add service'},
   fields(s){
-   const element=el('div','service-fields-fill'),port=adornedField('Service port',String(s.aux_port||3000));port.input.required=true;port.input.autocomplete='off';port.input.spellcheck=false;port.input.placeholder='Type a port or search processes';
-   port.wrap.className+=' form-field-fill';port.control.prepend(ctx.ui.icon('search',{className:'input-adornment-icon'}));
-   const picker=listenerPicker(ctx,port);pickers.add(picker);element.append(port.wrap);
+   const element=el('div','service-fields-fill'),port=adornedField('Port',String(s.aux_port||3000));port.input.required=true;port.input.autocomplete='off';port.input.spellcheck=false;port.input.placeholder='Port number or process name';
+   port.control.prepend(ctx.ui.icon('search',{className:'input-adornment-icon'}));element.append(port.wrap);
+   const picker=listenerPicker(ctx,port,{container:element});pickers.add(picker);
    return {element,read(){const value=port.input.value.trim(),number=Number(value);if(!/^\d+$/.test(value)||number<1||number>65535){const error=Error('Enter a port number or pick one below.');error.input=port.input;throw error;}return {aux_port:number};},dispose(){pickers.delete(picker);picker.dispose();}};
   }
  });

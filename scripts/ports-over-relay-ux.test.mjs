@@ -263,12 +263,23 @@ test('Add service lists services shared by other devices and imports the chosen 
  Node.prototype.showModal=function(){this.open=true;};Node.prototype.close=function(){this.open=false;this.events.close?.();};
  Node.prototype.querySelector=function(){return null;};Node.prototype.contains=function(n){return tree(this).includes(n);};Node.prototype.dispatchEvent=function(e){this.events[e.type]?.(e);return true;};
  const drawer=h.view.edit(null,null,{});const nodes=tree(drawer);
- const radios=nodes.filter(n=>n.tag==='input'&&n.type==='radio');
- assert.deepEqual(radios.map(r=>[r.value,r.disabled]),[['device-b/s1',false],['device-b/s2',false],['device-c/s3',true]],'offline devices are listed but not selectable');
- assert.ok(nodes.some(n=>n.textContent==='Relay settings'&&n.href==='#relay'),'help links to the relay settings page');
+ const choices=nodes.filter(n=>n.tag==='button'&&n.className.includes('choice-main'));
+ assert.deepEqual(choices.map(c=>[c.dataset.key,c.disabled]),[['device-b/s1',false],['device-b/s2',false],['device-c/s3',true]],'offline devices are listed but not selectable');
+ assert.deepEqual(nodes.filter(n=>n.className==='choice-group').map(g=>g.children[0].textContent),['build-server','laptop-old'],'services are grouped by device');
  const address=nodes.find(n=>n.tag==='input'&&n.id==='domain-ports_over_relay');
- radios[1].checked=true;radios[1].events.change();assert.equal(address.value,'docs','picking a service suggests its address');
+ choices[1].events.click({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));assert.equal(address.value,'docs','picking a service suggests its address');
+ assert.equal(choices[1].getAttribute('aria-pressed'),'true');
  const form=nodes.find(n=>n.tag==='form');await form.events.submit({preventDefault(){}});
  const saved=h.requests.at(-1);assert.equal(saved.route.module,'ports_over_relay');assert.equal(saved.route.domain,'docs.localhost');
  assert.deepEqual(saved.route.settings,{group:'g1',device_id:'device-b',service_id:'s2',provider_key:'pk',rewrite_origin:false});
+});
+
+test('Add service explains an unconfigured relay inside the list and links to its settings',()=>{
+ const h=harness({relay_url:'',enabled:false});
+ const base=h.ctx.ui.state;h.ctx.ui.state=()=>({...base(),states:{ports_over_relay:{routes:[]}},modules:[{id:'ports_over_relay',tab_id:'relay'}]});
+ Object.assign(globalThis.document,{body:new Node('body')});document.body.append=()=>{};
+ const drawer=h.view.edit(null,null,{}),nodes=tree(drawer);
+ assert.ok(nodes.some(n=>n.textContent==='The relay is not set up.'));
+ assert.ok(nodes.some(n=>n.tag==='a'&&n.textContent==='Relay settings'&&n.href==='#relay'));
+ assert.equal(nodes.find(n=>n.className==='service-options').hidden,true,'options wait until there is something to import');
 });

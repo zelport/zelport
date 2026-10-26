@@ -68,7 +68,7 @@ test('SSH host picker explains non-interactive keys and fills only the chosen al
  try{
   await new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(paths,['/api/modules/ports_over_ssh/hosts']);
-  assert.equal(picker.menu.getAttribute('aria-label'),'Configured SSH hosts');assert.ok(byClass(host.control,'ssh-host-help'),'the help sits in the host field');
+  assert.equal(picker.menu.getAttribute('aria-label'),'Configured SSH hosts');assert.ok(byClass(byClass(host.wrap,'field-label-row'),'ssh-host-help'),'the help sits beside the host label');
   assert.match(byClass(host.wrap,'ssh-host-help-tooltip').textContent,/passphrase prompts are not supported/i);
   assert.match(byClass(host.wrap,'ssh-host-help-tooltip').textContent,/Source: ~\/\.ssh\/config/);
   assert.doesNotMatch(byClass(host.wrap,'ssh-host-help-tooltip').textContent,/Include files/);

@@ -83,6 +83,7 @@ test('layout tokens define one rhythm for header, page titles, rows and surfaces
  assert.match(css,/\.dashboard-table\{table-layout:fixed/);assert.match(css,/\.dashboard-tabletd\{height:var\(--row-height\)[^}]*white-space:nowrap/);
  assert.doesNotMatch(css,/\.source-card|\.module-view-nav|\.module-breadcrumb/,'retired page styles are removed');
  assert.match(css,/\.address-adornment>input\{text-align:right/,'the address name is right-aligned against its suffix');
- assert.match(css,/\.form-field-fill>\.listener-picker-menu\{flex:10180px/,'the port list fills the drawer height');
+ assert.match(css,/\.service-fields-fill>\.choice-list\{flex:10176px/,'a source list fills the drawer height');
+ assert.match(css,/\.service-edit-body\{display:flex;flex-direction:column;gap:var\(--space-6\)\}/,'the drawer body has one vertical rhythm');
  assert.match(css,/dialog\.service-drawer\{position:fixed;inset:000auto;margin:0;width:min\(520px,100vw\)[^}]*height:100dvh/,'service forms are a full-height drawer');
 });

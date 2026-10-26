@@ -1,6 +1,6 @@
 import {mountConfiguration} from './configuration.js';
 
-const trustNotice='Use only for services you trust. Localhost does not secure the upstream connection.';
+const trustNotice='Only for services you trust.';
 export function mount(ctx){
  const {el,field,serviceModule,warningIndicator}=ctx.ui;
  const views=ctx.ui.moduleViews({...ctx,moduleName:ctx.moduleName||'Remote HTTP'},{onChange(view){if(view==='configuration')settings.open();}});
@@ -15,19 +15,20 @@ export function mount(ctx){
   rowIndicators:route=>route.summary.detail?[warningIndicator(route.summary.detail).root]:[],
   emptyState:{kind:'not-configured',message:'No remote HTTP services yet.',actionLabel:'+ Add service'},
   fields(s){
-   const element=el('div'),target=field('Target URL',s.target_url||'','url'),verify=field('Verify TLS certificate',!s.skip_tls_verify,'checkbox'),origin=field('Use target origin',s.rewrite_origin,'checkbox');
-   target.input.required=true;target.input.placeholder='https://example.com/service01';
-   const notice=el('p','small remote-trust-notice',trustNotice),warning=el('p','small route-error'),hint=el('p','small muted','Turn on if the service rejects requests from localhost.');
-   warning.setAttribute('role','status');
+   const {el,field,fieldHint,optionSwitch,serviceOptions}=ctx.ui;
+   const element=el('div'),target=field('Target URL',s.target_url||'','url'),options=serviceOptions();
+   const verify=optionSwitch('Verify TLS certificate',!s.skip_tls_verify),origin=optionSwitch('Use target origin',s.rewrite_origin,'For services that reject requests from localhost.');
+   target.input.required=true;target.input.placeholder='https://example.com';target.input.autocomplete='off';target.input.spellcheck=false;
+   const hint=fieldHint(trustNotice,'remote-trust-notice'),warning=fieldHint('','field-warning');warning.setAttribute('role','status');target.wrap.append(hint,warning);
    const update=()=>{
     let protocol='';try{protocol=new URL(target.input.value.trim()).protocol;}catch{}
-    verify.wrap.hidden=protocol!=='https:';
-    warning.textContent=protocol==='http:'?'Traffic to this target is unencrypted.':protocol==='https:'&&!verify.input.checked?"TLS certificate verification is disabled. The remote server's identity is not verified.":'';
-    warning.hidden=!warning.textContent;
+    verify.row.hidden=protocol!=='https:';
+    warning.textContent=protocol==='http:'?'Traffic to this target is unencrypted.':protocol==='https:'&&!verify.input.checked?"The server's certificate is not verified.":'';
+    warning.hidden=!warning.textContent;hint.hidden=!warning.hidden;
    };
    target.input.addEventListener('input',update);verify.input.addEventListener('change',update);
-   element.append(notice,target.wrap,verify.wrap,warning,origin.wrap,hint);update();
-   return {element,read:()=>({target_url:target.input.value.trim(),skip_tls_verify:!verify.wrap.hidden&&!verify.input.checked,rewrite_origin:origin.input.checked})};
+   options.append(verify.row,origin.row);element.append(target.wrap,options);update();
+   return {element,read:()=>({target_url:target.input.value.trim(),skip_tls_verify:!verify.row.hidden&&!verify.input.checked,rewrite_origin:origin.input.checked})};
   }
  });
  return {...routes,routeStatus(route){return route.summary.detail?{tone:'warning',label:'Unencrypted',detail:route.summary.detail}:{tone:'neutral',label:'Configured'};},render(state){routes.render(state);settings.render(state);settings.open(false);},openSettings(){views.show('configuration');settings.open();},dispose(){settings.dispose();routes.dispose();views.dispose();}};

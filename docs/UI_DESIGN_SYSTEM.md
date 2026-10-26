@@ -100,17 +100,32 @@ confirmations such as Remove service. Verify the drawer at 320 and 390 pixels.
 The drawer slides in from the right and slides out on every close path (220ms
 in, 180ms out, no motion with reduced motion preference).
 
-Address keeps the `.localhost:<port>` suffix fixed at the right edge and aligns
-the typed name to the right against it, so the field reads as one hostname.
+Every source uses one form grammar below the tiles, with 24px between groups:
 
-The Local Ports service port and the SSH host field are also the filters for the
-detected ports and configured hosts listed directly below them. Typing digits, a
-process name or a host name narrows the list (case-insensitive); the initial value
-does not filter. Use fills the field and shows the whole list again. A search icon
-starts these fields; refresh (and the SSH help) sit at their end. The Local Ports
-list grows to the drawer's remaining height (at least 180px). A value that is not a port number is
-rejected with "Enter a port number or pick one below." beside the field. Local
-Ports keeps manual entry available when listener discovery fails. Ports
+1. **Address** – the `.localhost:<port>` suffix stays fixed at the right edge and
+   the typed name is right-aligned against it, so the field reads as one hostname.
+2. **Source fields** – Local Ports: Port. Ports over SSH: SSH host and Server
+   port in one row. Remote HTTP: Target URL. Ports over Relay: Shared service.
+   Help is one short line under a field (`fieldHint`) or a tooltip next to its
+   label; a warning replaces the hint in the same line.
+3. **List** – Local Ports, SSH and Relay list their choices directly under the
+   field (8px) in one shared `choiceList`. It grows to the remaining drawer
+   height (at least 176px) and shrinks to its message when empty. A whole
+   `choiceRow` selects it; the selected row is tinted and shows a check.
+   Indicators such as the non-loopback warning sit at the row end and stay
+   separately focusable. Relay groups rows under device headers with an
+   Online/Offline badge; offline rows are disabled. Empty, loading and error
+   states are one centered line inside the list, with a link when there is a next
+   step (Relay settings).
+4. **Options** – switches (`optionSwitch`) in one group under a hairline, each
+   with an optional one-line explanation.
+
+The Port and SSH host fields start with a search icon: typing digits, a process
+or host name filters the list (case-insensitive); the initial value does not.
+Choosing a row fills the field and shows the whole list again. Refresh sits at
+the end of the field. A port that is not a number is rejected with "Enter a port
+number or pick one below." beside the field. Local Ports keeps manual entry
+available when listener discovery fails. Ports
 over SSH accepts a valid configuration without requiring a successful connection.
 The development server must be reachable through the existing system SSH setup
 when the user expects the service to become available.

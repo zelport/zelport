@@ -188,7 +188,6 @@ header .brand{display:flex;align-items:center;flex-shrink:0;line-height:1}header
 .footer-links a:hover,.footer-links a:focus-visible{color:var(--accent)}
 @media(pointer:coarse){.footer-links a{min-width:44px;min-height:44px}}
 
-.remote-trust-notice{padding:12px;border:1px solid var(--line);border-radius:var(--radius-control);background:var(--bg);color:var(--muted)}
 
 /* Persistent configuration warnings stay legible without competing with errors. */
 
@@ -445,10 +444,48 @@ dialog.service-drawer[data-state=closing]{pointer-events:none}
 .address-adornment>input{text-align:right;padding-right:0}
 .address-adornment>.input-adornment-text{font-size:inherit}
 .input-adornment-icon{flex:none;width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-/* A module can let one field and its list fill the drawer height. */
-.service-edit-body{display:flex;flex-direction:column}
-.service-edit-body>*{flex:none}
-.service-edit-body>.form-field,.service-edit-body>div>.form-field:first-child{margin-top:0}
-.service-edit-body>.service-fields-fill{flex:1 0 auto;display:flex;flex-direction:column}
-.service-fields-fill>.form-field-fill{flex:1 0 auto;display:flex;flex-direction:column}
-.form-field-fill>.listener-picker-menu{flex:1 0 180px;max-height:none;height:0}
+/* Service form: one vertical rhythm. Address, the source fields, an optional
+   list that fills the remaining height, then options. */
+.service-edit-body{display:flex;flex-direction:column;gap:var(--space-6)}
+.service-edit-body>*,.service-fields>*{flex:none;margin:0}
+.service-edit-body>.service-source-choices{margin:0}
+.service-fields{display:flex;flex-direction:column;gap:var(--space-6)}
+.service-fields .form-field{margin:0}
+.service-fields-fill{flex:1 0 auto}
+.service-fields-fill>.choice-list{flex:1 0 176px;height:0}
+.service-fields-fill>.choice-list:has(>.choice-state:only-child){flex:none;height:auto}
+.service-fields>.form-field+.choice-list,.service-fields>.field-row+.choice-list{margin-top:calc(var(--space-2) - var(--space-6))}
+.field-row{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:var(--space-3);align-items:start}
+.field-label{margin:0 0 calc(-1 * var(--space-4));font-size:var(--text-help);font-weight:600}
+.field-hint{margin:var(--space-2) 0 0;font-size:var(--text-help);color:var(--muted)}
+.field-hint.field-warning{color:var(--warning)}
+.field-hint[hidden]{display:none}
+.choice-list{min-height:0;overflow-y:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-control)}
+.choice-row{position:relative;display:flex;align-items:center;gap:var(--space-3);min-height:48px;padding:0 var(--space-3);border-top:1px solid var(--line)}
+.choice-list>:first-child{border-top:0}
+.choice-row:hover{background:var(--bg)}
+.choice-row[data-selected=true]{background:var(--accent-soft)}
+.choice-list button.choice-main{display:flex;align-items:baseline;justify-content:flex-start;gap:var(--space-3);flex:1;min-width:0;height:auto;min-height:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--ink);font:inherit;font-weight:400;text-align:left;cursor:pointer;filter:none}
+.choice-main::after{content:"";position:absolute;inset:0}
+.choice-main:focus-visible{outline:none}
+.choice-row:has(.choice-main:focus-visible){box-shadow:inset 0 0 0 2px var(--accent)}
+.choice-list button.choice-main:disabled{color:var(--muted);cursor:default;opacity:1}
+.choice-row:has(.choice-main:disabled):hover{background:transparent}
+.choice-row[data-selected=true]:has(.choice-main:disabled){background:var(--accent-soft)}
+.choice-primary{flex:none;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.listener-option .choice-primary{min-width:52px}
+.choice-secondary{min-width:0;overflow:hidden;color:var(--muted);font-size:var(--text-help);white-space:nowrap;text-overflow:ellipsis}
+.choice-trailing{position:relative;z-index:1;display:flex;align-items:center;gap:var(--space-2);flex:none}
+.choice-check{width:18px;height:18px;fill:none;stroke:var(--accent);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;visibility:hidden}
+.choice-row[data-selected=true] .choice-check{visibility:visible}
+.choice-group{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);min-height:36px;padding:0 var(--space-3);border-top:1px solid var(--line);background:var(--bg);font-size:var(--text-help);font-weight:600}
+.choice-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-1);min-height:88px;padding:var(--space-4);border-top:1px solid var(--line);color:var(--muted);font-size:var(--text-help);text-align:center}
+.choice-state-warning{color:var(--warning)}
+.choice-state-link{font-weight:600}
+.service-options{display:flex;flex-direction:column;gap:var(--space-4);padding-top:var(--space-4);border-top:1px solid var(--line)}
+.service-options[hidden],.option-row[hidden]{display:none}
+.option-help{margin:var(--space-1) 0 0;font-size:var(--text-help);color:var(--muted)}
+@media(max-width:360px){.field-row{grid-template-columns:minmax(0,1fr) 88px}}
+.field-label-row{display:flex;align-items:center;gap:var(--space-1);height:20px;margin-bottom:var(--space-2)}
+.field-label-row>label{margin:0;font-size:var(--text-help)}
+.field-label-row button.service-target-trigger{width:24px;height:24px;min-width:24px;min-height:24px;margin:-2px 0}

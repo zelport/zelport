@@ -1,4 +1,4 @@
-import {adornmentButton,button,el,experimentalBadge,nextUIID,setText} from './ui-dom.js';
+import {adornmentButton,button,el,experimentalBadge,icon,nextUIID,setText} from './ui-dom.js';
 import {disclosureMenu} from './ui-dialogs.js';
 
 export function inputAdornment(input,{prefix='',suffix='',startActions=[],actions=[]}={}){const root=el('div','input-adornment');if(startActions.length){const start=el('div','input-adornment-actions');start.append(...startActions);root.append(start);}if(prefix)root.append(el('span','input-adornment-text',prefix));root.append(input);if(suffix)root.append(el('span','input-adornment-text',suffix));if(actions.length){const end=el('div','input-adornment-actions');end.append(...actions);root.append(end);}return root;}
@@ -33,3 +33,21 @@ export function formFeedback(form,error,fields=[]){
  form.addEventListener('input',clear);
  return {show,clear};
 }
+
+// Service form building blocks shared by every source in the drawer.
+// A choice row is one selectable line: the whole row picks it; trailing
+// indicators stay separately focusable above the row's click area.
+export function choiceRow({primary,secondary='',label,onSelect,trailing=[],disabled=false}){
+ const row=el('div','choice-row'),main=button('',onSelect,'choice-main'),end=el('span','choice-trailing');
+ main.append(el('span','choice-primary',primary));if(secondary){const detail=el('span','choice-secondary',secondary);detail.title=secondary;main.append(detail);}
+ if(label)main.setAttribute('aria-label',label);main.setAttribute('aria-pressed','false');main.disabled=disabled;
+ end.append(...trailing,icon('check',{className:'choice-check'}));row.append(main,end);row.dataset.selected='false';
+ return {row,main,select(selected){row.dataset.selected=String(selected);main.setAttribute('aria-pressed',String(selected));}};
+}
+export function choiceList(label){const list=el('div','choice-list');list.setAttribute('role','list');list.setAttribute('aria-label',label);list.id=nextUIID('choices');return list;}
+export function choiceGroup(name,status){const group=el('div','choice-group');group.append(el('span','choice-group-name',name));if(status)group.append(status);return group;}
+export function choiceState(message,{warning=false,action}={}){const state=el('div',`choice-state${warning?' choice-state-warning':''}`);state.setAttribute('role','status');state.append(el('span','choice-state-message',message));if(action)state.append(action);return state;}
+export function fieldHint(text,className=''){return el('p',`field-hint${className?` ${className}`:''}`,text);}
+export function fieldRow(...wraps){const row=el('div','field-row');row.append(...wraps);return row;}
+export function serviceOptions(){return el('div','service-options');}
+export function optionSwitch(label,checked=false,help=''){const row=el('div','option-row'),control=switchField(label,checked);row.append(control.wrap);if(help){const note=el('p','option-help',help);note.id=nextUIID('option-help');control.input.setAttribute('aria-describedby',note.id);row.append(note);}return {...control,row};}
