@@ -147,6 +147,8 @@ async function init(){
  dashboard=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui});
  sources=createSources({root:$('sources-list'),modules,client,navigate,ui});
  const addService=$('add-service');addService.addEventListener('click',()=>openAddService(addService));
+ let refreshingStatus=false;const refreshStatus=ui.refreshControl('Refresh status',async()=>{if(refreshingStatus)return;refreshingStatus=true;refreshStatus.disabled=true;try{await refreshVisible();for(const m of modules.values())if(moduleActive(m))m.instance?.refreshRouteStatus?.();}finally{refreshingStatus=false;refreshStatus.disabled=false;}});
+ refreshStatus.id='refresh-status';addService.before(refreshStatus);
  ui.moduleHeading($('module-title'));
  breadcrumb=ui.el('a','module-breadcrumb','Sources');breadcrumb.href='#sources';breadcrumb.hidden=true;$('module-heading').before(breadcrumb);
  const settings=ui.el('section');settings.id='panel-settings';settings.setAttribute('role','region');settings.setAttribute('aria-labelledby','tab-settings');settings.hidden=true;settings.tabIndex=0;

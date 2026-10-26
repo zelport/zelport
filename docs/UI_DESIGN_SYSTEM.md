@@ -270,10 +270,10 @@ action explanations visible in the form rather than repeating them in tooltips.
 ## Audit consistency rules
 
 Services displays route diagnostics and module-provided listener observations
-in the Status column. Local Ports keeps its listener inventory active while
-Services is visible so Status can say Listening or No listener; observations are
-invalidated after changed discovery settings/routes or a failed lookup. Services
-does not start network health probes.
+in the Status column. Local Ports asks the operating system for listening ports
+once when Services opens and again only on Refresh status or the next visit;
+the tooltip states when they were checked. Changed discovery settings or routes
+invalidate the observation. There is no background re-read and no network probe.
 
 All configuration forms enable Save and Discard only when
 values differ from saved settings. Reverting an edit returns to the clean state,

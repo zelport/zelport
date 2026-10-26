@@ -104,7 +104,7 @@ export function listenerPicker(ctx,port){
 export function sourceFacts(state){const d=state?.data||{},ignored=(d.ignored_ports||[]).length+(d.ignored_processes||[]).length;return [{label:'Port detection',value:d.discovery_enabled===false?'Off':ignored?`On · ${ignored} ignored`:'On'}];}
 export function mount(ctx){
  const {el,noListenerIndicator,numberStepperField,serviceModule,warningIndicator}=ctx.ui;
- let latest={routes:[],data:{}},visible=false,disposed=false,request=null,timer=null,routePorts='',discoveryKey='',pickers=new Set(),inventory={health:'unknown',byPort:new Map()};
+ let latest={routes:[],data:{}},visible=false,disposed=false,request=null,routePorts='',discoveryKey='',pickers=new Set(),inventory={health:'unknown',byPort:new Map()};
  const views=ctx.ui.moduleViews({...ctx,moduleName:ctx.moduleName||'Local Ports'},{onChange(view){if(view==='configuration')settings.open();}});
  const settings=mountConfiguration(ctx,views.configuration);
  const view=serviceModule({...ctx,panel:views.overview,toolbar:views.actions},{
@@ -133,23 +133,24 @@ export function mount(ctx){
    return {element,read:()=>({aux_port:Number(port.input.value)}),dispose(){pickers.delete(picker);picker.dispose();}};
   }
  });
- function schedule(){if(visible&&!disposed&&latest.data?.discovery_enabled!==false&&latest.routes?.length)timer=setTimeout(loadInventory,15000);}
  async function loadInventory(){
   if(!visible||disposed||request||latest.data?.discovery_enabled===false||!latest.routes?.length)return;
-  clearTimeout(timer);timer=null;const controller=new AbortController();request=controller;
+  const controller=new AbortController();request=controller;
   try{
    const result=await ctx.api(`/api/modules/${ctx.moduleId}/listeners`,{method:'GET',signal:controller.signal});
    if(!visible||disposed||controller.signal.aborted)return;
-   inventory={health:result.discovery_enabled===false?'disabled':'ready',byPort:new Map((result.configured_listeners||result.listeners||[]).map(listener=>[Number(listener.port),listener]))};
+   inventory={health:result.discovery_enabled===false?'disabled':'ready',checkedAt:new Date(),byPort:new Map((result.configured_listeners||result.listeners||[]).map(listener=>[Number(listener.port),listener]))};
    view.render(latest);
   }catch{
    if(!visible||disposed||controller.signal.aborted)return;
    inventory={health:'unavailable',byPort:new Map()};view.render(latest);
-  }finally{if(request===controller){request=null;schedule();}}
+  }finally{if(request===controller)request=null;}
  }
- function stop(){visible=false;clearTimeout(timer);timer=null;request?.abort();request=null;}
+ function stop(){visible=false;request?.abort();request=null;}
  return {
   ...view,
+  // Listeners are read when a page that shows them opens and on explicit Refresh only.
+  refreshRouteStatus(){if(!visible||disposed)return;request?.abort();request=null;loadInventory();},
   routeTarget(route){
    const port=Number(route.editor?.aux_port),listener=inventory.health==='ready'?inventory.byPort.get(port):null;
    return port>0?`Port ${port}${listener?.processes?.length?` · ${processLabels(listener.processes).text}`:''}`:'';
@@ -157,9 +158,10 @@ export function mount(ctx){
   routeStatus(route){
    const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return {tone:'neutral',label:'Configured'};
    const listener=inventory.byPort.get(port);
-   if(!listener)return {tone:'warning',label:'No listener',detail:`Nothing listens on port ${port}.`};
-   if(listener.listens_beyond_loopback)return {tone:'warning',label:'Exposed',detail:nonLoopbackWarning};
-   return {tone:'ok',label:'Listening'};
+   const checked=inventory.checkedAt?` Checked at ${inventory.checkedAt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}.`:'';
+   if(!listener)return {tone:'warning',label:'No listener',detail:`Nothing listens on port ${port}.${checked}`};
+   if(listener.listens_beyond_loopback)return {tone:'warning',label:'Exposed',detail:`${nonLoopbackWarning}${checked}`};
+   return {tone:'ok',label:'Listening',detail:checked.trim()};
   },
   routeNotice(route){
    const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return '';
@@ -172,7 +174,7 @@ export function mount(ctx){
    latest=s;settings.render(s);settings.open();const key=discoverySignature(s.data),ports=JSON.stringify((s.routes||[]).map(route=>route.editor?.aux_port));
    const settingsChanged=key!==discoveryKey,portsChanged=ports!==routePorts;
    if(settingsChanged||portsChanged){
-    discoveryKey=key;routePorts=ports;clearTimeout(timer);request?.abort();request=null;inventory={health:'unknown',byPort:new Map()};
+    discoveryKey=key;routePorts=ports;request?.abort();request=null;inventory={health:'unknown',byPort:new Map()};
     if(settingsChanged)for(const picker of pickers)picker.configure(s.data);
     if(visible)loadInventory();
    }

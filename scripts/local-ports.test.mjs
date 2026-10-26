@@ -350,3 +350,19 @@ test('cached non-loopback notices are explicitly last observations',async()=>{
  const route={id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:5411},summary:{target:'Local port 5411'}};
  const h=createServiceList(async()=>({listeners:[{port:5411,listens_beyond_loopback:true,processes:[]}]}),[route]);await flush();h.view.deactivate();assert.match(h.view.routeNotice(route),/^Last detected:/);h.view.dispose();
 });
+
+test('listener state is read once per page visit and again only on explicit refresh',async()=>{
+ const routes=[{id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:1212},summary:{state:'configured',target:'Port 1212'}}];
+ let calls=0;const timers=[],realSetTimeout=globalThis.setTimeout;
+ const {view}=createServiceList(async()=>{calls++;return {listeners:[{port:1212,processes:[{pid:42,name:'web'}],listens_beyond_loopback:false}]};},routes);
+ try{
+  globalThis.setTimeout=(fn,ms,...args)=>{timers.push(ms);return realSetTimeout(fn,ms,...args);};
+  await flush();assert.equal(calls,1);
+  const status=view.routeStatus(routes[0]);assert.equal(status.label,'Listening');assert.match(status.detail,/^Checked at /);
+  view.render({routes,data:{}});await flush();assert.equal(calls,1,'polling the same state must not read listeners again');
+  assert.equal(timers.length,0,'no background re-read is scheduled');
+  view.refreshRouteStatus();await flush();assert.equal(calls,2);
+  view.deactivate();view.refreshRouteStatus();await flush();assert.equal(calls,2,'refresh is ignored while the module is not shown');
+  view.activate();await flush();assert.equal(calls,3,'opening the page again reads listeners once');
+ }finally{globalThis.setTimeout=realSetTimeout;view.dispose();}
+});

@@ -469,3 +469,5 @@ header .connection-status{margin-left:auto}
 #panels>section[data-module]{max-width:720px}
 @media(max-width:720px){.dashboard-table .service-status-label{flex:none}}
 @media(max-width:480px){header{gap:var(--space-4)}header .brand{flex:none;width:32px;overflow:hidden}header .brand-logo{flex:none;width:117.333px;height:32px;max-width:none}header .primary-navigation{gap:var(--space-4)}}
+.page-heading #refresh-status{margin-left:auto}
+.page-heading #refresh-status+#add-service{margin-left:0}
