@@ -1,9 +1,9 @@
-// Services is the only list of services: one row each, with its status and actions.
+// Dashboard is the only list of services: one row each, with its status and actions.
 export const sourceChoices=[
- {id:'local_ports',description:'A port on this computer'},
- {id:'ports_over_ssh',description:'A port on an SSH server'},
- {id:'remote_http',description:'Any HTTP or HTTPS URL'},
- {id:'ports_over_relay',description:'A service shared by another Zelport',destination:true}
+ {id:'local_ports',description:'This computer',icon:'laptop'},
+ {id:'ports_over_ssh',description:'An SSH server',icon:'terminal'},
+ {id:'remote_http',description:'Any URL',icon:'globe'},
+ {id:'ports_over_relay',description:'Your other devices',icon:'devices'}
 ];
 export function defaultRouteStatus(route){
  const summary=route.summary||{};
@@ -15,17 +15,13 @@ export function defaultRouteStatus(route){
 export function createDashboard({root,modules,client,navigate,ui}){
  const rows=new Map();let table,body,empty;
  const enabled=module=>module?.descriptor.ui_placement==='settings'||client.state()?.module_availability?.[module?.descriptor.id]?.enabled!==false;
- function openAddService(trigger,{sourceId,domain}={}){
+ // Add service is one drawer; choosing another source swaps its content in place.
+ function openAddService(trigger,{sourceId,domain,container}={}){
   const sources=sourceChoices.map(choice=>{const module=modules.get(choice.id);return {...choice,label:module?.descriptor.name||choice.id,available:!!module?.instance&&enabled(module)};}).filter(choice=>choice.available);
-  const selected=sources.find(choice=>choice.id===sourceId&&!choice.destination)||sources.find(choice=>!choice.destination);
+  const selected=sources.find(choice=>choice.id===sourceId)||sources[0];
   if(!selected)return null;
-  const module=modules.get(selected.id);
-  return module.instance.edit(null,null,{sources,sourceId:selected.id,domain,trigger,
-   onSource(id,draft){
-    const choice=sources.find(item=>item.id===id),target=modules.get(id);if(!choice||!target)return;
-    if(choice.destination){navigate(target.descriptor.tab_id);return;}
-    openAddService(trigger,{sourceId:id,domain:draft.domain});
-   },
+  return modules.get(selected.id).instance.edit(null,null,{sources,sourceId:selected.id,domain,trigger,container,
+   onSource(id,draft){openAddService(trigger,{sourceId:id,...draft});},
    onSaved(){navigate('dashboard');}});
  }
  function addressText(state,route,address){if(state.remote_admin&&address){try{return new URL(address).host;}catch{}}return state.port===80?route.domain:`${route.domain}:${state.port}`;}

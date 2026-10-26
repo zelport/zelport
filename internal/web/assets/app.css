@@ -259,6 +259,7 @@ body[data-view=loading] #boot-status{
 .danger-text{background:transparent;color:var(--danger)}
 .danger-text:hover:not(:disabled){background:color-mix(in srgb,var(--danger) 10%,transparent);filter:none}
 .local-port-indicator,.no-listener-indicator{position:relative;display:inline-flex;vertical-align:middle}.local-port-indicator[hidden],.no-listener-indicator[hidden]{display:none}button.local-port-trigger,button.no-listener-trigger{width:24px;height:24px;min-height:24px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--accent)}button.no-listener-trigger{color:var(--muted)}.local-port-tooltip{white-space:pre-line}@media(pointer:coarse){button.local-port-trigger,button.no-listener-trigger{width:32px;height:32px;min-height:32px}}
+.local-port-glyph,.no-listener-glyph{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .service-target-indicator{position:relative;display:inline-flex;vertical-align:middle}button.service-target-trigger{width:24px;height:24px;min-height:24px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--accent)}.service-target-glyph{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.service-target-tooltip{white-space:pre-line}@media(pointer:coarse){button.service-target-trigger{width:32px;height:32px;min-height:32px}}
 .local-service-list[role=table] .service-list-header,.local-service-list[role=table] .service{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 92px 52px;align-items:center;column-gap:12px}
 .local-service-list[role=table] .service-list-header{padding:12px 0;border-bottom:1px solid var(--line);color:var(--muted);font-size:var(--text-help);font-weight:600}
@@ -296,7 +297,6 @@ dialog.service-edit-dialog{padding:0;overflow:hidden}
 .service-edit-body{overflow-y:auto;overscroll-behavior:contain;min-height:0;padding:0 var(--dialog-padding) var(--space-4);scroll-padding:var(--space-4)}
 .service-edit-body>.form-field:first-child{margin-top:0}
 .service-edit-dialog .dialog-actions{position:static;flex:none;padding:var(--space-4) var(--dialog-padding);margin:0;border-top:1px solid var(--line);background:var(--surface)}
-.dialog-back{margin-right:auto}
 @media(max-width:720px),(pointer:coarse){
  .adornment-button,.module-action-icon,.connection-trigger,button.warning-trigger,button.local-port-trigger,button.no-listener-trigger,button.service-target-trigger,.resource-menu-trigger{min-width:44px;min-height:44px}
  .adornment-button,.module-action-icon{width:44px;height:44px}
@@ -305,7 +305,7 @@ dialog.service-edit-dialog{padding:0;overflow:hidden}
  .service-edit-dialog .dialog-actions{gap:8px}}
 @media(max-width:360px){
  .service-edit-dialog .dialog-actions{display:grid;grid-template-columns:1fr 1fr}
- .service-edit-dialog .dialog-back{grid-column:1/-1;justify-self:start}}
+}
 
 /* One shared module switch, anchored independently of optional icon actions. */
 .module-toolbar{align-items:center;justify-content:flex-end;gap:var(--space-4);min-width:0}
@@ -341,7 +341,7 @@ dialog.file-editor-dialog{width:min(960px,calc(100vw - 32px));max-height:calc(10
 body[data-administration=remote]{background:#fff4f4}
 @media(prefers-color-scheme:dark){body[data-administration=remote]{background:#211719}}
 
-/* Page layout: Services table, service status, Sources cards and Add service source choice. */
+/* Page layout: header navigation, Dashboard table and service status. */
 @media(prefers-color-scheme:dark){:root{--ok:#6cc58f;--neutral-mark:#9a91a6}}
 header{height:var(--header-height);gap:40px;border-bottom:1px solid var(--line)}
 header .tabs-toolbar{align-self:stretch;display:flex;margin:0;border:0;padding:0;flex:1;min-width:0}
@@ -353,7 +353,7 @@ header .connection-status{margin-left:auto}
 .page-title,#panel-settings>.page-title{display:flex;align-items:center;min-height:var(--page-heading-height);margin:0;font-size:var(--page-title);line-height:1.2;letter-spacing:-.8px;font-weight:700}
 .page-heading .page-title{min-height:0}
 .page-heading #add-service{margin-left:auto}
-.module-breadcrumb{display:inline-block;margin-top:var(--space-6);font-size:var(--text-help);font-weight:600}
+.module-heading{min-height:var(--page-heading-height);margin-bottom:0}
 .module-heading .module-title{font-size:var(--page-title);letter-spacing:-.8px;font-weight:700}
 .dashboard-table{table-layout:fixed;width:100%;min-width:760px;border-collapse:collapse}
 .dashboard-table th{height:var(--head-row-height);padding:0 var(--space-4);font-size:var(--text-label);font-weight:600;color:var(--muted);text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;width:auto}
@@ -375,31 +375,11 @@ header .connection-status{margin-left:auto}
 .service-status-label[tabindex]{cursor:help;text-decoration:underline dotted;text-underline-offset:4px}
 .service-status-detail{display:none}
 .dashboard-empty h2{margin:0 0 var(--space-2);font-size:var(--text-heading)}
-/* Sources: one card per source; Configure keeps a fixed bottom-left position. */
-.source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
-.source-card{display:flex;flex-direction:column;min-height:232px;box-sizing:border-box;padding:var(--gap);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel)}
-.source-card-heading{display:flex;align-items:center;gap:var(--space-2);min-height:28px;margin-bottom:var(--space-4)}
-.source-card-heading h2{margin:0;font-size:17px}
-.source-facts{display:grid;grid-template-columns:120px minmax(0,1fr);gap:var(--space-2) var(--space-4);margin:0 0 var(--gap);font-size:var(--text-help)}
-.source-facts>div{display:contents}
-.source-facts dt{color:var(--muted)}
-.source-facts dd{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.source-facts dd[data-tone="warning"]{color:var(--warning);font-weight:600}
-.source-configure{margin-top:auto;align-self:flex-start}
-/* Add service: the source choice sits at the top of the same form. */
-.service-source-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2);margin:0 0 var(--space-4);padding:0;border:0;min-width:0}
-.service-source-choices legend{padding:0;margin-bottom:var(--space-2);font-size:var(--text-label);font-weight:600}
-.service-source-choice{display:flex;gap:var(--space-3);align-items:flex-start;padding:var(--space-3);border:1px solid var(--line);border-radius:var(--radius-control);cursor:pointer;background:var(--surface);min-width:0}
-.service-source-choice:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
-.service-source-choice input{margin:3px 0 0;accent-color:var(--accent);flex:none}
-.service-source-text{display:flex;flex-direction:column;min-width:0}
-.service-source-text strong{font-size:var(--text-body)}
 @media(max-width:720px){
  header{gap:var(--space-6)}
  header .primary-navigation{gap:var(--space-6)}
  .page-heading,.page-title,#panel-settings>.page-title{min-height:80px}
  .page-title{font-size:24px}
- .source-grid{grid-template-columns:minmax(0,1fr)}
  .dashboard-table{min-width:0}
  .dashboard-table-wrap{overflow:visible}
  .dashboard-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) 44px;padding:var(--space-3) var(--space-2) var(--space-3) var(--space-4);gap:0}
@@ -409,11 +389,8 @@ header .connection-status{margin-left:auto}
  .dashboard-table tbody td.service-actions-cell{grid-column:2;grid-row:1/span 4;align-self:center;justify-self:end}
  .dashboard-table .service-status-label{text-decoration:none}
  .dashboard-table .service-status-detail{display:inline;font-weight:400;overflow:hidden;text-overflow:ellipsis}
- .dashboard-table .service-status-detail::before{content:"· "}
- .service-source-choices{grid-template-columns:minmax(0,1fr)}}
+ .dashboard-table .service-status-detail::before{content:"· "}}
 .dashboard-table th.visually-hidden-label{font-size:0}
-.service-source-choices .service-source-choice{display:flex;flex-direction:row;width:auto;margin:0;font-size:var(--text-body);font-weight:400}
-.service-source-choices .service-source-choice input{width:auto;min-height:0;height:auto;margin:3px 0 0;padding:0}
 .runtime-facts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--space-4) var(--gap);margin:0}
 .runtime-facts dt{font-size:var(--text-label);color:var(--muted);margin-bottom:var(--space-1)}
 .runtime-facts dd{margin:0;font-size:var(--text-help);overflow-wrap:anywhere}
@@ -422,4 +399,35 @@ header .connection-status{margin-left:auto}
 @media(max-width:720px){.dashboard-table .service-status-label{flex:none}}
 @media(max-width:480px){header{gap:var(--space-4)}header .brand{flex:none;width:32px;overflow:hidden}header .brand-logo{flex:none;width:117.333px;height:32px;max-width:none}header .primary-navigation{gap:var(--space-4)}}
 .page-heading #refresh-status{margin-left:auto}
-.page-heading #refresh-status+#add-service{margin-left:0}
+.page-heading #refresh-status+#add-service{margin-left:0}/* Services menu: source pages under one header item. */
+header .services-navigation{position:relative;display:flex;align-items:stretch}
+header .services-trigger{display:inline-flex;align-items:center;height:100%;min-height:0;padding:0;margin-bottom:-1px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;white-space:nowrap}
+header .services-trigger[data-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+header .services-trigger:hover{filter:none;color:var(--ink)}
+header .services-trigger:focus-visible{outline:none;background:var(--accent-soft);box-shadow:inset 0 -3px 0 var(--accent)}
+.services-menu{position:absolute;z-index:30;top:calc(100% + var(--space-2));left:calc(-1 * var(--space-3));width:max-content;min-width:220px;max-width:calc(100vw - 32px);padding:var(--space-1);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-control);box-shadow:var(--shadow)}
+.services-menu>.navigation-item{display:flex;align-items:center;justify-content:flex-start;gap:var(--space-2);width:100%;min-height:var(--control-height);padding:0 var(--space-3);border:0;border-radius:6px;background:transparent;color:var(--ink);font-weight:400;text-align:left;white-space:nowrap}
+.services-menu>.navigation-item>.maturity-experimental{margin-left:auto}
+.services-menu>.navigation-item[aria-current=page]{color:var(--accent);font-weight:600}
+.services-menu>.navigation-item:hover,.services-menu>.navigation-item:focus-visible{background:var(--accent-soft);filter:none;outline:none}
+@media(max-width:480px){header .services-navigation{position:static}.services-menu{left:var(--space-4);right:var(--space-4);top:var(--header-height);width:auto}}
+/* Add and edit service: a full-height drawer on the right; only its content changes. */
+dialog.service-drawer{position:fixed;inset:0 0 0 auto;margin:0;width:min(520px,100vw);max-width:100vw;height:100dvh;max-height:100dvh;border:0;border-left:1px solid var(--line);border-radius:0;box-shadow:-16px 0 48px #2b253326}
+.service-drawer>form{height:100%;max-height:none}
+.service-drawer .dialog-header{min-height:var(--header-height);padding:0 var(--space-4) 0 var(--dialog-padding);border-bottom:1px solid var(--line)}
+.service-drawer .service-edit-body{flex:1;padding-top:var(--dialog-padding)}
+.service-drawer .dialog-actions{justify-content:flex-end}
+@media(prefers-reduced-motion:no-preference){dialog.service-drawer[open]{animation:drawer-in .16s ease-out}}
+@keyframes drawer-in{from{transform:translateX(32px);opacity:.4}}
+.service-source-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-2);margin:0 0 var(--dialog-padding);padding:0;border:0;min-width:0}
+.service-source-choices legend{padding:0;margin-bottom:var(--space-2);font-size:var(--text-label);font-weight:600}
+.service-source-choices .service-source-choice{position:relative;display:flex;align-items:center;gap:var(--space-3);width:auto;height:64px;margin:0;padding:0 var(--space-3);border:1px solid var(--line);border-radius:var(--radius-control);background:var(--surface);cursor:pointer;min-width:0;font-size:var(--text-body);font-weight:400}
+.service-source-choice:hover{border-color:var(--accent)}
+.service-source-choice:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
+.service-source-choice:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.service-source-choices .service-source-radio{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none}
+.service-source-icon{flex:none;width:26px;height:26px;fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.service-source-text{display:flex;flex-direction:column;min-width:0}
+.service-source-text strong{font-size:var(--text-help);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.service-source-text .small{font-size:var(--text-label);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:360px){.service-source-icon{display:none}}

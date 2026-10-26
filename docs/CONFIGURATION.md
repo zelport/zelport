@@ -28,8 +28,8 @@ rejected; Zelport does not import or rewrite earlier schemas.
 Writes are atomic and owner-only. Route UUIDs survive edits, and concurrent
 changes are rejected instead of silently overwriting one another.
 
-Service sources are visible in Sources and Add service by default, including
-experimental sources. Settings → Sources in Add service controls visibility only.
+Service sources are visible in the Services menu and Add service by default,
+including experimental sources. Settings → Service sources controls visibility only.
 Explicit choices in `module_availability` survive restarts. Showing a source does
 not enable its connections, sharing or listeners.
 

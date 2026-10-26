@@ -1,7 +1,6 @@
 import {mountConfiguration} from './configuration.js';
 
 const trustNotice='Use only for services you trust. Localhost does not secure the upstream connection.';
-export function sourceFacts(state){const d=state?.data||{};return [{label:'CA file',value:d.ca_cert_path||d.default_ca_cert_display_path||'None'},{label:'Proxy',value:d.proxy_url||'None'},...(d.configuration_error?[{label:'Problem',value:d.configuration_error,tone:'warning'}]:[])];}
 export function mount(ctx){
  const {el,field,serviceModule,warningIndicator}=ctx.ui;
  const views=ctx.ui.moduleViews({...ctx,moduleName:ctx.moduleName||'Remote HTTP'},{onChange(view){if(view==='configuration')settings.open();}});

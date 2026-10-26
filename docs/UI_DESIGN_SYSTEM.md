@@ -75,15 +75,27 @@ focus-within border. Never remove focus feedback without an equivalent indicator
 
 ### Add service
 
-Services has one Add service action. It opens a single form: the Source choice
-(Local Ports, Ports over SSH, Remote HTTP, Ports over Relay) sits at the top as a
-two-column radio group, followed by the selected source's fields. Changing the
-source reopens the form for that source and keeps the typed address. Ports over
-Relay opens its source page, where shared services are imported from connected
-devices. Hidden sources are not offered. The selected module owns its fields,
-validation, persistence and runtime status. Escape and Cancel leave the page
-unchanged; a successful save returns to Services. Unchanged polling preserves the
-open form, focus and draft values. Verify the dialog at 320 and 390 pixels.
+Dashboard has one Add service action. It opens a drawer on the right: full
+height, 520px wide (full width at 640px and below), with the title and close
+control at the top and Cancel and the submit action fixed at the bottom. The
+body scrolls. "Where does the service run?" sits at the top as a two-column
+grid of source tiles, each with its own icon: Local Ports (This computer), Ports
+over SSH (An SSH server), Remote HTTP (Any URL) and Ports over Relay (Your other
+devices). The tiles are a radio group. Address follows, then the selected
+source's fields.
+
+Changing the source swaps only the drawer content. The drawer keeps its size and
+position and keeps the typed address. Ports over Relay stays in the drawer: it
+lists the services that other devices share, grouped by device with an
+Online/Offline badge. Offline devices are shown but cannot be chosen. Picking a
+service suggests its address, and the action reads Import service. Without a
+relay or devices, one line explains the next step and links to Relay settings.
+Hidden sources are not offered. The selected module owns its fields,
+validation, persistence and runtime status. Escape, Cancel and the backdrop
+close the drawer and return focus to Add service; a successful save returns to
+Dashboard. Edit uses the same drawer without the source tiles. Unchanged polling
+preserves the open drawer, focus and draft values. Modal dialogs remain only for
+confirmations such as Remove service. Verify the drawer at 320 and 390 pixels.
 
 Local Ports and SSH discovery pickers provide case-insensitive search and explicit
 Use/Selected actions. Searching never changes the manual target, and Enter in a
@@ -93,9 +105,9 @@ over SSH accepts a valid configuration without requiring a successful connection
 The development server must be reachable through the existing system SSH setup
 when the user expects the service to become available.
 
-### Services
+### Dashboard
 
-Services is the only list of services. The table has fixed columns: Address,
+Dashboard is the only list of services. The table has fixed columns: Address,
 Source, Target, Status and the row menu (Open, Edit, Remove). Every row is one
 line; long values truncate with an ellipsis. Status shows a dot or the shared
 warning glyph with a short label (Listening, Configured, Available, No listener,
@@ -104,19 +116,18 @@ label, never a second line. At 720px and below each service becomes a list item
 with address, source, target and status on separate single lines; the status
 detail follows the label on its line. The empty state is one short sentence.
 
-### Sources and Settings
+### Source pages and Settings
 
-Sources shows one card per visible source in a two-column grid: name, maturity,
-service count and key facts. Configure has a fixed bottom-left position on every
-card. A source page has a breadcrumb back to Sources, the source title and its
-configuration form (at most 720px wide); Ports over Relay adds its device catalog
+Each source has a page in the Services menu: the source title and its
+configuration form (at most 720px wide). Ports over Relay adds its device catalog
 below the form. Source pages never repeat the service list.
 
-Settings contains Built-in Relay, Sources in Add service, Remote administration and
+Settings contains Built-in Relay, Service sources, Remote administration and
 About. Remote administration has one switch, Allow remote file access (off by
 default), which is read-only in a remote session. While it is off, remote
-sessions show the SSH and CA path fields and Edit file disabled with a one-line reason. Sources in Add
-service controls visibility only; hidden sources keep their services running.
+sessions show the SSH and CA path fields and Edit file disabled with a one-line reason. Service
+sources controls visibility in the Services menu and Add service only; hidden sources keep
+their services running.
 About keeps Version, Hostname, Configuration, Listeners and Modules in one row.
 Modules uses a compact count button whose non-modal popover lists the included
 module names and maturity. Build time and uptime are not shown.
@@ -126,7 +137,7 @@ module names and maturity. Build time and uptime are not shown.
 Tooltips contain short supplementary text only. Popovers contain short contextual
 content/actions and remain anchored to their trigger. Dialogs contain editing or
 confirmation tasks; support Escape, focus return and scrolling on small screens.
-Service edit dialogs keep their header and action footer outside the scrolling
+The service drawer keeps its header and action footer outside the scrolling
 body. Pending saves disable form controls and dismissal, and late responses from
 closed dialogs cannot navigate the current view.
 Long diagnostics expand in document flow and never overlap neighboring sections.
@@ -177,12 +188,13 @@ gallery. A passing DOM test does not prove visual consistency or accessibility.
 
 ## Primary navigation
 
-The header holds the logo and three destinations: Services, Sources and Settings.
-They remain visible and left aligned at every width; below 480px the logo shows
-only its symbol. They never collapse into a hamburger. The current destination
-uses the accent underline; a source page highlights Sources. Generic navigation
-buttons use aria-current rather than tab semantics. The logo links to
-`#dashboard` (Services) without reloading the application.
+The header holds the logo, Dashboard, the Services menu and Settings. Services
+opens a menu of source pages sorted by name, with maturity badges; it is disabled
+in a core-only build. The items remain visible and left aligned at every width;
+below 480px the logo shows only its symbol. They never collapse into a hamburger.
+The current destination uses the accent underline; a source page highlights
+Services. Generic navigation buttons use aria-current rather than tab semantics.
+The logo links to `#dashboard` without reloading the application.
 
 The header shows a relay indicator only for a configured relay connection or an
 enabled Built-in Relay. In remote administration a Remote · E2E label replaces it.
@@ -200,7 +212,7 @@ with a 28px title, table header 40px, table rows 56px, controls 40px (44px on
 touch), 24px card padding and grid gaps, 12px radius on surfaces and 8px on
 controls. Do not introduce one-off sizes in modules.
 
-Text buttons start a task, change data or navigate: Add service, Configure, Save,
+Text buttons start a task, change data or navigate: Add service, Import service, Save,
 Discard, Remove, Cancel. Icon-only buttons are reserved for repeated, universally
 understood actions in tight spaces (row menu, close, field adornments) and always
 have an accessible name and the shared tooltip. There is no gear icon.
@@ -221,6 +233,11 @@ revision handling and secret lifecycle in their owning modules.
   removal on every native close path, accepts initial focus and a cleanup hook,
   and closes on the owning module's abort signal. Use the cleanup hook to erase
   secrets. Native dialog focus restoration remains in effect.
+- `serviceModule(ctx, definition).edit(route, group, options)` opens the service
+  drawer. `definition.fields(settings, group, state, {address, isNew})` returns
+  `{element, read, dispose}`; `read` may throw to report a missing choice. With
+  `options.container` set to the open drawer, `edit` swaps the content in place
+  and disposes the previous fields instead of opening a second dialog.
 - `formActions` creates Cancel, submit and an inline error. `formFeedback`
   associates field errors, reveals collapsed ancestors, and restores focus and
   visibility after failed actions. Credential rotation retains its specialized

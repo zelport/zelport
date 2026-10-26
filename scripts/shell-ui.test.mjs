@@ -109,7 +109,7 @@ test('remote administration uses a distinct page canvas in light and dark themes
 
 test('Settings keeps the concise module availability label without explanatory filler',()=>{
  const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8');
- assert.match(app,/ui\.accordion\('Sources in Add service'\)/);
+ assert.match(app,/ui\.accordion\('Service sources'\)/);
  assert.doesNotMatch(app,/Choose which service sources|Changes apply immediately|source can be hidden/);
 });
 
@@ -156,12 +156,12 @@ test('header Open settings invokes module configuration after navigation',()=>{
  module.indicator.settings.click();assert.deepEqual(calls,['closed','relay','configuration']);
 });
 
-test('Services keeps route-notice discovery active; source pages activate only their own module',()=>{
+test('Dashboard keeps route-notice discovery active; source pages activate only their own module',()=>{
  const s=shell(),activated=[],deactivated=[];
  const notice={descriptor:{id:'local',tab_id:'local'},panel:{},instance:{routeNotice(){return ''},activate(){activated.push('local')},deactivate(){deactivated.push('local')}}};
  const plain={descriptor:{id:'remote',tab_id:'remote'},panel:{},instance:{activate(){activated.push('remote')},deactivate(){deactivated.push('remote')}}};
  s.addModule(notice);s.addModule(plain);s.setState({modules:[notice.descriptor,plain.descriptor],module_availability:{}});
  s.navigate('dashboard');assert.deepEqual(activated,['local']);assert.deepEqual(deactivated,['remote']);
  activated.length=deactivated.length=0;s.navigate('remote');assert.deepEqual(activated,['remote']);assert.deepEqual(deactivated,['local']);
- activated.length=deactivated.length=0;s.navigate('sources');assert.deepEqual(activated,[]);assert.equal(s.active(),'sources');
+ s.navigate('sources');assert.equal(s.active(),'dashboard','the retired Sources page falls back to Dashboard');
 });

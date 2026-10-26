@@ -101,7 +101,6 @@ export function listenerPicker(ctx,port){
  return {menu,refresh,configure,dispose};
 }
 
-export function sourceFacts(state){const d=state?.data||{},ignored=(d.ignored_ports||[]).length+(d.ignored_processes||[]).length;return [{label:'Port detection',value:d.discovery_enabled===false?'Off':ignored?`On · ${ignored} ignored`:'On'}];}
 export function mount(ctx){
  const {el,noListenerIndicator,numberStepperField,serviceModule,warningIndicator}=ctx.ui;
  let latest={routes:[],data:{}},visible=false,disposed=false,request=null,routePorts='',discoveryKey='',pickers=new Set(),inventory={health:'unknown',byPort:new Map()};

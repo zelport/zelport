@@ -16,6 +16,8 @@ const iconPaths={
  arrowUp:'M12 20V4M6 10l6-6 6 6',rotate:'M20 7v5h-5M20 12a8 8 0 1 0-2 6',warning:'M12 3 2.5 20h19L12 3ZM12 9v5M12 17h.01',
  info:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM12 11v6M12 7h.01',localPort:'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01M12 7h5M12 17h5',
  container:'M12 3 20 7.5v9L12 21 4 16.5v-9L12 3ZM4 7.5 12 12l8-4.5M12 12v9',sandbox:'M12 7 17 10v5l-5 3-5-3v-5l5-3ZM7 10l5 3 5-3M12 13v5M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3',
+ laptop:'M4 5h16v10H4zM2 19h20',terminal:'M3 4h18v16H3zM7 9l3 3-3 3M12 15h5',globe:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9M12 3C9.5 5.5 8.2 8.5 8.2 12s1.3 6.5 3.8 9',
+ devices:'M5 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM19 3.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM19 15.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM7.3 11l9.4-4M7.3 13l9.4 4',
  plugOff:'M8 2v4M16 2v4M7 6h10v3a5 5 0 0 1-10 0V6ZM12 14v7M3 3l18 18',experimental:'M9 3h6M10 3v7l-5 8a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-8V3M8 15h8'
 };
 export function icon(name,{className='',title=''}={}){if(!iconPaths[name])throw new Error(`Unknown UI icon: ${name}`);const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'),path=document.createElementNS('http://www.w3.org/2000/svg','path');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');if(className)svg.setAttribute('class',className);if(title){const caption=document.createElementNS('http://www.w3.org/2000/svg','title');caption.textContent=title;svg.append(caption);}path.setAttribute('d',iconPaths[name]);svg.append(path);return svg;}

@@ -1,4 +1,4 @@
-import {adornmentButton,button,el,emptyState,renderChanged,serviceTargetIndicator,serviceURL,statusBadge,warningIndicator} from './ui-dom.js';
+import {adornmentButton,button,el,emptyState,icon,renderChanged,serviceTargetIndicator,serviceURL,statusBadge,warningIndicator} from './ui-dom.js';
 import {adornedField,formFeedback} from './ui-forms.js';
 import {dialogHeader,disclosureMenu,formActions,showDialog} from './ui-dialogs.js';
 
@@ -6,6 +6,9 @@ export function routeEditRevision(original,state){if(original?.id){const latest=
 export function refreshControl(label,action){const control=adornmentButton(label,'rotate',action);control.className='module-action-icon refresh-icon';return control;}
 export {refreshControl as refreshButton};
 
+// Service forms open in one drawer. Switching the source swaps the drawer content in
+// place, so its size, position and actions stay put; each content owns its cleanup.
+const drawerContent=new WeakMap();
 export function serviceModule(ctx,definition){let current={routes:[],data:{}},dialog=null;const getState=()=>ctx.ui.state();const base=`/api/modules/${ctx.moduleId}`;
  let refreshing=false,refreshButton=null;const menus=[];
  const disposeMenus=()=>{for(const menu of menus)menu.dispose();menus.length=0;};
@@ -22,8 +25,9 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
   const feedback=formFeedback(d,error);showDialog(d,{signal:ctx.signal});
  };
  function edit(route=null,group=null,options={}){
-  if(dialog){dialog.close();dialog.remove();}
-  const d=el('dialog','service-edit-dialog');dialog=d;
+  const reuse=options.container?.open?options.container:null;
+  if(dialog&&dialog!==reuse){dialog.close();dialog.remove();}
+  const d=reuse||el('dialog','service-edit-dialog service-drawer');dialog=d;
   const form=el('form'),body=el('div','service-edit-body'),head=dialogHeader(route?.id?`Edit service${ctx.moduleName?` · ${ctx.moduleName}`:''}`:options.sources?'Add service':`${definition.createTitle||'Add service'}${ctx.moduleName?` · ${ctx.moduleName}`:''}`,d);
   form.append(head,body);
   const domain=adornedField('Address','','text',{suffix:`.localhost${getState().port===80?'':`:${getState().port}`}`}),{wrap:domainField,input}=domain,label=domainField.children[0];
@@ -31,28 +35,21 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
   input.pattern='[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?)*';
   input.maxLength=243;input.value=route?.domain.replace(/\.localhost$/,'')||options.domain||suggest(group?.name||'service',!group?.name);
   if(options.sources){
-   const choices=el('fieldset','service-source-choices');choices.append(el('legend',null,'Source'));
+   const choices=el('fieldset','service-source-choices');choices.append(el('legend',null,'Where does the service run?'));
    for(const source of options.sources){
     const choice=el('label','service-source-choice'),radio=el('input'),text=el('span','service-source-text');
-    radio.type='radio';radio.name=`service-source-${ctx.moduleId}`;radio.value=source.id;radio.checked=source.id===options.sourceId;
-    text.append(el('strong',null,source.label),el('span','small muted',source.description));choice.append(radio,text);choices.append(choice);
-    radio.addEventListener('change',()=>{if(!radio.checked||source.id===options.sourceId)return;const draft={domain:input.value};d.close();options.onSource?.(source.id,draft);});
+    radio.type='radio';radio.name='service-source';radio.value=source.id;radio.checked=source.id===options.sourceId;radio.className='service-source-radio';
+    text.append(el('strong',null,source.label),el('span','small muted',source.description));choice.append(radio);if(source.icon)choice.append(icon(source.icon,{className:'service-source-icon'}));choice.append(text);choices.append(choice);
+    radio.addEventListener('change',()=>{if(!radio.checked||source.id===options.sourceId)return;options.onSource?.(source.id,{domain:input.value,container:d});});
    }
    body.append(choices);
   }
   body.append(domainField);
-  const fields=definition.fields(route?.editor||{},group,current);body.append(fields.element);
+  const fields=definition.fields(route?.editor||{},group,current,{address:input,isNew:!route?.id});body.append(fields.element);
   let fieldsDisposed=false;const disposeFields=()=>{if(fieldsDisposed)return;fieldsDisposed=true;fields.dispose?.();};
   const {error,actions,save}=formActions(d,{submit:route?.id?'Save':definition.createSubmit||'Add service'});
-  if(options.onBack){
-   const back=button('Back',()=>{
-    if(save.disabled)return;
-    const draft={fields:[...form.querySelectorAll('input,select,textarea')].map(input=>({value:input.value,checked:input.checked})),expanded:[...form.querySelectorAll('details')].map(details=>details.open)};
-    d.close();options.onBack(draft);
-   },'secondary dialog-back');actions.prepend(back);
-  }
   let changedRoute=null;
-  const reload=button('Reload saved values',()=>{if(changedRoute)edit(changedRoute,group,{...options,draft:null});});reload.hidden=true;
+  const reload=button('Reload saved values',()=>{if(changedRoute)edit(changedRoute,group,{...options,container:d});});reload.hidden=true;
   body.append(error,reload);form.append(actions);
   const feedback=formFeedback(form,error,[{input,matches:/domain/i}]);
   input.addEventListener('invalid',event=>{event.preventDefault();feedback.show(input.validity.valueMissing?'Enter an address.':'Use letters, numbers, hyphens and dots.',input);});
@@ -73,14 +70,13 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
     controls.forEach((control,index)=>{control.disabled=disabled[index];});save.disabled=false;form.setAttribute('aria-busy','false');if(failure&&d.open)feedback.show(failure);
    }
   });
-  if(options.draft){
-   [...form.querySelectorAll('input,select,textarea')].forEach((input,index)=>{
-    const saved=options.draft.fields[index];if(!saved)return;input.value=saved.value;if(typeof saved.checked==='boolean')input.checked=saved.checked;
-    input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));
-   });
-   [...form.querySelectorAll('details')].forEach((details,index)=>{details.open=!!options.draft.expanded?.[index];});
+  const release=()=>{disposeFields();if(dialog===d)dialog=null;};
+  if(reuse){
+   drawerContent.get(d)?.();drawerContent.set(d,release);d.replaceChildren(form);
+   form.querySelector('.service-source-radio:checked')?.focus();return d;
   }
-  d.append(form);return showDialog(d,{signal:ctx.signal,initialFocus:input,onClose(){disposeFields();if(dialog===d)dialog=null;}});
+  drawerContent.set(d,release);d.append(form);
+  return showDialog(d,{signal:ctx.signal,initialFocus:input,onClose(){drawerContent.get(d)?.();drawerContent.delete(d);if(options.trigger?.isConnected)options.trigger.focus();}});
  }
  function suggest(value,numbered=false){let base=value.toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'')||'service';base=base.slice(0,50);const used=new Set(Object.values(getState().states).flatMap(s=>(s.routes||[]).map(r=>r.domain)));let n=numbered?1:2,name=numbered?`${base}-${n++}`:base;while(used.has(name+'.localhost'))name=`${base}-${n++}`;return name;}
  function row(route){const tabular=!!definition.columns,box=el('div','service'),name=el('div'),address=serviceURL(getState(),route),link=el(address?'a':'span',null,definition.serviceLabel?.(route,getState())||route.domain);if(tabular){box.setAttribute('role','row');name.setAttribute('role','cell');}if(address){link.href=address;link.target='_blank';link.rel='noopener';}name.append(link);if(!address)name.append(el('span','small muted','Not connected on this device'));if(!tabular&&route.summary.detail&&route.module!=='remote_http')name.append(el('span','small route-error',route.summary.detail));const target=el('div','target-address');if(tabular){target.setAttribute('role','cell');target.append(el('span','mobile-target-label',`${definition.mobileTargetLabel||definition.columns[1]} `));}target.append(el('span',null,definition.targetLabel?.(route)||route.summary.target));if(!tabular&&route.module==='remote_http'&&route.summary.detail)target.append(warningIndicator(route.summary.detail).root);const actions=el('div','service-actions');if(tabular)actions.setAttribute('role','cell');const indicators=definition.rowIndicators?.(route)||[];let details=null;if(tabular){details=el('div','service-port-details');details.setAttribute('role','cell');}if(indicators.length||definition.targetInfo){const group=el('span','service-indicators');group.append(...indicators);if(definition.targetInfo)group.append(serviceTargetIndicator(definition.targetInfo(route),route.domain).root);(details||actions).append(group);}if(definition.routeMenu){const root=el('div','resource-actions service-actions-menu'),trigger=el('button','resource-menu-trigger service-menu-trigger','⋮'),menu=el('div','resource-menu service-menu');trigger.setAttribute('aria-label',`Actions for ${route.domain}`);trigger.setAttribute('aria-haspopup','menu');menu.setAttribute('role','menu');root.append(trigger,menu);const disclosure=disclosureMenu(root,trigger,menu);menus.push(disclosure);const editAction=button('Edit',()=>{disclosure.close(true);edit(route);},'resource-menu-item'),removeAction=button('Remove',()=>{disclosure.close(true);remove(route);},'resource-menu-item service-menu-remove');editAction.setAttribute('role','menuitem');removeAction.setAttribute('role','menuitem');menu.append(editAction,removeAction);actions.append(root);}else actions.append(button('Edit',()=>edit(route)),button('Remove',()=>remove(route),'danger-text'));for(const action of definition.routeActions?.(route)||[])actions.append(button(action.label,action.run));box.append(name,target,...(details?[details]:[]),actions);return box;}

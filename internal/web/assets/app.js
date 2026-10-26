@@ -2,15 +2,14 @@ import * as ui from './ui.js';
 import {createClient} from './client.js';
 import {createNavigation} from './navigation.js';
 import {createDashboard} from './dashboard.js';
-import {createSources} from './sources.js';
 import {renderHeaderStatus as renderRuntimeHeaderStatus,renderAvailability as renderRuntimeAvailability} from './runtime.js';
 const $=id=>document.getElementById(id);
 
 let state, active='dashboard', timer, client, composed=false;
 const modules=new Map(),messages=new Map(),refreshErrors=new Map(),availabilityControls=new Map();
 let availabilitySaving=false;
-let navigation,dashboard,sources,runtimeModules,breadcrumb,remoteFileAccess,remoteFileAccessSaving=false;
-const pages=['dashboard','sources','settings'];
+let navigation,dashboard,runtimeModules,remoteFileAccess,remoteFileAccessSaving=false;
+const pages=['dashboard','settings'];
 function moduleEnabled(m){return m.descriptor.ui_placement==='settings'||state?.module_availability?.[m.descriptor.id]?.enabled!==false;}
 function renderMessage(){const text=messages.get(active)||refreshErrors.get(active)||'';$('error').hidden=!text;ui.setText($('error'),text);}
 function message(text,owner=active){if(text)messages.set(owner,text);else messages.delete(owner);renderMessage();}
@@ -21,13 +20,12 @@ function api(path,options={}){return client.api(path,options);}
 function refresh(force=false){return client.refresh(force);}
 function mutate(work,options={}){return client.mutate(work,options);}
 function moduleVisible(m){return moduleEnabled(m)&&(m.descriptor.ui_placement==='settings'?active==='settings'&&(!m.accordion||m.accordion.open):m.descriptor.tab_id===active);}
-// Services shows module route notices, so their discovery stays active there.
+// Dashboard shows module route notices, so their discovery stays active there.
 function moduleActive(m){return moduleVisible(m)||active==='dashboard'&&moduleEnabled(m)&&!!m.instance?.routeNotice;}
 function sourcePage(id){return [...modules.values()].find(m=>m.descriptor.tab_id===id&&m.descriptor.ui_placement!=='settings');}
 function navigate(id,push=true){
  // init reads the latest hash after all module controls are mounted.
  if(!composed)return;
- if(id==='services')id='dashboard';
  const page=sourcePage(id),valid=pages.includes(id)||!!page&&moduleEnabled(page);
  const unavailable=!!page&&!moduleEnabled(page);
  const previous=active;active=valid?id:unavailable?'settings':'dashboard';
@@ -39,25 +37,25 @@ function navigate(id,push=true){
  if(push&&location.hash!==`#${active}`)history.pushState(null,'',`#${active}`);
  for(const m of modules.values()){
   const visible=moduleVisible(m);m.panel.hidden=!visible;if(m.toolbar)m.toolbar.hidden=!visible||active==='settings';
+  if(m.tab){m.tab.hidden=!moduleEnabled(m);m.tab.setAttribute('aria-current',visible?'page':'false');m.tab.tabIndex=0;}
   if(moduleActive(m))m.instance?.activate();else m.instance?.deactivate();
  }
  const currentModule=sourcePage(active);
  for(const name of pages){
-  const visible=active===name,current=visible||name==='sources'&&!!currentModule;
+  const visible=active===name;
   $(`panel-${name}`).hidden=!visible;
-  $(`tab-${name}`).setAttribute('aria-current',current?'page':'false');$(`tab-${name}`).tabIndex=0;
+  $(`tab-${name}`).setAttribute('aria-current',visible?'page':'false');$(`tab-${name}`).tabIndex=0;
  }
- const heading=$('module-heading'),actions=$('module-actions'),title=$('module-title');heading.hidden=!currentModule;if(breadcrumb)breadcrumb.hidden=!currentModule;
+ const heading=$('module-heading'),actions=$('module-actions'),title=$('module-title');heading.hidden=!currentModule;
  if(currentModule?.toolbar&&currentModule.toolbar.parentElement!==actions)actions.append(currentModule.toolbar);title.hidden=!currentModule;
  ui.renderChanged(title,[currentModule?.descriptor.name,currentModule?.descriptor.maturity],()=>{title.textContent=currentModule?.descriptor.name||'';title.removeAttribute('aria-label');if(currentModule?.descriptor.maturity==='experimental'){title.append(ui.experimentalBadge());title.setAttribute('aria-label',`${currentModule.descriptor.name} (Experimental)`);}});
  navigation?.sync(active);
  if(active==='dashboard')dashboard?.render(state);
- if(active==='sources')sources?.render(state);
  schedule();
 }
 function schedule(){
  clearTimeout(timer);if(document.hidden||!state)return;
- const descriptors=state.modules.filter(d=>{const m=modules.get(d.id);return m&&moduleEnabled(m)&&(active==='dashboard'||active==='sources'||(d.ui_placement==='settings'?active==='settings':d.tab_id===active));});
+ const descriptors=state.modules.filter(d=>{const m=modules.get(d.id);return m&&moduleEnabled(m)&&(active==='dashboard'||(d.ui_placement==='settings'?active==='settings':d.tab_id===active));});
  const intervals=descriptors.map(d=>d.poll_interval/1e6).filter(v=>v>0);
  if([...modules.values()].some(m=>m.headerStatus))intervals.push(5000);
  const interval=intervals.length?Math.min(...intervals):0;
@@ -90,7 +88,7 @@ function render(){
  const remote=$('remote-administration');remote.hidden=!state.remote_admin;
  if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);
  for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
- dashboard.render(state);sources.render(state);
+ dashboard.render(state);
  const rt=state.runtime,fields=[['Version',rt.version],['Hostname',rt.hostname],['Configuration',rt.config_display_path||rt.config_path],['Listeners',rt.listeners?.join(', ')],['Modules',state.modules.map(m=>m.name).join(', ')||'Core only']];
  for(const [label,value]of fields){let cell=[...$('runtime-info').children].find(c=>c.dataset.label===label);if(!cell){cell=ui.el('div',label==='Modules'?'runtime-modules':null);cell.dataset.label=label;cell.append(ui.el('dt',null,label),ui.el('dd'));$('runtime-info').append(cell);}if(label==='Modules')renderRuntimeModules(cell);else ui.setText(cell.children[1],value);if(label==='Configuration'){cell.children[1].tabIndex=0;ui.setTooltip(cell.children[1],rt.config_path||'');}}
 }
@@ -113,8 +111,8 @@ function renderAvailability(){
  if(before!==active&&active==='settings')history.replaceState(null,'','#settings');
 }
 function addAvailability(settings){
- const section=ui.accordion('Sources in Add service');
- section.content.append(ui.el('p','small muted availability-intro','Hidden sources keep their services running.'));
+ const section=ui.accordion('Service sources');
+ section.content.append(ui.el('p','small muted availability-intro','Hidden sources leave the Services menu and Add service. Their services keep running.'));
  for(const d of state.modules.filter(d=>d.ui_placement!=='settings')){
   const control=ui.switchField(d.name),row=ui.el('div','module-availability-row'),info=ui.el('div','module-availability-info');
   const reason=ui.el('p','small muted');reason.id=`availability-reason-${d.id}`;
@@ -150,7 +148,7 @@ function renderRemoteFileAccess(){
  remoteFileAccess.input.disabled=remote||remoteFileAccessSaving;
  ui.setText(remoteFileAccess.note,remote?'Change this on the computer itself.':'');remoteFileAccess.note.hidden=!remote;
 }
-function addAbout(settings){const section=ui.accordion('About'),facts=$('runtime-info');facts.className='runtime-facts';section.content.append(facts);settings.append(section.root);}
+function addAbout(settings){const section=ui.accordion('About'),facts=ui.el('dl','runtime-facts');facts.id='runtime-info';section.content.append(facts);settings.append(section.root);}
 function tab(id,label){const b=ui.button(label,()=>{navigate(id);refreshVisible();},'');b.id=`tab-${id}`;b.dataset.navigationLabel=label;b.className='navigation-item';b.setAttribute('aria-controls',`panel-${id}`);$('tabs').append(b);return b;}
 function showBootStatus(){
  if(!document.body)return null;
@@ -161,26 +159,25 @@ async function init(){
  const bootStatus=showBootStatus();
  for(const link of document.querySelectorAll('[data-tooltip]'))ui.setTooltip(link,link.dataset.tooltip);
  client=createClient({owner:()=>active,onError:message,onState(next){state=next;clearRefreshErrors();if(composed)render();}});
- state=await client.refresh();tab('dashboard','Services');tab('sources','Sources');
+ state=await client.refresh();tab('dashboard','Dashboard');
  dashboard=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui});
- sources=createSources({root:$('sources-list'),modules,client,navigate,ui});
  const addService=$('add-service');addService.addEventListener('click',()=>openAddService(addService));
  let refreshingStatus=false;const refreshStatus=ui.refreshControl('Refresh status',async()=>{if(refreshingStatus)return;refreshingStatus=true;refreshStatus.disabled=true;try{await refreshVisible();for(const m of modules.values())if(moduleActive(m))m.instance?.refreshRouteStatus?.();}finally{refreshingStatus=false;refreshStatus.disabled=false;}});
  refreshStatus.id='refresh-status';addService.before(refreshStatus);
  ui.moduleHeading($('module-title'));
- breadcrumb=ui.el('a','module-breadcrumb','Sources');breadcrumb.href='#sources';breadcrumb.hidden=true;$('module-heading').before(breadcrumb);
  const settings=ui.el('section');settings.id='panel-settings';settings.setAttribute('role','region');settings.setAttribute('aria-labelledby','tab-settings');settings.hidden=true;settings.tabIndex=0;
  settings.append(ui.el('h1','page-title','Settings'));$('panels').append(settings);
  for(const descriptor of state.modules){
   const inSettings=descriptor.ui_placement==='settings',panel=ui.el('section');
   panel.id=inSettings?`settings-${descriptor.id}`:`panel-${descriptor.tab_id}`;panel.dataset.module=descriptor.id;panel.hidden=true;
   let section=null;
-  if(inSettings){section=ui.accordion(descriptor.name,descriptor.maturity);section.content.append(panel);settings.append(section.root);}else{panel.setAttribute('role','region');panel.setAttribute('aria-labelledby','module-title');$('panels').append(panel);}
+  let tabButton=null;
+  if(inSettings){section=ui.accordion(descriptor.name,descriptor.maturity);section.content.append(panel);settings.append(section.root);}else{panel.setAttribute('role','region');panel.setAttribute('aria-labelledby','module-title');$('panels').append(panel);tabButton=tab(descriptor.tab_id,descriptor.name);if(descriptor.maturity==='experimental'){tabButton.setAttribute('aria-label',`${descriptor.name} (Experimental)`);tabButton.append(ui.experimentalBadge());}}
   const toolbar=ui.el('div','module-toolbar');toolbar.hidden=true;$('module-actions').append(toolbar);
-  const controller=new AbortController(),m={descriptor,panel,toolbar,tab:null,controller,accordion:section?.root};modules.set(descriptor.id,m);
+  const controller=new AbortController(),m={descriptor,panel,toolbar,tab:tabButton,controller,accordion:section?.root};modules.set(descriptor.id,m);
   section?.root.addEventListener('toggle',()=>{const visible=moduleVisible(m);panel.hidden=!visible;if(visible)m.instance?.activate();else m.instance?.deactivate();});
   const style=ui.el('link');style.rel='stylesheet';style.href=`/assets/modules/${descriptor.id}/style.css`;document.head.append(style);
-  try{const code=await import(`/assets/modules/${descriptor.id}/module.js`);m.headerStatus=code.headerStatus;m.sourceFacts=code.sourceFacts;m.instance=code.mount({moduleId:descriptor.id,moduleName:descriptor.name,panel,toolbar,signal:controller.signal,api,refresh,mutate,navigate,ui:{...ui,state:()=>state}});}
+  try{const code=await import(`/assets/modules/${descriptor.id}/module.js`);m.headerStatus=code.headerStatus;m.instance=code.mount({moduleId:descriptor.id,moduleName:descriptor.name,panel,toolbar,signal:controller.signal,api,refresh,mutate,navigate,ui:{...ui,state:()=>state}});}
   catch(e){panel.append(ui.el('p','route-error',`Module interface unavailable: ${e.message}`));}
  }
  addAvailability(settings);addRemoteFileAccess(settings);addAbout(settings);

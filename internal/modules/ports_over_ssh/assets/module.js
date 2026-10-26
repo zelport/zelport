@@ -37,7 +37,6 @@ export function sshHostPicker(ctx,host){
  load();return {menu,dispose};
 }
 
-export function sourceFacts(state){const d=state?.data||{};return [{label:'SSH config',value:`${d.ssh_config_path||'~/.ssh/config'}${d.config_exists===false?' (missing)':''}`,tone:d.config_exists===false?'warning':undefined}];}
 export function mount(ctx){
  const {el,button,field,adornedField,adornmentButton,serviceModule,warningIndicator}=ctx.ui;
  let validation,current,form,path,baseline='',revision,dirty=false,saving=false,refreshing=false,disposed=false,webEditor=null;

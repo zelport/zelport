@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import * as ui from '../internal/web/assets/ui.js';
-import {headerStatus,sourceFacts,mount} from '../internal/modules/ports_over_relay/assets/module.js';
+import {headerStatus,mount} from '../internal/modules/ports_over_relay/assets/module.js';
 
 test('Overview section headings use one vertical rhythm',async()=>{
  const css=await readFile(new URL('../internal/modules/ports_over_relay/assets/style.css',import.meta.url),'utf8');
@@ -184,11 +184,6 @@ test('remote device has one card for services and administration',()=>{
  const before=cards[0];h.render({});assert.equal(h.nodes().find(n=>n.className==='relay-provider'),before);
 });
 
-test('Sources card reports connection, devices and sharing independently',()=>{
- const facts=data=>Object.fromEntries(sourceFacts({data}).map(row=>[row.label,row.value]));
- assert.deepEqual(facts({relay_url:''}),{Relay:'Not configured',Devices:'0',Sharing:'Off'});
- assert.deepEqual(facts({enabled:true,relay_url:'ws://relay.example.test',publish:true,status:{connected:true},administration_peers:[{available:true},{available:false}]}),{Relay:'Connected',Devices:'1',Sharing:'On'});
-});
 test('offline devices keep their card but cannot open administration or import',()=>{
  const peer={device_id:'linux',hostname:'sandbox',available:false,uuid_url:'http://linux.zelport.localhost:7270/'};
  const provider={device_id:'linux',hostname:'sandbox',group:'g',public_key:'key',publish:true,expires_at:1,services:[{kind:'application',id:'app',domain:'app.localhost'}]};
@@ -257,4 +252,23 @@ for(const count of [1,2])test(`device plus selects the intended service and prop
  assert.ok(h.find('Imported'));await click(h.find('Import service from sandbox'));
  if(count===2){assert.equal(edits.length,0);await click(tree(picker).find(n=>n.tag==='button'&&n.textContent==='app-1.localhost:7271'));}
  assert.equal(edits.length,1);assert.equal(edits[0].editor.service_id,count===1?'app-0':'app-1');assert.equal(edits[0].editor.provider_key,'key');assert.equal(edits[0].domain,count===1?'app-0-2.localhost':'app-1.localhost');h.view.dispose();
+});
+
+test('Add service lists services shared by other devices and imports the chosen one',async()=>{
+ const future=Math.floor(Date.now()/1000)+600,provider={device_id:'device-b',hostname:'build-server',group:'g1',public_key:'pk',publish:true,port:7070,expires_at:future,services:[{id:'s1',domain:'staging.localhost',kind:'application'},{id:'s2',domain:'docs.localhost',kind:'application'}]};
+ const offline={...provider,device_id:'device-c',hostname:'laptop-old',expires_at:1,services:[{id:'s3',domain:'old.localhost',kind:'application'}]};
+ const h=harness({relay_url:'wss://relay.example.test',enabled:true,device_id:'device-a',status:{connected:true,records:[provider,offline]}});
+ const base=h.ctx.ui.state;h.ctx.ui.state=()=>({...base(),states:{ports_over_relay:{routes:[]}},modules:[{id:'ports_over_relay',tab_id:'relay'}]});
+ Object.assign(globalThis.document,{body:new Node('body')});document.body.append=()=>{};
+ Node.prototype.showModal=function(){this.open=true;};Node.prototype.close=function(){this.open=false;this.events.close?.();};
+ Node.prototype.querySelector=function(){return null;};Node.prototype.contains=function(n){return tree(this).includes(n);};Node.prototype.dispatchEvent=function(e){this.events[e.type]?.(e);return true;};
+ const drawer=h.view.edit(null,null,{});const nodes=tree(drawer);
+ const radios=nodes.filter(n=>n.tag==='input'&&n.type==='radio');
+ assert.deepEqual(radios.map(r=>[r.value,r.disabled]),[['device-b/s1',false],['device-b/s2',false],['device-c/s3',true]],'offline devices are listed but not selectable');
+ assert.ok(nodes.some(n=>n.textContent==='Relay settings'&&n.href==='#relay'),'help links to the relay settings page');
+ const address=nodes.find(n=>n.tag==='input'&&n.id==='domain-ports_over_relay');
+ radios[1].checked=true;radios[1].events.change();assert.equal(address.value,'docs','picking a service suggests its address');
+ const form=nodes.find(n=>n.tag==='form');await form.events.submit({preventDefault(){}});
+ const saved=h.requests.at(-1);assert.equal(saved.route.module,'ports_over_relay');assert.equal(saved.route.domain,'docs.localhost');
+ assert.deepEqual(saved.route.settings,{group:'g1',device_id:'device-b',service_id:'s2',provider_key:'pk',rewrite_origin:false});
 });
