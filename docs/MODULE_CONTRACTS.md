@@ -77,6 +77,11 @@ Remote relay administration is a separate typed capability. It is granted only
 after peer authentication and reserved-domain validation; request headers cannot
 grant it.
 
+An endpoint that reads or writes a host file, or changes a stored host file path,
+must reject the request with `feature.ErrRemoteFileAccess` (HTTP 403) unless
+`feature.HostFileAccess(r)` is true. Local administration always passes; remote
+administration passes only when this computer allows remote file access.
+
 The read-only local integration API is owned by core and documented in
 [LOCAL_INTEGRATION_API.md](LOCAL_INTEGRATION_API.md). Modules contribute data to
 that response but cannot make it writable.

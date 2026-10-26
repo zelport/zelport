@@ -112,7 +112,10 @@ card. A source page has a breadcrumb back to Sources, the source title and its
 configuration form (at most 720px wide); Ports over Relay adds its device catalog
 below the form. Source pages never repeat the service list.
 
-Settings contains Built-in Relay, Sources in Add service and About. Sources in Add
+Settings contains Built-in Relay, Sources in Add service, Remote administration and
+About. Remote administration has one switch, Allow remote file access (off by
+default), which is read-only in a remote session. While it is off, remote
+sessions show the SSH and CA path fields and Edit file disabled with a one-line reason. Sources in Add
 service controls visibility only; hidden sources keep their services running.
 About keeps Version, Hostname, Configuration, Listeners and Modules in one row.
 Modules uses a compact count button whose non-modal popover lists the included

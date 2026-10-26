@@ -74,7 +74,7 @@ test('reloading certificates refreshes saved state without discarding proxy draf
 });
 
 test('web CA editor is available remotely, blocks drafts and preserves settings during polling',async()=>{
- const h=harness();h.render({},1,{remote_admin:{hostname:'remote-test'}});h.view.openSettings();const browser=h.find('Edit file');assert.equal(browser.disabled,false);
+ const h=harness();h.render({},1,{remote_admin:{hostname:'remote-test'},remote_file_access:true});h.view.openSettings();const browser=h.find('Edit file');assert.equal(browser.disabled,false);
  edit(h,'Proxy URL','http://proxy.example.test:8080');assert.equal(browser.disabled,true);fire(h.find('Discard'),'click');
  assert.equal(h.input('Additional CA certificate file').placeholder,'~/.config/zelport/additional-ca.pem');
  const calls=[];h.ctx.ui.fileEditor=(_ctx,options)=>{calls.push(options);return {dispose(){}};};fire(browser,'click');fire(browser,'click');assert.equal(calls.length,1);assert.equal(calls[0].endpoint,'/api/modules/remote_http/ca-file');h.render({},2);assert.equal(browser.disabled,true);calls[0].onClose();assert.equal(browser.disabled,false);h.view.dispose();
@@ -86,4 +86,11 @@ test('proxy URL errors mentioning a path focus the proxy field, never the CA pat
  h.ctx.mutate=async()=>{throw Error('Proxy URL must be an HTTP, HTTPS, SOCKS5 or SOCKS5H endpoint without credentials, path, query or fragment');};
  fire(h.form(),'submit');await tick();assert.equal(document.activeElement,proxy);assert.equal(proxy.getAttribute('aria-invalid'),'true');
  edit(h,'Proxy URL','http://proxy.example.test');assert.equal(proxy.getAttribute('aria-invalid'),undefined);h.view.dispose();
+});
+
+test('CA file path and editor stay locked in remote administration by default',()=>{
+ const h=harness();h.render({},1,{remote_admin:{hostname:'remote-test'}});h.view.openSettings();
+ assert.equal(h.find('Edit file').disabled,true);assert.equal(h.input('Additional CA certificate file').disabled,true);
+ assert.ok(h.nodes?h.nodes().some(n=>n.textContent==='Remote administration cannot change files on this computer.'):h.all().some(n=>n.textContent==='Remote administration cannot change files on this computer.'));
+ h.render({},2,{remote_admin:{hostname:'remote-test'},remote_file_access:true});assert.equal(h.find('Edit file').disabled,false);assert.equal(h.input('Additional CA certificate file').disabled,false);h.view.dispose();
 });

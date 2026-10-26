@@ -65,6 +65,12 @@ Authenticated relay administration uses the reserved
 `*.zelport.localhost` namespace and an explicit typed bridge; forwarded headers
 never grant that authority.
 
+Remote administration manages services but, by default, cannot read or change
+host files: the SSH configuration and CA file paths and their contents. Core
+marks remote requests in their context and modules check `feature.HostFileAccess`.
+Settings → Remote administration → Allow remote file access lifts this limit; only
+local administration can change it (`remote_file_access` in the configuration).
+
 ## Service sources
 
 Local, remote, SSH and relay sources adapt external web services to the same

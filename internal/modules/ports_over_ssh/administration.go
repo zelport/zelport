@@ -15,6 +15,10 @@ func (m *Module) Admin() http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		switch r.URL.Path {
 		case "/config-file":
+			if !feature.HostFileAccess(r) {
+				sshAPIError(w, http.StatusForbidden, feature.ErrRemoteFileAccess)
+				return
+			}
 			m.serveConfigFile(w, r)
 		case "/hosts":
 			if r.Method != http.MethodGet {
@@ -67,6 +71,10 @@ func (m *Module) Admin() http.Handler {
 				return
 			}
 			previous, _, _ := m.configSnapshot()
+			if !feature.HostFileAccess(r) && previous.SSHConfigPath != value.SSHConfigPath {
+				sshAPIError(w, http.StatusForbidden, feature.ErrRemoteFileAccess)
+				return
+			}
 			result, err := m.Host.Commit(r.Context(), request.Revision, feature.CommitOptions{}, func(draft *feature.Draft) error { draft.Settings = raw; return nil })
 			if err != nil {
 				sshAPIError(w, 400, err)

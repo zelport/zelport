@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,7 +16,7 @@ import (
 	"github.com/zelport/zelport/internal/modules/remote_http"
 )
 
-func TestConfigurationFilesThroughAuthenticatedRemoteAdministration(t *testing.T) {
+func TestRemoteFileAccessPolicyForConfigurationFiles(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
@@ -42,7 +43,8 @@ func TestConfigurationFilesThroughAuthenticatedRemoteAdministration(t *testing.T
 	remote := feature.RemoteAdminContext{ConsumerID: "consumer", ProviderID: "provider", Authority: "peer.zelport.localhost:8080"}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { server.ServeRemoteAdministration(w, r, remote) })
 	var state struct {
-		CSRF string `json:"csrf"`
+		CSRF     string `json:"csrf"`
+		Revision uint64 `json:"revision"`
 	}
 	w := request(handler, "GET", remote.Authority, "/api/state", "", nil)
 	json.Unmarshal(w.Body.Bytes(), &state)
@@ -50,6 +52,32 @@ func TestConfigurationFilesThroughAuthenticatedRemoteAdministration(t *testing.T
 		t.Fatal("polling leaked content or missing remote token")
 	}
 	endpoint := "/api/modules/ports_over_ssh/config-file"
+	headers := map[string]string{"Origin": "http://" + remote.Authority, "X-CSRF-Token": state.CSRF}
+	local := map[string]string{"Origin": server.origin(), "X-CSRF-Token": server.token}
+	// Remote file access is off by default: no reads, writes or path changes.
+	for _, path := range []string{endpoint, "/api/modules/remote_http/ca-file"} {
+		if w = request(handler, "GET", remote.Authority, path, "", nil); w.Code != 403 || strings.Contains(w.Body.String(), "unique-editor-fixture") {
+			t.Fatalf("default remote read %s: %d %s", path, w.Code, w.Body)
+		}
+	}
+	if w = request(handler, "PUT", remote.Authority, "/api/modules/ports_over_ssh/settings", fmt.Sprintf(`{"revision":%d,"ssh_config_path":"~/.zshrc"}`, state.Revision), headers); w.Code != 403 {
+		t.Fatalf("default remote SSH path change: %d %s", w.Code, w.Body)
+	}
+	if w = request(handler, "PUT", remote.Authority, "/api/modules/remote_http/settings", fmt.Sprintf(`{"revision":%d,"ca_cert_path":"~/.zshrc"}`, state.Revision), headers); w.Code != 403 {
+		t.Fatalf("default remote CA path change: %d %s", w.Code, w.Body)
+	}
+	if w = request(handler, "PUT", remote.Authority, "/api/modules/remote_http/settings", fmt.Sprintf(`{"revision":%d,"proxy_url":"http://proxy.example.test:8080"}`, state.Revision), headers); w.Code != 200 {
+		t.Fatalf("remote non-file setting: %d %s", w.Code, w.Body)
+	}
+	// Only this computer can allow remote file access.
+	revision, _ := manager.Snapshot()
+	toggle := fmt.Sprintf(`{"revision":%d,"enabled":true}`, revision)
+	if w = request(handler, "PUT", remote.Authority, "/api/remote-file-access", toggle, headers); w.Code != 403 || manager.RemoteFileAccess() {
+		t.Fatalf("remote widened its own access: %d", w.Code)
+	}
+	if w = request(server, "PUT", "localhost:8080", "/api/remote-file-access", toggle, local); w.Code != 200 || !manager.RemoteFileAccess() {
+		t.Fatalf("local enable: %d %s", w.Code, w.Body)
+	}
 	w = request(handler, "GET", remote.Authority, endpoint, "", nil)
 	var doc struct {
 		Content, Version string
@@ -65,7 +93,6 @@ func TestConfigurationFilesThroughAuthenticatedRemoteAdministration(t *testing.T
 			t.Fatalf("unprotected save: %d", w.Code)
 		}
 	}
-	headers := map[string]string{"Origin": "http://" + remote.Authority, "X-CSRF-Token": state.CSRF}
 	if w = request(handler, "PUT", remote.Authority, endpoint, string(raw), headers); w.Code != 200 {
 		t.Fatalf("remote save: %d %s", w.Code, w.Body)
 	}

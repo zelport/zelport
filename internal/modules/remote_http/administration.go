@@ -13,6 +13,10 @@ func (m *Module) Admin() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if r.URL.Path == "/ca-file" {
+			if !feature.HostFileAccess(r) {
+				networkAPIError(w, http.StatusForbidden, feature.ErrRemoteFileAccess)
+				return
+			}
 			m.serveCAFile(w, r)
 			return
 		}
@@ -50,10 +54,14 @@ func (m *Module) Admin() http.Handler {
 		value := Configuration{CACertPath: request.CACertPath, ProxyURL: request.ProxyURL, ProxyUsername: request.ProxyUsername, ProxyPassword: request.ProxyPassword}
 		// Derive password preservation from the current draft under Host.Commit's
 		// revision check, so stale edits never change or resurrect credentials.
+		fileAccess := feature.HostFileAccess(r)
 		result, err := m.Host.Commit(r.Context(), request.Revision, feature.CommitOptions{ResetScopes: []string{"outbound"}}, func(draft *feature.Draft) error {
 			previous, err := configuration(draft.Settings)
 			if err != nil {
 				return err
+			}
+			if !fileAccess && value.CACertPath != previous.CACertPath {
+				return feature.ErrRemoteFileAccess
 			}
 			if value.ProxyURL == "" {
 				value.ProxyUsername = ""
@@ -80,6 +88,10 @@ func (m *Module) Admin() http.Handler {
 			draft.Settings = raw
 			return nil
 		})
+		if errors.Is(err, feature.ErrRemoteFileAccess) {
+			networkAPIError(w, http.StatusForbidden, err)
+			return
+		}
 		if err != nil {
 			networkAPIError(w, 400, err)
 			return

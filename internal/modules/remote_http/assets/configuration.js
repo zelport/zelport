@@ -20,8 +20,9 @@ export function mountConfiguration(ctx,panel){
   password.input.placeholder=current.has_proxy_password&&sameProxy?'Stored password':'';
   clear.wrap.hidden=!current.has_proxy_password;
   ca.input.placeholder=current.default_ca_cert_display_path||current.default_ca_cert_path||'~/.config/zelport/additional-ca.pem';
-  editWeb.disabled=busy||dirty;
-  editorReason.textContent=dirty?'Save or discard changes before editing.':'';reloadCA.disabled=busy;
+  const state=ctx.ui.state(),locked=!!state?.remote_admin&&!state?.remote_file_access;ca.input.disabled=busy||locked;
+  editWeb.disabled=busy||dirty||locked;
+  editorReason.textContent=locked?'Remote administration cannot change files on this computer.':dirty?'Save or discard changes before editing.':'';reloadCA.disabled=busy;
   save.disabled=discard.disabled=busy||!dirty;form.setAttribute('aria-busy',String(busy));runtime.textContent=current.configuration_error||'';
  }
  function open(focus=true){

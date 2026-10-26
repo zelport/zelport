@@ -9,7 +9,7 @@ const $=id=>document.getElementById(id);
 let state, active='dashboard', timer, client, composed=false;
 const modules=new Map(),messages=new Map(),refreshErrors=new Map(),availabilityControls=new Map();
 let availabilitySaving=false;
-let navigation,dashboard,sources,runtimeModules,breadcrumb;
+let navigation,dashboard,sources,runtimeModules,breadcrumb,remoteFileAccess,remoteFileAccessSaving=false;
 const pages=['dashboard','sources','settings'];
 function moduleEnabled(m){return m.descriptor.ui_placement==='settings'||state?.module_availability?.[m.descriptor.id]?.enabled!==false;}
 function renderMessage(){const text=messages.get(active)||refreshErrors.get(active)||'';$('error').hidden=!text;ui.setText($('error'),text);}
@@ -86,7 +86,7 @@ window.addEventListener('scroll',positionHeaderPopovers,true);
 function renderHeaderStatus(){renderRuntimeHeaderStatus({state,modules,moduleEnabled,navigate,ui,host:$('connection-status'),positionPopovers:positionHeaderPopovers});}
 function openAddService(trigger){return dashboard.openAddService(trigger);}
 function render(){
- if(!state)return;renderAvailability();renderHeaderStatus();document.body.dataset.administration=state.remote_admin?'remote':'local';
+ if(!state)return;renderAvailability();renderRemoteFileAccess();renderHeaderStatus();document.body.dataset.administration=state.remote_admin?'remote':'local';
  const remote=$('remote-administration');remote.hidden=!state.remote_admin;
  if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);
  for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
@@ -132,6 +132,24 @@ function addAvailability(settings){
  if(!availabilityControls.size)section.content.append(ui.el('p','muted','No sources are included in this build.'));
  settings.append(section.root);
 }
+// Remote file access is changed only on this computer; remote sessions see it read-only.
+function addRemoteFileAccess(settings){
+ const section=ui.accordion('Remote administration'),control=ui.switchField('Allow remote file access'),help=ui.el('p','small muted','Lets devices that administer this Zelport remotely change the SSH configuration and CA file paths and edit those files. This can run commands on this computer.'),note=ui.el('p','small muted');
+ help.id='remote-file-access-help';note.id='remote-file-access-note';control.input.setAttribute('aria-describedby','remote-file-access-help remote-file-access-note');
+ section.content.append(control.wrap,help,note);settings.append(section.root);remoteFileAccess={input:control.input,note};
+ control.input.addEventListener('change',async()=>{
+  if(remoteFileAccessSaving)return;remoteFileAccessSaving=true;renderRemoteFileAccess();
+  try{await mutate(()=>api('/api/remote-file-access',{method:'PUT',body:JSON.stringify({revision:state.revision,enabled:control.input.checked})}));}
+  catch{/* The shell displays this Settings error. */}
+  finally{remoteFileAccessSaving=false;renderRemoteFileAccess();}
+ });
+}
+function renderRemoteFileAccess(){
+ if(!remoteFileAccess||!state)return;const remote=!!state.remote_admin;
+ if(!remoteFileAccessSaving)remoteFileAccess.input.checked=!!state.remote_file_access;
+ remoteFileAccess.input.disabled=remote||remoteFileAccessSaving;
+ ui.setText(remoteFileAccess.note,remote?'Change this on the computer itself.':'');remoteFileAccess.note.hidden=!remote;
+}
 function addAbout(settings){const section=ui.accordion('About'),facts=$('runtime-info');facts.className='runtime-facts';section.content.append(facts);settings.append(section.root);}
 function tab(id,label){const b=ui.button(label,()=>{navigate(id);refreshVisible();},'');b.id=`tab-${id}`;b.dataset.navigationLabel=label;b.className='navigation-item';b.setAttribute('aria-controls',`panel-${id}`);$('tabs').append(b);return b;}
 function showBootStatus(){
@@ -165,7 +183,7 @@ async function init(){
   try{const code=await import(`/assets/modules/${descriptor.id}/module.js`);m.headerStatus=code.headerStatus;m.sourceFacts=code.sourceFacts;m.instance=code.mount({moduleId:descriptor.id,moduleName:descriptor.name,panel,toolbar,signal:controller.signal,api,refresh,mutate,navigate,ui:{...ui,state:()=>state}});}
   catch(e){panel.append(ui.el('p','route-error',`Module interface unavailable: ${e.message}`));}
  }
- addAvailability(settings);addAbout(settings);
+ addAvailability(settings);addRemoteFileAccess(settings);addAbout(settings);
  tab('settings','Settings');composed=true;render();navigate(location.hash.slice(1),false);
  navigation=createNavigation({tabs:$('tabs'),onNavigate:navigate});navigation.sync(active);if(bootStatus){document.body.dataset.view='ready';document.body.setAttribute('aria-busy','false');bootStatus.remove();}
 }

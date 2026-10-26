@@ -54,10 +54,10 @@ export function mount(ctx){
  function syncSettings(){baseline=savedPath();revision=ctx.ui.state().revision;path.input.value=baseline;dirty=false;}
  function updateControls(){
   if(!form)return;
-  const busy=saving||!!webEditor;
-  editWeb.disabled=busy||dirty;
-  path.input.disabled=busy;save.disabled=busy||!dirty;discard.disabled=busy||!dirty;
-  reason.textContent=dirty?'Save or discard changes before editing.':'';
+  const busy=saving||!!webEditor,state=ctx.ui.state(),locked=!!state?.remote_admin&&!state?.remote_file_access;
+  editWeb.disabled=busy||dirty||locked;
+  path.input.disabled=busy||locked;save.disabled=busy||!dirty;discard.disabled=busy||!dirty;
+  reason.textContent=locked?'Remote administration cannot change files on this computer.':dirty?'Save or discard changes before editing.':'';
   refresh.disabled=busy||refreshing;
   form.setAttribute('aria-busy',String(busy));
   existence.textContent=current?.data?.config_exists?'':'The file does not exist yet. Edit file creates it.';

@@ -92,6 +92,9 @@ func (s *Server) adminWithContext(w http.ResponseWriter, r *http.Request, origin
 			return
 		}
 	}
+	if remote != nil {
+		r = r.WithContext(feature.WithRemoteAdministration(r.Context(), s.manager.RemoteFileAccess()))
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/modules/") {
 		rest := strings.TrimPrefix(r.URL.Path, "/api/modules/")
 		id, _, ok := strings.Cut(rest, "/")
@@ -140,7 +143,32 @@ func (s *Server) adminWithContext(w http.ResponseWriter, r *http.Request, origin
 			st.Routes = filtered
 			states[d.ID] = st
 		}
-		reply(w, 200, map[string]any{"revision": rev, "modules": s.manager.Descriptors(), "module_availability": s.manager.Availability(), "states": states, "runtime": s.runtime.current(), "csrf": token, "port": s.port, "remote_admin": remote})
+		reply(w, 200, map[string]any{"revision": rev, "modules": s.manager.Descriptors(), "module_availability": s.manager.Availability(), "remote_file_access": s.manager.RemoteFileAccess(), "states": states, "runtime": s.runtime.current(), "csrf": token, "port": s.port, "remote_admin": remote})
+		return
+	case r.Method == "PUT" && r.URL.Path == "/api/remote-file-access":
+		// Only this computer may widen what remote administration can do.
+		if remote != nil {
+			reply(w, 403, map[string]string{"error": "Change remote file access on this computer.", "code": "forbidden"})
+			return
+		}
+		var body struct {
+			Revision uint64 `json:"revision"`
+			Enabled  *bool  `json:"enabled"`
+		}
+		if e := feature.DecodeBody(w, r, &body); e != nil {
+			apiError(w, e)
+			return
+		}
+		if body.Enabled == nil {
+			apiError(w, errors.New("enabled is required"))
+			return
+		}
+		result, e := s.manager.SetRemoteFileAccess(r.Context(), body.Revision, *body.Enabled)
+		if e != nil {
+			apiError(w, e)
+			return
+		}
+		reply(w, 200, result)
 		return
 	case r.Method == "PUT" && r.URL.Path == "/api/module-availability":
 		var body struct {

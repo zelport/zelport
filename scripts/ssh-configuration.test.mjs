@@ -77,8 +77,8 @@ test('SSH picker help follows the configured file and keeps search, selection an
  fire(nodes().find(n=>n.getAttribute('aria-label')==='Use SSH host office-server'),'click');assert.equal(host.input.value,'office-server');assert.equal(nodes().find(n=>n.dataset.host==='office-server').dataset.selected,'true');picker.dispose();
 });
 
-test('SSH file editor works remotely and refreshes saved hosts after save',async()=>{
- const h=harness();h.render({},1,{remote_admin:{hostname:'remote-test'}});h.view.openSettings();const browser=h.find('Edit file');assert.equal(browser.disabled,false);
+test('SSH file editor works remotely when this computer allows it and refreshes saved hosts after save',async()=>{
+ const h=harness();h.render({},1,{remote_admin:{hostname:'remote-test'},remote_file_access:true});h.view.openSettings();const browser=h.find('Edit file');assert.equal(browser.disabled,false);
  const calls=[];h.ctx.ui.fileEditor=(_ctx,options)=>{calls.push(options);return {dispose(){}};};fire(browser,'click');assert.equal(calls[0].endpoint,'/api/modules/ports_over_ssh/config-file');assert.equal(browser.disabled,true);calls[0].onClose();await calls[0].onSaved();assert.equal(h.requests.at(-1).path,'/api/modules/ports_over_ssh/hosts');assert.ok(h.find('File saved.'));h.view.dispose();
 });
 
@@ -89,4 +89,11 @@ test('SSH file editor works remotely and refreshes saved hosts after save',async
  h.input().value='/tmp/draft';fire(h.input(),'input',{bubbles:true});fire(button,'click');assert.equal(calls,0);
  fire(h.find('Discard'),'click');fire(button,'click');fire(button,'click');assert.equal(calls,1);assert.equal(h.input().disabled,true);
  options.onClose();assert.equal(button.disabled,false);assert.equal(h.input().disabled,false);h.view.dispose();
+});
+
+test('SSH file path and editor stay locked in remote administration by default',()=>{
+ const h=harness();h.render({},1,{remote_admin:{hostname:'remote-test'}});h.view.openSettings();
+ assert.equal(h.find('Edit file').disabled,true);assert.equal(h.input().disabled,true);
+ assert.ok(h.nodes?h.nodes().some(n=>n.textContent==='Remote administration cannot change files on this computer.'):h.all().some(n=>n.textContent==='Remote administration cannot change files on this computer.'));
+ h.render({},2,{remote_admin:{hostname:'remote-test'},remote_file_access:true});assert.equal(h.find('Edit file').disabled,false);assert.equal(h.input().disabled,false);h.view.dispose();
 });

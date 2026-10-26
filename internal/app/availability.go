@@ -98,3 +98,18 @@ func (m *Manager) retainUsedAvailability(c *configuration) {
 		}
 	}
 }
+
+// RemoteFileAccess reports whether remote administration may read or change host
+// file paths and contents. It is off unless enabled on this computer.
+func (m *Manager) RemoteFileAccess() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.config.RemoteFileAccess
+}
+
+func (m *Manager) SetRemoteFileAccess(ctx context.Context, revision uint64, enabled bool) (feature.CommitResult, error) {
+	return m.commit(ctx, revision, nil, false, func(c *configuration) error {
+		c.RemoteFileAccess = enabled
+		return nil
+	})
+}

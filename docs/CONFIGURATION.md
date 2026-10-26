@@ -34,6 +34,13 @@ Explicit choices in `module_availability` survive restarts. Showing a source doe
 not enable its connections, sharing or listeners.
 
 
+## Remote file access
+
+`remote_file_access` is `false` unless set. While false, remote administration
+cannot change the Ports over SSH configuration path or the Remote HTTP CA path and
+cannot read or edit those files; it still manages services and other settings.
+Only local administration can change it, under Settings → Remote administration.
+
 ## Built-in Relay
 
 The default relay port is `8070`. Set `modules.built_in_relay.port` to use a

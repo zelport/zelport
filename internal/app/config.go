@@ -14,6 +14,7 @@ import (
 
 type configuration struct {
 	ModuleAvailability map[string]bool            `json:"module_availability,omitempty"`
+	RemoteFileAccess   bool                       `json:"remote_file_access,omitempty"`
 	Version            int                        `json:"version"`
 	Revision           uint64                     `json:"revision"`
 	Modules            map[string]json.RawMessage `json:"modules"`
