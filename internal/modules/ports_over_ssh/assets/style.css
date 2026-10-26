@@ -3,15 +3,15 @@
 .ssh-host-picker-header{display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:1px solid var(--line)}
 .ssh-host-picker-title{min-width:0;overflow-wrap:anywhere;font-size:var(--text-help);font-weight:600;color:var(--muted)}
 .ssh-host-help .service-target-trigger{color:var(--muted)}
-.ssh-host-refresh{flex:none;margin-left:auto;width:32px;height:32px;min-height:32px;padding:0;background:transparent;border:0;color:var(--muted)}
+.ssh-host-refresh{flex:none;width:32px;height:32px;min-height:32px;padding:0;background:transparent;border:0;color:var(--muted)}
 .ssh-host-option{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:42px;padding:8px 10px}
 .ssh-host-option+.ssh-host-option{border-top:1px solid var(--line)}
 .ssh-host-name{min-width:0;overflow-wrap:anywhere}
 .ssh-host-use{flex:none;min-width:76px;height:32px;min-height:32px;padding:0 10px;font-size:var(--text-help)}
 .ssh-host-option[data-selected="true"]{background:var(--accent-soft)}
 .ssh-host-use[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
-.ssh-host-picker-filter{padding:8px 10px;border-bottom:1px solid var(--line)}
-.ssh-host-picker-filter label{margin:0;font-size:var(--text-help)}
+.ssh-host-picker-header .ssh-host-picker-filter{padding:0;border:0;margin-left:4px}
+
 .ssh-host-picker-state{padding:12px;color:var(--muted);font-size:var(--text-help)}
 
 @media(max-width:720px),(pointer:coarse){.ssh-host-refresh,.ssh-host-help .service-target-trigger{width:44px;height:44px;min-height:44px;flex:none}.ssh-host-use{height:44px;min-height:44px}.ssh-host-option{min-height:48px}}

@@ -5,8 +5,9 @@ export function sshHostPicker(ctx,host){
  const menu=el('section','ssh-host-picker-menu');menu.setAttribute('role','list');menu.setAttribute('aria-label','Configured SSH hosts');host.wrap.append(menu);
  const heading=el('div','ssh-host-picker-header'),title=el('strong','ssh-host-picker-title','Configured SSH hosts'),info=serviceTargetIndicator(sshHostHelp(ctx.ui.state?.().states?.[ctx.moduleId]?.data?.effective_config_path||'~/.ssh/config'),'SSH authentication'),refresh=adornmentButton('Refresh SSH hosts','rotate',()=>load());
  info.root.className+=' ssh-host-help';info.root.children[1].className+=' ssh-host-help-tooltip';info.root.children[0].setAttribute('aria-label','SSH authentication requirements');
- refresh.className+=' ssh-host-refresh';heading.append(title,info.root,refresh);
- const search=field('Search SSH hosts','','search');search.input.className+=' ssh-host-picker-search';search.input.placeholder='Host name';search.wrap.className+=' ssh-host-picker-filter';menu.append(heading,search.wrap);
+ refresh.className+=' ssh-host-refresh';
+ const search=field('Search SSH hosts','','search');search.input.className+=' ssh-host-picker-search';search.input.placeholder='Host name';search.wrap.className+=' ssh-host-picker-filter';search.wrap.children[0].className='visually-hidden';
+ heading.className+=' picker-toolbar';heading.append(title,info.root,search.wrap,refresh);menu.append(heading);
  let disposed=false,loading=false,request=null,hosts=[],renderError='',options=[];
  function clearRows(){for(const child of [...menu.children])if(child!==heading&&child!==search.wrap)child.remove();options=[];}
  function updateSelection(){for(const {row,use,alias} of options){const selected=host.input.value.trim()===alias;row.dataset.selected=String(selected);use.textContent=selected?'Selected':'Use';use.setAttribute('aria-pressed',String(selected));}}

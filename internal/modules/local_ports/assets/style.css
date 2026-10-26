@@ -11,8 +11,8 @@
 .listener-use-port{flex:none;min-width:76px;height:32px;min-height:32px;padding:0 10px;font-size:var(--text-help)}
 .listener-option[data-selected="true"]{background:var(--accent-soft)}
 .listener-use-port[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
-.listener-picker-filter{padding:8px 10px;border-bottom:1px solid var(--line)}
-.listener-picker-filter label{margin:0;font-size:var(--text-help)}
+.listener-picker-header .listener-picker-filter{padding:0;border:0}
+
 .listener-picker-state{display:flex;min-height:64px;align-items:center;justify-content:center;padding:12px;color:var(--muted);font-size:var(--text-help);text-align:center}
 .listener-picker-state-warning{color:var(--warning)}
 @media(min-width:721px){#panel-local .service-list-header,#panel-local .service{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 130px 64px}}

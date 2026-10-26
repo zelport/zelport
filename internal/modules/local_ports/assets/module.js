@@ -33,8 +33,8 @@ export function listenerPicker(ctx,port){
  let configuration=ctx.ui.state?.()?.states?.[ctx.moduleId]?.data||{},configurationKey=discoverySignature(configuration),enabled=configuration.discovery_enabled!==false;
  const heading=el('div','listener-picker-header'),title=el('strong',null,'Detected listening ports');
  const refresh=adornmentButton('Refresh listening ports','rotate',()=>refreshInventory());refresh.className+=' listener-picker-refresh';
- heading.append(title,refresh);
- const search=field('Search listening ports','','search');search.input.className+=' listener-picker-search';search.input.placeholder='Port or process name';search.wrap.className+=' listener-picker-filter';menu.append(heading,search.wrap);
+ const search=field('Search listening ports','','search');search.input.className+=' listener-picker-search';search.input.placeholder='Port or process';search.wrap.className+=' listener-picker-filter';search.wrap.children[0].className='visually-hidden';
+ heading.className+=' picker-toolbar';heading.append(title,search.wrap,refresh);menu.append(heading);
  let options=[];
 
  function clearRows(){for(const child of [...menu.children])if(child!==heading&&child!==search.wrap)child.remove();options=[];}

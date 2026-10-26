@@ -9,6 +9,21 @@ export {refreshControl as refreshButton};
 // Service forms open in one drawer. Switching the source swaps the drawer content in
 // place, so its size, position and actions stay put; each content owns its cleanup.
 const drawerContent=new WeakMap();
+// Every close path slides the drawer out first. Escape and a click on the backdrop
+// close it unless a save is in flight.
+function drawerBehavior(d){
+ const nativeClose=d.close.bind(d),busy=()=>!!d.querySelector('form[aria-busy="true"]');
+ d.close=value=>{
+  if(!d.open||d.dataset.state==='closing')return;
+  if(!globalThis.matchMedia?.('(prefers-reduced-motion: no-preference)').matches){nativeClose(value);return;}
+  d.dataset.state='closing';setTimeout(()=>{delete d.dataset.state;nativeClose(value);},180);
+ };
+ d.addEventListener('cancel',event=>{event.preventDefault();if(!busy())d.close();});
+ const outside=event=>{const box=d.getBoundingClientRect();return event.target===d&&(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom);};
+ let pressedOutside=false;
+ d.addEventListener('pointerdown',event=>{pressedOutside=outside(event);});
+ d.addEventListener('click',event=>{if(pressedOutside&&outside(event)&&!busy())d.close();pressedOutside=false;});
+}
 export function serviceModule(ctx,definition){let current={routes:[],data:{}},dialog=null;const getState=()=>ctx.ui.state();const base=`/api/modules/${ctx.moduleId}`;
  let refreshing=false,refreshButton=null;const menus=[];
  const disposeMenus=()=>{for(const menu of menus)menu.dispose();menus.length=0;};
@@ -53,7 +68,6 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
   body.append(error,reload);form.append(actions);
   const feedback=formFeedback(form,error,[{input,matches:/domain/i}]);
   input.addEventListener('invalid',event=>{event.preventDefault();feedback.show(input.validity.valueMissing?'Enter an address.':'Use letters, numbers, hyphens and dots.',input);});
-  d.addEventListener('cancel',event=>{if(save.disabled)event.preventDefault();});
   form.addEventListener('submit',async event=>{
    event.preventDefault();if(save.disabled)return;
    const controls=[...d.querySelectorAll('button,input,select,textarea')],disabled=controls.map(control=>!!control.disabled);
@@ -62,7 +76,7 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
    try{
     const settings=fields.read();revision=routeEditRevision(route,getState());
     await ctx.mutate(()=>ctx.api('/api/routes',{method:'POST',body:JSON.stringify({revision,route:{id:route?.id||'',module:ctx.moduleId,domain:input.value.toLowerCase()+'.localhost',settings}})}),{reportError:false});
-    if(!ctx.signal?.aborted&&d.open){d.close();options.onSaved?.();}
+    if(!ctx.signal?.aborted&&d.open&&d.dataset.state!=='closing'){d.close();options.onSaved?.();}
    }catch(cause){
     if(cause.status===409){try{const latestRevision=routeEditRevision(route,getState());cause=Error(latestRevision!==revision?'Changed elsewhere. Your draft is kept. Save again or discard.':'This address is already in use.');}catch(conflict){cause=conflict;}}
     failure=cause.message;changedRoute=cause.currentRoute||null;reload.hidden=!changedRoute;
@@ -75,7 +89,7 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
    drawerContent.get(d)?.();drawerContent.set(d,release);d.replaceChildren(form);
    form.querySelector('.service-source-radio:checked')?.focus();return d;
   }
-  drawerContent.set(d,release);d.append(form);
+  drawerContent.set(d,release);d.append(form);drawerBehavior(d);
   return showDialog(d,{signal:ctx.signal,initialFocus:input,onClose(){drawerContent.get(d)?.();drawerContent.delete(d);if(options.trigger?.isConnected)options.trigger.focus();}});
  }
  function suggest(value,numbered=false){let base=value.toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'')||'service';base=base.slice(0,50);const used=new Set(Object.values(getState().states).flatMap(s=>(s.routes||[]).map(r=>r.domain)));let n=numbered?1:2,name=numbered?`${base}-${n++}`:base;while(used.has(name+'.localhost'))name=`${base}-${n++}`;return name;}

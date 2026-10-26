@@ -109,3 +109,18 @@ test('prefilled new import uses the module creation title and action',()=>{
  const dialog=source.edit({id:'',domain:'sample.localhost',editor:{}}),form=dialog.children[0];
  assert.equal(form.children[0].children[0].textContent,'Import service');assert.equal(form.children.at(-1).children.at(-1).textContent,'Import service');source.dispose();
 });
+
+test('Escape and a backdrop click close the drawer; a pending save keeps it open',()=>{
+ setup();const state={port:7070,revision:1,states:{local_ports:{routes:[]}}};
+ const source=ui.serviceModule({moduleId:'local_ports',signal:new AbortController().signal,ui:{...ui,state:()=>state},api:()=>new Promise(()=>{}),mutate:work=>work()},{fields:()=>({element:ui.el('div'),read:()=>({aux_port:3000})})});
+ const outside={target:null,clientX:10,clientY:10};
+ let d=source.edit();d.getBoundingClientRect=()=>({left:500,right:1000,top:0,bottom:800});outside.target=d;
+ let prevented=false;d.events.cancel({preventDefault(){prevented=true;}});assert.equal(prevented,true);assert.equal(d.open,false,'Escape closes through the drawer close path');
+ d=source.edit();d.getBoundingClientRect=()=>({left:500,right:1000,top:0,bottom:800});outside.target=d;
+ d.events.pointerdown({...outside,target:d});d.events.click({...outside,target:d,clientX:700});assert.equal(d.open,true,'a click inside the drawer keeps it open');
+ d.events.pointerdown({...outside,target:d});d.events.click({...outside,target:d});assert.equal(d.open,false,'a backdrop click closes it');
+ d=source.edit();d.getBoundingClientRect=()=>({left:500,right:1000,top:0,bottom:800});
+ const form=d.children[0];form.events.submit({preventDefault(){}});d.querySelector=selector=>selector.includes('aria-busy')&&form.attrs['aria-busy']==='true'?form:null;
+ d.events.pointerdown({...outside,target:d});d.events.click({...outside,target:d});d.events.cancel({preventDefault(){}});assert.equal(d.open,true,'a pending save cannot be dismissed');
+ source.dispose();
+});
