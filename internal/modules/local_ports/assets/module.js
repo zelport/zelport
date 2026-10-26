@@ -128,8 +128,9 @@ export function mount(ctx){
   },
   emptyState:{kind:'not-configured',message:'No local services yet. Add a domain and the port where your service listens on this computer.',actionLabel:'+ Add service'},
   fields(s){
-   const element=el('div'),port=adornedField('Service port',String(s.aux_port||3000));port.input.required=true;port.input.autocomplete='off';port.input.spellcheck=false;port.input.placeholder='Port or process name';
-   const picker=listenerPicker(ctx,port);pickers.add(picker);element.append(port.wrap,el('p','small muted','The port on this computer.'));
+   const element=el('div','service-fields-fill'),port=adornedField('Service port',String(s.aux_port||3000));port.input.required=true;port.input.autocomplete='off';port.input.spellcheck=false;port.input.placeholder='Type a port or search processes';
+   port.wrap.className+=' form-field-fill';port.control.prepend(ctx.ui.icon('search',{className:'input-adornment-icon'}));
+   const picker=listenerPicker(ctx,port);pickers.add(picker);element.append(port.wrap);
    return {element,read(){const value=port.input.value.trim(),number=Number(value);if(!/^\d+$/.test(value)||number<1||number>65535){const error=Error('Enter a port number or pick one below.');error.input=port.input;throw error;}return {aux_port:number};},dispose(){pickers.delete(picker);picker.dispose();}};
   }
  });

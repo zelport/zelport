@@ -100,15 +100,15 @@ confirmations such as Remove service. Verify the drawer at 320 and 390 pixels.
 The drawer slides in from the right and slides out on every close path (220ms
 in, 180ms out, no motion with reduced motion preference).
 
-Address shows the `.localhost:<port>` suffix directly after the typed name, so
-the field reads as one hostname; clicking anywhere in the field places the caret
-at the end of the name.
+Address keeps the `.localhost:<port>` suffix fixed at the right edge and aligns
+the typed name to the right against it, so the field reads as one hostname.
 
 The Local Ports service port and the SSH host field are also the filters for the
 detected ports and configured hosts listed directly below them. Typing digits, a
 process name or a host name narrows the list (case-insensitive); the initial value
-does not filter. Use fills the field and shows the whole list again. Refresh (and
-the SSH help) sit at the end of the field. A value that is not a port number is
+does not filter. Use fills the field and shows the whole list again. A search icon
+starts these fields; refresh (and the SSH help) sit at their end. The Local Ports
+list grows to the drawer's remaining height (at least 180px). A value that is not a port number is
 rejected with "Enter a port number or pick one below." beside the field. Local
 Ports keeps manual entry available when listener discovery fails. Ports
 over SSH accepts a valid configuration without requiring a successful connection.

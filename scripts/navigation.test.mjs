@@ -82,5 +82,7 @@ test('layout tokens define one rhythm for header, page titles, rows and surfaces
  for(const token of ['--header-height:72px','--page-heading-height:104px','--page-title:28px','--row-height:56px','--head-row-height:40px','--gap:24px','--radius-panel:12px','--radius-control:8px'])assert.ok(css.includes(token),token);
  assert.match(css,/\.dashboard-table\{table-layout:fixed/);assert.match(css,/\.dashboard-tabletd\{height:var\(--row-height\)[^}]*white-space:nowrap/);
  assert.doesNotMatch(css,/\.source-card|\.module-view-nav|\.module-breadcrumb/,'retired page styles are removed');
+ assert.match(css,/\.address-adornment>input\{text-align:right/,'the address name is right-aligned against its suffix');
+ assert.match(css,/\.form-field-fill>\.listener-picker-menu\{flex:10180px/,'the port list fills the drawer height');
  assert.match(css,/dialog\.service-drawer\{position:fixed;inset:000auto;margin:0;width:min\(520px,100vw\)[^}]*height:100dvh/,'service forms are a full-height drawer');
 });

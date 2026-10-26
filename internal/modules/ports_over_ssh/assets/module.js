@@ -111,7 +111,7 @@ export function mount(ctx){
   emptyState:{kind:'not-configured',message:'No SSH services yet. Add an SSH host and the port where your service listens on that server.',actionLabel:'+ Add service'},
   fields(s){
    const element=el('div'),host=field('SSH host',s.ssh_host||''),port=field('Service port on server',s.ssh_port||3000,'number');
-   host.input.required=true;host.input.placeholder='office-server';port.input.min=1;port.input.max=65535;port.input.required=true;
+   host.input.required=true;host.input.placeholder='Type a host or search the list';host.control.prepend(ctx.ui.icon('search',{className:'input-adornment-icon'}));port.input.min=1;port.input.max=65535;port.input.required=true;
    const picker=sshHostPicker(ctx,host);
    element.append(host.wrap,port.wrap,el('p','small muted','The port on the server’s localhost.'));
    return {element,read:()=>({ssh_host:host.input.value.trim(),ssh_port:Number(port.input.value)}),dispose:picker.dispose};

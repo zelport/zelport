@@ -442,5 +442,13 @@ dialog.service-drawer[data-state=closing]{pointer-events:none}
 .service-source-text .small{font-size:var(--text-label);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:360px){.service-source-icon{display:none}}
 .address-adornment{gap:0;cursor:text}
-.address-adornment>input{flex:0 1 auto;width:auto;min-width:8px;padding-right:0}
-.address-adornment>.input-adornment-text{margin-right:auto;font-size:inherit}
+.address-adornment>input{text-align:right;padding-right:0}
+.address-adornment>.input-adornment-text{font-size:inherit}
+.input-adornment-icon{flex:none;width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* A module can let one field and its list fill the drawer height. */
+.service-edit-body{display:flex;flex-direction:column}
+.service-edit-body>*{flex:none}
+.service-edit-body>.form-field,.service-edit-body>div>.form-field:first-child{margin-top:0}
+.service-edit-body>.service-fields-fill{flex:1 0 auto;display:flex;flex-direction:column}
+.service-fields-fill>.form-field-fill{flex:1 0 auto;display:flex;flex-direction:column}
+.form-field-fill>.listener-picker-menu{flex:1 0 180px;max-height:none;height:0}
