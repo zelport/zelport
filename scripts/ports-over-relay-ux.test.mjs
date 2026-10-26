@@ -267,7 +267,9 @@ test('Add service lists services shared by other devices and imports the chosen 
  assert.deepEqual(choices.map(c=>[c.dataset.key,c.disabled]),[['device-b/s1',false],['device-b/s2',false],['device-c/s3',true]],'offline devices are listed but not selectable');
  assert.deepEqual(nodes.filter(n=>n.className==='choice-group').map(g=>g.children[0].textContent),['build-server','laptop-old'],'services are grouped by device');
  const address=nodes.find(n=>n.tag==='input'&&n.id==='domain-ports_over_relay');
+ const submit=nodes.find(n=>n.tag==='button'&&n.type==='submit');assert.equal(submit.disabled,true,'Import waits until a service is chosen');
  choices[1].events.click({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));assert.equal(address.value,'docs','picking a service suggests its address');
+ assert.equal(submit.disabled,false);
  assert.equal(choices[1].getAttribute('aria-pressed'),'true');
  const form=nodes.find(n=>n.tag==='form');await form.events.submit({preventDefault(){}});
  const saved=h.requests.at(-1);assert.equal(saved.route.module,'ports_over_relay');assert.equal(saved.route.domain,'docs.localhost');
@@ -282,4 +284,5 @@ test('Add service explains an unconfigured relay inside the list and links to it
  assert.ok(nodes.some(n=>n.textContent==='The relay is not set up.'));
  assert.ok(nodes.some(n=>n.tag==='a'&&n.textContent==='Relay settings'&&n.href==='#relay'));
  assert.equal(nodes.find(n=>n.className==='service-options').hidden,true,'options wait until there is something to import');
+ assert.equal(nodes.find(n=>n.tag==='button'&&n.type==='submit').disabled,true,'there is nothing to import');
 });

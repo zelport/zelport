@@ -122,7 +122,8 @@ Every source uses one form grammar below the tiles, with 24px between groups:
 
 The Port and SSH host fields start with a search icon: typing digits, a process
 or host name filters the list (case-insensitive); the initial value does not.
-Choosing a row fills the field and shows the whole list again. Refresh sits at
+Choosing a row fills the field and shows the whole list again. Import service stays disabled until a shared service
+is chosen, so an empty or unconfigured relay never offers it (`setReady`). Refresh sits at
 the end of the field. A port that is not a number is rejected with "Enter a port
 number or pick one below." beside the field. Local Ports keeps manual entry
 available when listener discovery fails. Ports

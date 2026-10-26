@@ -63,9 +63,11 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
    body.append(choices);
   }
   body.append(domainField);
-  const fields=definition.fields(route?.editor||{},group,current,{address:input,isNew:!route?.id});fields.element.className=`service-fields${fields.element.className?` ${fields.element.className}`:''}`;body.append(fields.element);
+  // A module may hold the submit action until its form is complete (setReady).
+  let notReady=false,saveControl=null;const setReady=ready=>{notReady=!ready;if(saveControl&&form.getAttribute('aria-busy')!=='true')saveControl.disabled=notReady;};
+  const fields=definition.fields(route?.editor||{},group,current,{address:input,isNew:!route?.id,setReady});fields.element.className=`service-fields${fields.element.className?` ${fields.element.className}`:''}`;body.append(fields.element);
   let fieldsDisposed=false;const disposeFields=()=>{if(fieldsDisposed)return;fieldsDisposed=true;fields.dispose?.();};
-  const {error,actions,save}=formActions(d,{submit:route?.id?'Save':definition.createSubmit||'Add service'});
+  const {error,actions,save}=formActions(d,{submit:route?.id?'Save':definition.createSubmit||'Add service'});saveControl=save;save.disabled=notReady;
   let changedRoute=null;
   const reload=button('Reload saved values',()=>{if(changedRoute)edit(changedRoute,group,{...options,container:d});});reload.hidden=true;
   body.append(error,reload);form.append(actions);
@@ -84,7 +86,7 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
     if(cause.status===409){try{const latestRevision=routeEditRevision(route,getState());cause=Error(latestRevision!==revision?'Changed elsewhere. Your draft is kept. Save again or discard.':'This address is already in use.');}catch(conflict){cause=conflict;}}
     failure=cause.message;failureInput=cause.input;changedRoute=cause.currentRoute||null;reload.hidden=!changedRoute;
    }finally{
-    controls.forEach((control,index)=>{control.disabled=disabled[index];});save.disabled=false;form.setAttribute('aria-busy','false');if(failure&&d.open)feedback.show(failure,failureInput);
+    controls.forEach((control,index)=>{control.disabled=disabled[index];});save.disabled=notReady;form.setAttribute('aria-busy','false');if(failure&&d.open)feedback.show(failure,failureInput);
    }
   });
   const release=()=>{disposeFields();if(dialog===d)dialog=null;};

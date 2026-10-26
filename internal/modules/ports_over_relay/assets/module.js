@@ -46,8 +46,8 @@ export function mount(ctx) {
   createSubmit:'Import service',
   targetInfo:route=>`Provider device: ${route.editor?.device_id||route.summary.target}\nService ID: ${route.editor?.service_id||''}`,
   rowIndicators:route=>route.summary.detail?[ctx.ui.warningIndicator(route.summary.detail,'Service unavailable').root]:[],
-  emptyState:{kind:'no-results',message:'No services imported yet.'},fields(settings,group,state,{address}={}){
-  if(!settings.device_id)return sharedServicePicker(address);
+  emptyState:{kind:'no-results',message:'No services imported yet.'},fields(settings,group,state,{address,setReady}={}){
+  if(!settings.device_id)return sharedServicePicker(address,setReady);
   const {choiceList,choiceRow,optionSwitch,serviceOptions}=ctx.ui,element=el('div'),list=choiceList('Shared service'),options=serviceOptions(),origin=optionSwitch('Use target origin',settings.rewrite_origin,originHelp);
   const record=current?.data?.status?.records?.find(r=>r.device_id===settings.device_id),service=record?.services?.find(s=>s.id===settings.service_id);
   const choice=choiceRow({primary:service?.domain||settings.service_id||'',secondary:providerName({editor:settings,summary:{target:settings.device_id}}),onSelect(){},disabled:true});choice.select(true);list.append(choice.row);
@@ -63,21 +63,21 @@ export function mount(ctx) {
   const base=service.domain.replace(/\.localhost$/,'');let domain=service.domain,n=2;
   while(used.has(domain))domain=`${base}-${n++}.localhost`;return domain;
  }
- function sharedServicePicker(address){
+ function sharedServicePicker(address,setReady=()=>{}){
   const {choiceGroup,choiceList,choiceRow,choiceState,optionSwitch,serviceOptions}=ctx.ui;
   const element=el('div','service-fields-fill'),list=choiceList('Shared services'),options=serviceOptions(),origin=optionSwitch('Use target origin',false,originHelp);
   options.append(origin.row);element.append(fieldLabel('Shared service'),list,options);
   let selected=null,drawn='',suggested=address?.value||'';const rows=[];
   const tab=ctx.ui.state().modules?.find(m=>m.id===ctx.moduleId)?.tab_id;
   const settingsLink=()=>{if(!tab)return undefined;const link=el('a','choice-state-link','Relay settings');link.href=`#${tab}`;return link;};
-  function pick(entry){selected=entry;for(const row of rows)row.select(row.key===entry.key);
+  function pick(entry){selected=entry;setReady(true);for(const row of rows)row.select(row.key===entry.key);
    if(address&&address.value===suggested){suggested=availableDomain(entry.service).replace(/\.localhost$/,'');address.value=suggested;address.dispatchEvent(new Event('input',{bubbles:true}));}}
   function draw(){
    const d=current?.data||{},status=d.status||{},connected=!!status.connected,providers=(status.records||[]).filter(r=>r.device_id!==d.device_id&&r.publish);
    const peers=(d.administration_peers||[]).filter(p=>p.device_id!==d.device_id&&!providers.some(r=>r.device_id===p.device_id));
    const configured=!!d.relay_url?.trim()&&d.enabled,key=JSON.stringify([configured,connected,providers.map(r=>[r.device_id,r.hostname,r.port,r.expires_at*1000>Date.now(),r.services.filter(s=>s.kind==='application').map(s=>[s.id,s.domain])]),peers.map(p=>[p.device_id,p.hostname,p.available])]);
    if(key===drawn)return;drawn=key;const focused=list.contains(document.activeElement)?document.activeElement.dataset?.key:null;
-   list.replaceChildren();rows.length=0;
+   list.replaceChildren();rows.length=0;let keepSelection=false;
    const badge=online=>{const b=statusBadge(online?'Online':'Offline');b.dataset.tone=online?'ok':'neutral';return b;};
    const names=[...providers,...peers].map(device=>device.hostname),deviceName=device=>names.filter(name=>name===device.hostname).length>1?`${device.hostname} · ${device.device_id.slice(0,8)}`:device.hostname;
    for(const provider of [...providers].sort((a,b)=>a.hostname.localeCompare(b.hostname))){
@@ -87,6 +87,7 @@ export function mount(ctx) {
     for(const service of services){
      const key=`${provider.device_id}/${service.id}`,entry={key,provider,service};
      const choice=choiceRow({primary:provider.port?`${service.domain}:${provider.port}`:service.domain,label:`Import ${service.domain} from ${deviceName(provider)}`,onSelect:()=>pick(entry),disabled:!online});
+     if(selected?.key===key&&online){keepSelection=true;selected=entry;}
      choice.row.className+=' relay-shared-option';choice.main.dataset.key=key;choice.select(selected?.key===key);list.append(choice.row);rows.push({...choice,key});
     }
    }
@@ -94,7 +95,7 @@ export function mount(ctx) {
    const listed=providers.length+peers.length>0;
    if(!listed)list.append(choiceState(!configured?'The relay is not set up.':!connected?'Not connected to the relay.':'No other devices yet.',{action:settingsLink()}));
    else if(!connected)list.prepend(choiceState('Not connected to the relay.',{action:settingsLink()}));
-   options.hidden=!listed;
+   if(!keepSelection)selected=null;setReady(!!selected);options.hidden=!listed;
    if(focused)[...list.querySelectorAll('button')].find(button=>button.dataset?.key===focused)?.focus();
   }
   draw();const picker={draw};pickers.add(picker);
