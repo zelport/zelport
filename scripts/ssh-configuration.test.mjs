@@ -70,10 +70,10 @@ test('Refresh hosts reads the configured source after editing and reports the re
  const h=harness({ssh_config_path:'/tmp/config',effective_config_path:'/tmp/config'});h.view.openSettings();fire(h.find('Refresh hosts'),'click');await tick();assert.equal(h.requests[0].path,'/api/modules/ports_over_ssh/hosts');assert.equal(h.requests[0].method,'GET');assert.ok(h.nodes().some(n=>n.getAttribute('role')==='status'&&n.textContent==='1 SSH host loaded.'));
 });
 
-test('SSH picker help follows the configured file and keeps search, selection and Enter guard',async()=>{
+test('SSH picker help follows the configured file; the host field filters and Use selects',async()=>{
  const h=harness();h.ctx.api=async()=>({hosts:['office-server','other-host'],config_path:'/tmp/team ssh/config'});const host=ui.field('SSH host','other-host'),picker=sshHostPicker(h.ctx,host);await tick();
- const nodes=()=>tree(picker.menu);assert.ok(nodes().some(n=>/Source: \/tmp\/team ssh\/config/.test(n.textContent)));assert.equal(nodes().some(n=>/Source: ~\//.test(n.textContent)),false);
- const search=nodes().find(n=>n.tag==='input');search.value='office';fire(search,'input');assert.deepEqual(nodes().filter(n=>n.dataset.host).map(n=>n.dataset.host),['office-server']);let prevented=false;fire(search,'keydown',{key:'Enter',preventDefault(){prevented=true;}});assert.equal(prevented,true);
+ const nodes=()=>tree(host.wrap);assert.ok(nodes().some(n=>/Source: \/tmp\/team ssh\/config/.test(n.textContent)));assert.equal(nodes().some(n=>/Source: ~\//.test(n.textContent)),false);
+ host.input.value='office';fire(host.input,'input');assert.deepEqual(nodes().filter(n=>n.dataset.host).map(n=>n.dataset.host),['office-server']);
  fire(nodes().find(n=>n.getAttribute('aria-label')==='Use SSH host office-server'),'click');assert.equal(host.input.value,'office-server');assert.equal(nodes().find(n=>n.dataset.host==='office-server').dataset.selected,'true');picker.dispose();
 });
 

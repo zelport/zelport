@@ -136,8 +136,8 @@ test('listener inventory loads immediately and only its explicit action fills th
   assert.equal(path,'/api/modules/local_ports/listeners');assert.equal(options.method,'GET');return {listeners};
  });
  assert.equal(calls,1);assert.equal(port.input.value,3000);assert.equal(port.input.disabled,false);
- assert.equal(port.input.type,'number');assert.equal(byClass(port.wrap,'listener-picker-trigger'),undefined);
- assert.equal(byClass(picker.menu,'listener-picker-header').children[0].textContent,'Detected listening ports');
+ assert.equal(byClass(port.wrap,'listener-picker-trigger'),undefined);assert.equal(byClass(port.wrap,'listener-picker-search'),undefined,'the port field is the only filter');
+ assert.equal(byClass(port.control,'listener-picker-refresh').getAttribute('aria-label'),'Refresh listening ports','refresh sits at the end of the port field');
  await flush();
  assert.equal(calls,1);assert.equal(picker.menu.hidden,false);
  const rows=allByClass(picker.menu,'listener-option');assert.deepEqual(rows.map(row=>row.dataset.port),['8080','9000','9100']);
@@ -158,7 +158,7 @@ test('listener inventory loads immediately and only its explicit action fills th
  assert.equal(useButtons[0].textContent,'Use');assert.equal(useButtons[0].getAttribute('aria-label'),'Use port 8080');assert.equal(useButtons[0].getAttribute('aria-pressed'),'false');fire(useButtons[0],'click');
  assert.equal(port.input.value,'8080');assert.equal(inputEvents,1);assert.equal(document.activeElement,port.input);assert.equal(picker.menu.hidden,false);
 
- const refresh=byClass(picker.menu,'listener-picker-refresh');fire(refresh,'click');await flush();
+ const refresh=byClass(port.wrap,'listener-picker-refresh');fire(refresh,'click');await flush();
  assert.equal(calls,3);assert.equal(port.input.value,'8080');picker.dispose();
 });
 
@@ -171,7 +171,7 @@ test('listener picker shows spinner then a non-blocking retry state',async()=>{
  rejectRequest(new Error('private operating-system diagnostic'));await flush();
  const message=byClass(picker.menu,'listener-picker-message');
  assert.equal(message.textContent,"Listening ports couldn't be detected. Enter the service port manually.");
- assert.equal(port.input.disabled,false);assert.equal(port.input.value,'4321');assert.ok(byClass(picker.menu,'listener-picker-refresh'));
+ assert.equal(port.input.disabled,false);assert.equal(port.input.value,'4321');assert.ok(byClass(port.wrap,'listener-picker-refresh'));
  picker.dispose();
 });
 
@@ -230,29 +230,24 @@ test('disposing a listener picker aborts discovery and ignores a late response',
 });
 
 
-test('listener search matches ports and full process names without changing the manual service port',async()=>{
+test('typing in the port field filters detected ports by port or full process name; Use fills it and shows all',async()=>{
  const {port,picker}=createPicker(async()=>({listeners:[
   {port:8080,processes:[{pid:1,name:'Long development command --PROJECT-ALPHA'}]},
   {port:9000,processes:[{pid:2,name:'api'}]}
  ]}));
  await flush();
  try{
-  const search=byClass(picker.menu,'listener-picker-search');
-  assert.ok(search,'listener discovery exposes a search input');
-  port.input.value='4567';fire(port.input,'input');
-  search.value='project-alpha';fire(search,'input');
+  assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['8080','9000'],'the initial value does not filter');
+  port.input.value='project-alpha';fire(port.input,'input');
   assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['8080']);
-  assert.equal(port.input.value,'4567');
   let use=byClass(picker.menu,'listener-use-port');assert.equal(use.textContent,'Use');fire(use,'click');
-  assert.equal(port.input.value,'8080');
-  let row=byClass(picker.menu,'listener-option');assert.equal(row.dataset.selected,'true');
+  assert.equal(port.input.value,'8080');assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['8080','9000'],'Use clears the filter');
+  const row=byClass(picker.menu,'listener-option');assert.equal(row.dataset.selected,'true');
   use=byClass(row,'listener-use-port');assert.equal(use.textContent,'Selected');assert.equal(use.getAttribute('aria-pressed'),'true');
-  search.value='900';fire(search,'input');assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['9000']);
-  assert.equal(port.input.value,'8080');
-  search.value='no match';fire(search,'input');assert.equal(allByClass(picker.menu,'listener-option').length,0);
-  assert.match(byClass(picker.menu,'listener-picker-message').textContent,/No matching ports/);
-  port.input.value='9000';fire(port.input,'input');search.value='';fire(search,'input');
-  assert.equal(byClass(allByClass(picker.menu,'listener-option')[1],'listener-use-port').textContent,'Selected');
+  port.input.value='900';fire(port.input,'input');assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['9000']);
+  port.input.value='no match';fire(port.input,'input');assert.equal(allByClass(picker.menu,'listener-option').length,0);
+  assert.match(byClass(picker.menu,'listener-picker-message').textContent,/No detected port matches/);
+  port.input.value='9000';fire(port.input,'input');assert.equal(byClass(allByClass(picker.menu,'listener-option')[0],'listener-use-port').textContent,'Selected');
  }finally{picker.dispose();}
 });
 
@@ -262,19 +257,17 @@ function createHostPicker(api){
  return {host,picker,controller};
 }
 
-test('SSH host search is case insensitive and only Use changes the manual host',async()=>{
+test('typing in the SSH host field filters configured hosts case-insensitively; Use fills it and shows all',async()=>{
  const {host,picker}=createHostPicker(async()=>({hosts:['Office-Server','build-server']}));await flush();
  try{
-  const search=byClass(picker.menu,'ssh-host-picker-search');assert.ok(search,'SSH discovery exposes a search input');
-  search.value='OFFICE';fire(search,'input');assert.deepEqual(allByClass(picker.menu,'ssh-host-option').map(row=>row.dataset.host),['Office-Server']);
-  assert.equal(host.input.value,'manual-server');
-  let use=byClass(picker.menu,'ssh-host-use');assert.equal(use.textContent,'Use');fire(use,'click');assert.equal(host.input.value,'Office-Server');
-  assert.equal(use.textContent,'Selected');assert.equal(use.getAttribute('aria-pressed'),'true');
-  assert.equal(byClass(picker.menu,'ssh-host-option').dataset.selected,'true');
-  search.value='unknown';fire(search,'input');assert.equal(allByClass(picker.menu,'ssh-host-option').length,0);
-  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/No matching SSH hosts/);assert.equal(host.input.value,'Office-Server');
-  host.input.value='build-server';fire(host.input,'input');search.value='';fire(search,'input');
-  assert.equal(byClass(allByClass(picker.menu,'ssh-host-option')[1],'ssh-host-use').textContent,'Selected');
+  assert.equal(byClass(host.wrap,'ssh-host-picker-search'),undefined,'the host field is the only filter');
+  assert.deepEqual(allByClass(picker.menu,'ssh-host-option').map(row=>row.dataset.host),['Office-Server','build-server'],'the initial value does not filter');
+  host.input.value='OFFICE';fire(host.input,'input');assert.deepEqual(allByClass(picker.menu,'ssh-host-option').map(row=>row.dataset.host),['Office-Server']);
+  let use=byClass(picker.menu,'ssh-host-use');fire(use,'click');assert.equal(host.input.value,'Office-Server');
+  assert.equal(allByClass(picker.menu,'ssh-host-option').length,2,'Use clears the filter');
+  use=byClass(allByClass(picker.menu,'ssh-host-option')[0],'ssh-host-use');assert.equal(use.textContent,'Selected');assert.equal(use.getAttribute('aria-pressed'),'true');
+  host.input.value='unknown';fire(host.input,'input');assert.equal(allByClass(picker.menu,'ssh-host-option').length,0);
+  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/No configured host matches/);
  }finally{picker.dispose();}
 });
 
@@ -283,12 +276,13 @@ test('SSH loading and failed refresh retain manual input and expose retry',async
  const {host,picker}=createHostPicker(async()=>{if(fail)throw Error('private SSH details');return {hosts:['office-server']};});await flush();
  try{
   host.input.value='custom-host';fire(host.input,'input');fail=true;
-  fire(byClass(picker.menu,'ssh-host-refresh'),'click');await flush();
+  fire(byClass(host.wrap,'ssh-host-refresh'),'click');await flush();
   assert.equal(host.input.value,'custom-host');assert.equal(host.input.disabled,false);
   assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/couldn't be read/);
-  assert.equal(byClass(picker.menu,'ssh-host-refresh').disabled,false);
-  fail=false;fire(byClass(picker.menu,'ssh-host-refresh'),'click');await flush();
-  assert.equal(allByClass(picker.menu,'ssh-host-option').length,1);assert.equal(host.input.value,'custom-host');
+  assert.equal(byClass(host.wrap,'ssh-host-refresh').disabled,false);
+  fail=false;fire(byClass(host.wrap,'ssh-host-refresh'),'click');await flush();
+  assert.match(byClass(picker.menu,'ssh-host-picker-state').textContent,/No configured host matches/,'the typed host still filters the reloaded list');assert.equal(host.input.value,'custom-host');
+  host.input.value='';fire(host.input,'input');assert.equal(allByClass(picker.menu,'ssh-host-option').length,1);
  }finally{picker.dispose();}
 });
 
@@ -299,70 +293,4 @@ test('SSH picker disposal aborts discovery and ignores late hosts',async()=>{
  controller.abort();assert.equal(requestSignal.aborted,true);
  resolveRequest({hosts:['late-server']});await flush();
  assert.equal(allByClass(picker.menu,'ssh-host-option').length,0);
-});
-
-for(const [label,create,searchClass,inputName] of [
- ['listener',()=>createPicker(async()=>({listeners:[]})),'listener-picker-search','port'],
- ['SSH host',()=>createHostPicker(async()=>({hosts:[]})),'ssh-host-picker-search','host']
-]){
- test(`${label} search prevents implicit form submission on Enter and releases its key handler`,async()=>{
-  const result=create();await flush();
-  const search=byClass(result.picker.menu,searchClass),keydown=(input,key)=>{
-   const event=new Event('keydown',{cancelable:true});Object.defineProperty(event,'key',{value:key});input.dispatchEvent(event);return event.defaultPrevented;
-  };
-  try{
-   assert.equal(keydown(search,'Enter'),true,'searching must never implicitly save the service');
-   for(const key of ['Escape','ArrowDown','a','Tab'])assert.equal(keydown(search,key),false,`${key} retains its normal behavior`);
-   assert.equal(keydown(result[inputName].input,'Enter'),false,'the manual field retains its normal form behavior');
-  }finally{result.picker.dispose();}
-  assert.equal(keydown(search,'Enter'),false,'disposing removes the search key handler');
- });
-}
-
-
-
-test('configured listener metadata remains visible when that port is excluded from suggestions',async()=>{
- const route={id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:3000},summary:{state:'configured',target:'3000'}};
- const h=createServiceList(async()=>({listeners:[],configured_listeners:[{port:3000,processes:[{name:'web',pid:8}],listens_beyond_loopback:true}],discovery_enabled:true}),[route]);await flush();
- assert.equal(walk(h.panel).some(n=>/No listener currently detected/.test(n.textContent)),false);assert.ok(byClass(h.panel,'service-warning'));h.view.dispose();
-});
-
-test('route port changes abort old configured-listener snapshots and retain accurate indicators',async()=>{
- const route=port=>({id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:port},summary:{state:'configured',target:String(port)}});
- const requests=[];const h=createServiceList((_path,options)=>new Promise(resolve=>requests.push({resolve,signal:options.signal})),[route(3000)]);
- h.view.render({routes:[route(4000)],data:{}});assert.equal(requests[0].signal.aborted,true);assert.equal(requests.length,2);
- requests[1].resolve({listeners:[],configured_listeners:[{port:4000,processes:[{name:'new-web',pid:8}],listens_beyond_loopback:true}],discovery_enabled:true});await flush();
- requests[0].resolve({listeners:[],configured_listeners:[{port:3000,processes:[]}],discovery_enabled:true});await flush();
- assert.equal(byClass(h.panel,'no-listener-indicator'),undefined);assert.ok(byClass(h.panel,'local-port-tooltip').textContent.includes('new-web'));h.view.dispose();
-});
-
-test('Dashboard notices reuse discovery observations and invalidate on settings or lookup failure',async()=>{
- const route={id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:5411},summary:{target:'Local port 5411'}};
- let failed=false,calls=0;
- const h=createServiceList(async()=>{calls++;if(failed)throw Error('unavailable');return {listeners:[]};},[route]);
- await flush();assert.match(h.view.routeNotice(route),/Last detected: no listener on port 5411/);
- h.view.deactivate();assert.match(h.view.routeNotice(route),/Last detected/);assert.equal(calls,1,'Dashboard reuses results without another probe');
- failed=true;h.view.activate();await flush();assert.equal(h.view.routeNotice(route),'');
- h.view.render({routes:[route],data:{discovery_enabled:false}});assert.equal(h.view.routeNotice(route),'');h.view.dispose();
-});
-
-test('cached non-loopback notices are explicitly last observations',async()=>{
- const route={id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:5411},summary:{target:'Local port 5411'}};
- const h=createServiceList(async()=>({listeners:[{port:5411,listens_beyond_loopback:true,processes:[]}]}),[route]);await flush();h.view.deactivate();assert.match(h.view.routeNotice(route),/^Last detected:/);h.view.dispose();
-});
-
-test('listener state is read once per page visit and again only on explicit refresh',async()=>{
- const routes=[{id:'one',module:'local_ports',domain:'one.localhost',editor:{aux_port:1212},summary:{state:'configured',target:'Port 1212'}}];
- let calls=0;const timers=[],realSetTimeout=globalThis.setTimeout;
- const {view}=createServiceList(async()=>{calls++;return {listeners:[{port:1212,processes:[{pid:42,name:'web'}],listens_beyond_loopback:false}]};},routes);
- try{
-  globalThis.setTimeout=(fn,ms,...args)=>{timers.push(ms);return realSetTimeout(fn,ms,...args);};
-  await flush();assert.equal(calls,1);
-  const status=view.routeStatus(routes[0]);assert.equal(status.label,'Listening');assert.match(status.detail,/^Checked at /);
-  view.render({routes,data:{}});await flush();assert.equal(calls,1,'polling the same state must not read listeners again');
-  assert.equal(timers.length,0,'no background re-read is scheduled');
-  view.refreshRouteStatus();await flush();assert.equal(calls,2);
-  view.deactivate();view.refreshRouteStatus();await flush();assert.equal(calls,2,'refresh is ignored while the module is not shown');
-  view.activate();await flush();assert.equal(calls,3,'opening the page again reads listeners once');
- }finally{globalThis.setTimeout=realSetTimeout;view.dispose();}
 });

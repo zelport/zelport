@@ -1,24 +1,25 @@
 const sshHostHelp=path=>`Uses your SSH configuration. Password and passphrase prompts are not supported.\nSource: ${path}`;
 
+// The SSH host field is also the filter for the configured hosts listed below it.
 export function sshHostPicker(ctx,host){
- const {adornmentButton,button,el,field,serviceTargetIndicator}=ctx.ui;
+ const {adornmentButton,button,el,serviceTargetIndicator}=ctx.ui;
  const menu=el('section','ssh-host-picker-menu');menu.setAttribute('role','list');menu.setAttribute('aria-label','Configured SSH hosts');host.wrap.append(menu);
- const heading=el('div','ssh-host-picker-header'),title=el('strong','ssh-host-picker-title','Configured SSH hosts'),info=serviceTargetIndicator(sshHostHelp(ctx.ui.state?.().states?.[ctx.moduleId]?.data?.effective_config_path||'~/.ssh/config'),'SSH authentication'),refresh=adornmentButton('Refresh SSH hosts','rotate',()=>load());
+ const info=serviceTargetIndicator(sshHostHelp(ctx.ui.state?.().states?.[ctx.moduleId]?.data?.effective_config_path||'~/.ssh/config'),'SSH authentication'),refresh=adornmentButton('Refresh SSH hosts','rotate',()=>load());
  info.root.className+=' ssh-host-help';info.root.children[1].className+=' ssh-host-help-tooltip';info.root.children[0].setAttribute('aria-label','SSH authentication requirements');
  refresh.className+=' ssh-host-refresh';
- const search=field('Search SSH hosts','','search');search.input.className+=' ssh-host-picker-search';search.input.placeholder='Host name';search.wrap.className+=' ssh-host-picker-filter';search.wrap.children[0].className='visually-hidden';
- heading.className+=' picker-toolbar';heading.append(title,info.root,search.wrap,refresh);menu.append(heading);
- let disposed=false,loading=false,request=null,hosts=[],renderError='',options=[];
- function clearRows(){for(const child of [...menu.children])if(child!==heading&&child!==search.wrap)child.remove();options=[];}
+ const tools=el('div','input-adornment-actions');tools.append(info.root,refresh);(host.control||host.wrap).append(tools);
+ menu.id ||= `ssh-host-picker-${Math.random().toString(36).slice(2)}`;host.input.setAttribute('aria-controls',menu.id);
+ let disposed=false,loading=false,request=null,hosts=[],renderError='',options=[],query='',filling=false;
+ function clearRows(){menu.replaceChildren();options=[];}
  function updateSelection(){for(const {row,use,alias} of options){const selected=host.input.value.trim()===alias;row.dataset.selected=String(selected);use.textContent=selected?'Selected':'Use';use.setAttribute('aria-pressed',String(selected));}}
  function render(){
   const scroll=menu.scrollTop;clearRows();refresh.disabled=loading;refresh.setAttribute('aria-busy',String(loading));
-  const query=search.input.value.trim().toLowerCase(),filtered=hosts.filter(alias=>alias.toLowerCase().includes(query));
-  const message=loading&&!hosts.length?'Loading SSH hosts…':renderError||(!hosts.length?'No SSH hosts found.':!filtered.length?'No matching SSH hosts.':'');
+  const filtered=hosts.filter(alias=>alias.toLowerCase().includes(query));
+  const message=loading&&!hosts.length?'Loading SSH hosts…':renderError||(!hosts.length?'No SSH hosts found.':!filtered.length?'No configured host matches.':'');
   if(message){const state=el('div','ssh-host-picker-state',message);state.setAttribute('role','status');menu.append(state);}
   for(const alias of filtered){
    const row=el('div','ssh-host-option');row.dataset.host=alias;row.setAttribute('role','listitem');
-   const use=button('Use',()=>{host.input.value=alias;host.input.dispatchEvent(new Event('input',{bubbles:true}));host.input.focus();},'secondary ssh-host-use');use.setAttribute('aria-label',`Use SSH host ${alias}`);
+   const use=button('Use',()=>{query='';filling=true;host.input.value=alias;host.input.dispatchEvent(new Event('input',{bubbles:true}));filling=false;render();host.input.focus();},'secondary ssh-host-use');use.setAttribute('aria-label',`Use SSH host ${alias}`);
    row.append(el('strong','ssh-host-name',alias),use);menu.append(row);options.push({row,use,alias});
   }
   updateSelection();menu.scrollTop=scroll;
@@ -32,9 +33,9 @@ export function sshHostPicker(ctx,host){
    hosts=Array.isArray(result.hosts)?result.hosts:[];if(result.config_path)info.root.children[1].textContent=sshHostHelp(result.config_path);loading=false;renderError='';render();
   }catch(error){if(disposed||request.signal.aborted)return;loading=false;renderError="SSH hosts couldn't be read. Enter the SSH host manually.";render();}
  }
- const filter=()=>render(),searchKeydown=event=>{if(event.key==='Enter')event.preventDefault();};search.input.addEventListener('input',filter);search.input.addEventListener('keydown',searchKeydown);host.input.addEventListener('input',updateSelection);
+ const typed=()=>{if(filling)return;query=host.input.value.trim().toLowerCase();render();};host.input.addEventListener('input',typed);
  const abort=()=>dispose();ctx.signal?.addEventListener('abort',abort,{once:true});
- function dispose(){if(disposed)return;disposed=true;request?.abort();search.input.removeEventListener('input',filter);search.input.removeEventListener('keydown',searchKeydown);host.input.removeEventListener('input',updateSelection);ctx.signal?.removeEventListener('abort',abort);}
+ function dispose(){if(disposed)return;disposed=true;request?.abort();host.input.removeEventListener('input',typed);ctx.signal?.removeEventListener('abort',abort);}
  load();return {menu,dispose};
 }
 

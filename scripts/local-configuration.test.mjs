@@ -37,9 +37,9 @@ test('Local Ports conflicts keep the original draft for explicit review and retr
 test('disabled picker skips scanning and keeps manual input available',async()=>{
  const h=harness({discovery_enabled:false});const port=ui.field('Service port',4567,'number');const picker=listenerPicker(h.ctx,port);await tick();assert.equal(h.requests.length,0);assert.equal(port.input.disabled,false);assert.equal(port.input.value,4567);assert.ok(tree(picker.menu).some(n=>/detection is off/.test(n.textContent)));picker.dispose();h.view.dispose();
 });
-test('live picker settings changes abort stale scans without changing manual port or search',async()=>{
- const h=harness();let resolve,signal;h.ctx.api=(_path,options)=>{signal=options.signal;return new Promise(r=>resolve=r);};const port=ui.field('Service port',4567,'number'),picker=listenerPicker(h.ctx,port);const search=tree(picker.menu).find(n=>n.tag==='input');search.value='api';
- picker.configure({discovery_enabled:false,ignored_ports:[],ignored_processes:[]});assert.equal(signal.aborted,true);resolve({listeners:[{port:3000,processes:[]}]});await tick();assert.equal(port.input.value,4567);assert.equal(search.value,'api');assert.equal(tree(picker.menu).some(n=>n.className==='listener-option'),false);assert.ok(tree(picker.menu).some(n=>/detection is off/.test(n.textContent)));picker.dispose();h.view.dispose();
+test('live picker settings changes abort stale scans without changing the typed port',async()=>{
+ const h=harness();let resolve,signal;h.ctx.api=(_path,options)=>{signal=options.signal;return new Promise(r=>resolve=r);};const port=ui.field('Service port',4567,'number'),picker=listenerPicker(h.ctx,port);
+ picker.configure({discovery_enabled:false,ignored_ports:[],ignored_processes:[]});assert.equal(signal.aborted,true);resolve({listeners:[{port:3000,processes:[]}]});await tick();assert.equal(port.input.value,4567);assert.equal(tree(picker.menu).some(n=>n.className==='listener-option'),false);assert.ok(tree(picker.menu).some(n=>/detection is off/.test(n.textContent)));picker.dispose();h.view.dispose();
 });
 
 test('saving an unrelated toggle preserves exact process names containing commas and quotes',async()=>{

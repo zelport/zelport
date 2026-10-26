@@ -135,7 +135,7 @@ test('service dialogs use the shared form-field layout for domain and module fie
  view.edit();const dialog=document.body.children.at(-1),form=dialog.children[0],domainField=form.children[1].children[0],localField=form.children[1].children[1].children[0];
  assert.equal(domainField.className,'form-field');assert.equal(localField.className,'form-field');
  assert.deepEqual(domainField.children.map(node=>node.tag),localField.children.map(node=>node.tag));
- assert.equal(domainField.children[1].className,'input-adornment');assert.equal(localField.children[1].className,'input-adornment');
+ assert.equal(domainField.children[1].className,'input-adornment address-adornment','the address suffix follows the typed name');assert.equal(localField.children[1].className,'input-adornment');
  dialog.close();
 });
 

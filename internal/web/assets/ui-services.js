@@ -49,6 +49,17 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
   input.id=`domain-${ctx.moduleId}`;label.htmlFor=input.id;input.required=true;
   input.pattern='[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?)*';
   input.maxLength=243;input.value=route?.domain.replace(/\.localhost$/,'')||options.domain||suggest(group?.name||'service',!group?.name);
+  // The suffix follows the typed name, so the address reads as one hostname.
+  domain.control.className+=' address-adornment';
+  const fitAddress=()=>{
+   const style=globalThis.getComputedStyle?.(input);if(!style)return;
+   const context=(fitAddress.canvas ||= document.createElement('canvas')).getContext?.('2d');if(!context)return;
+   context.font=`${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+   const padding=parseFloat(style.paddingLeft)+parseFloat(style.paddingRight);
+   input.style.width=`${Math.ceil(context.measureText(input.value||input.placeholder||'').width+padding+1)}px`;
+  };
+  input.addEventListener('input',fitAddress);
+  domain.control.addEventListener('mousedown',event=>{if(event.target===input)return;if(event.target===domain.control||event.target.classList?.contains('input-adornment-text')){event.preventDefault();input.focus();input.setSelectionRange?.(input.value.length,input.value.length);}});
   if(options.sources){
    const choices=el('fieldset','service-source-choices');choices.append(el('legend',null,'Where does the service run?'));
    for(const source of options.sources){
@@ -72,25 +83,26 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
    event.preventDefault();if(save.disabled)return;
    const controls=[...d.querySelectorAll('button,input,select,textarea')],disabled=controls.map(control=>!!control.disabled);
    for(const control of controls)control.disabled=true;
-   save.disabled=true;form.setAttribute('aria-busy','true');feedback.clear();reload.hidden=true;changedRoute=null;let revision,failure;
+   save.disabled=true;form.setAttribute('aria-busy','true');feedback.clear();reload.hidden=true;changedRoute=null;let revision,failure,failureInput;
    try{
     const settings=fields.read();revision=routeEditRevision(route,getState());
     await ctx.mutate(()=>ctx.api('/api/routes',{method:'POST',body:JSON.stringify({revision,route:{id:route?.id||'',module:ctx.moduleId,domain:input.value.toLowerCase()+'.localhost',settings}})}),{reportError:false});
     if(!ctx.signal?.aborted&&d.open&&d.dataset.state!=='closing'){d.close();options.onSaved?.();}
    }catch(cause){
     if(cause.status===409){try{const latestRevision=routeEditRevision(route,getState());cause=Error(latestRevision!==revision?'Changed elsewhere. Your draft is kept. Save again or discard.':'This address is already in use.');}catch(conflict){cause=conflict;}}
-    failure=cause.message;changedRoute=cause.currentRoute||null;reload.hidden=!changedRoute;
+    failure=cause.message;failureInput=cause.input;changedRoute=cause.currentRoute||null;reload.hidden=!changedRoute;
    }finally{
-    controls.forEach((control,index)=>{control.disabled=disabled[index];});save.disabled=false;form.setAttribute('aria-busy','false');if(failure&&d.open)feedback.show(failure);
+    controls.forEach((control,index)=>{control.disabled=disabled[index];});save.disabled=false;form.setAttribute('aria-busy','false');if(failure&&d.open)feedback.show(failure,failureInput);
    }
   });
   const release=()=>{disposeFields();if(dialog===d)dialog=null;};
   if(reuse){
-   drawerContent.get(d)?.();drawerContent.set(d,release);d.replaceChildren(form);
+   drawerContent.get(d)?.();drawerContent.set(d,release);d.replaceChildren(form);fitAddress();
    form.querySelector('.service-source-radio:checked')?.focus();return d;
   }
   drawerContent.set(d,release);d.append(form);drawerBehavior(d);
-  return showDialog(d,{signal:ctx.signal,initialFocus:input,onClose(){drawerContent.get(d)?.();drawerContent.delete(d);if(options.trigger?.isConnected)options.trigger.focus();}});
+  const shown=showDialog(d,{signal:ctx.signal,initialFocus:input,onClose(){drawerContent.get(d)?.();drawerContent.delete(d);if(options.trigger?.isConnected)options.trigger.focus();}});
+  fitAddress();globalThis.document?.fonts?.ready?.then(fitAddress);return shown;
  }
  function suggest(value,numbered=false){let base=value.toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'')||'service';base=base.slice(0,50);const used=new Set(Object.values(getState().states).flatMap(s=>(s.routes||[]).map(r=>r.domain)));let n=numbered?1:2,name=numbered?`${base}-${n++}`:base;while(used.has(name+'.localhost'))name=`${base}-${n++}`;return name;}
  function row(route){const tabular=!!definition.columns,box=el('div','service'),name=el('div'),address=serviceURL(getState(),route),link=el(address?'a':'span',null,definition.serviceLabel?.(route,getState())||route.domain);if(tabular){box.setAttribute('role','row');name.setAttribute('role','cell');}if(address){link.href=address;link.target='_blank';link.rel='noopener';}name.append(link);if(!address)name.append(el('span','small muted','Not connected on this device'));if(!tabular&&route.summary.detail&&route.module!=='remote_http')name.append(el('span','small route-error',route.summary.detail));const target=el('div','target-address');if(tabular){target.setAttribute('role','cell');target.append(el('span','mobile-target-label',`${definition.mobileTargetLabel||definition.columns[1]} `));}target.append(el('span',null,definition.targetLabel?.(route)||route.summary.target));if(!tabular&&route.module==='remote_http'&&route.summary.detail)target.append(warningIndicator(route.summary.detail).root);const actions=el('div','service-actions');if(tabular)actions.setAttribute('role','cell');const indicators=definition.rowIndicators?.(route)||[];let details=null;if(tabular){details=el('div','service-port-details');details.setAttribute('role','cell');}if(indicators.length||definition.targetInfo){const group=el('span','service-indicators');group.append(...indicators);if(definition.targetInfo)group.append(serviceTargetIndicator(definition.targetInfo(route),route.domain).root);(details||actions).append(group);}if(definition.routeMenu){const root=el('div','resource-actions service-actions-menu'),trigger=el('button','resource-menu-trigger service-menu-trigger','⋮'),menu=el('div','resource-menu service-menu');trigger.setAttribute('aria-label',`Actions for ${route.domain}`);trigger.setAttribute('aria-haspopup','menu');menu.setAttribute('role','menu');root.append(trigger,menu);const disclosure=disclosureMenu(root,trigger,menu);menus.push(disclosure);const editAction=button('Edit',()=>{disclosure.close(true);edit(route);},'resource-menu-item'),removeAction=button('Remove',()=>{disclosure.close(true);remove(route);},'resource-menu-item service-menu-remove');editAction.setAttribute('role','menuitem');removeAction.setAttribute('role','menuitem');menu.append(editAction,removeAction);actions.append(root);}else actions.append(button('Edit',()=>edit(route)),button('Remove',()=>remove(route),'danger-text'));for(const action of definition.routeActions?.(route)||[])actions.append(button(action.label,action.run));box.append(name,target,...(details?[details]:[]),actions);return box;}

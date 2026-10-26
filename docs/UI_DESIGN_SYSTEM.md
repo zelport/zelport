@@ -100,11 +100,17 @@ confirmations such as Remove service. Verify the drawer at 320 and 390 pixels.
 The drawer slides in from the right and slides out on every close path (220ms
 in, 180ms out, no motion with reduced motion preference).
 
-Local Ports and SSH discovery pickers provide case-insensitive search and explicit
-Use/Selected actions. The picker title, search field and refresh share one
-sticky row at the top of the list, so search stays visible while the list scrolls. Searching never changes the manual target, and Enter in a
-search field must not submit the service form. Local Ports keeps manual entry
-available when listener discovery fails. Ports
+Address shows the `.localhost:<port>` suffix directly after the typed name, so
+the field reads as one hostname; clicking anywhere in the field places the caret
+at the end of the name.
+
+The Local Ports service port and the SSH host field are also the filters for the
+detected ports and configured hosts listed directly below them. Typing digits, a
+process name or a host name narrows the list (case-insensitive); the initial value
+does not filter. Use fills the field and shows the whole list again. Refresh (and
+the SSH help) sit at the end of the field. A value that is not a port number is
+rejected with "Enter a port number or pick one below." beside the field. Local
+Ports keeps manual entry available when listener discovery fails. Ports
 over SSH accepts a valid configuration without requiring a successful connection.
 The development server must be reachable through the existing system SSH setup
 when the user expects the service to become available.
