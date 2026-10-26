@@ -395,7 +395,8 @@ header .connection-status{margin-left:auto}
 .runtime-facts dt{font-size:var(--text-label);color:var(--muted);margin-bottom:var(--space-1)}
 .runtime-facts dd{margin:0;font-size:var(--text-help);overflow-wrap:anywhere}
 @media(max-width:900px){.runtime-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.runtime-facts .runtime-modules{grid-column:1/-1}}
-#panels>section[data-module]{max-width:720px}
+/* Form pages share one readable width; only Dashboard's table uses the full width. */
+#panels>section[data-module],#panel-settings>.settings-accordion{max-width:720px}
 @media(max-width:720px){.dashboard-table .service-status-label{flex:none}}
 @media(max-width:480px){header{gap:var(--space-4)}header .brand{flex:none;width:32px;overflow:hidden}header .brand-logo{flex:none;width:117.333px;height:32px;max-width:none}header .primary-navigation{gap:var(--space-4)}}
 .page-heading #refresh-status{margin-left:auto}

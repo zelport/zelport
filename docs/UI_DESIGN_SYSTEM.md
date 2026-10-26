@@ -123,7 +123,8 @@ detail follows the label on its line. The empty state is one short sentence.
 ### Source pages and Settings
 
 Each source has a page in the Services menu: the source title and its
-configuration form (at most 720px wide). Ports over Relay adds its device catalog
+configuration form (at most 720px wide, the same width as the Settings
+sections). Only Dashboard's table uses the full content width. Ports over Relay adds its device catalog
 below the form. Source pages never repeat the service list.
 
 Settings contains Built-in Relay, Service sources, Remote administration and

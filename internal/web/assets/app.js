@@ -165,7 +165,7 @@ async function init(){
  let refreshingStatus=false;const refreshStatus=ui.refreshControl('Refresh status',async()=>{if(refreshingStatus)return;refreshingStatus=true;refreshStatus.disabled=true;try{await refreshVisible();for(const m of modules.values())if(moduleActive(m))m.instance?.refreshRouteStatus?.();}finally{refreshingStatus=false;refreshStatus.disabled=false;}});
  refreshStatus.id='refresh-status';addService.before(refreshStatus);
  ui.moduleHeading($('module-title'));
- const settings=ui.el('section');settings.id='panel-settings';settings.setAttribute('role','region');settings.setAttribute('aria-labelledby','tab-settings');settings.hidden=true;settings.tabIndex=0;
+ const settings=ui.el('section');settings.id='panel-settings';settings.setAttribute('role','region');settings.setAttribute('aria-labelledby','tab-settings');settings.hidden=true;
  settings.append(ui.el('h1','page-title','Settings'));$('panels').append(settings);
  for(const descriptor of state.modules){
   const inSettings=descriptor.ui_placement==='settings',panel=ui.el('section');
