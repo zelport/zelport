@@ -46,7 +46,10 @@ function attachTooltip(root,trigger,tip){
  function schedule(){cancelPending();activeTooltipClosers.add(close);ensureTooltipViewportListeners();hoverTimer=setTimeout(()=>{hoverTimer=null;if(hovered)show();else activeTooltipClosers.delete(close);},250);}
  root.addEventListener('mouseenter',()=>{hovered=true;if(!focused)schedule();});
  root.addEventListener('mouseleave',()=>{hovered=false;cancelPending();if(!focused)close();});
- trigger.addEventListener('focus',()=>{focused=true;if(trigger.getAttribute('popovertarget')){queueMicrotask(()=>{const popover=document.getElementById(trigger.getAttribute('popovertarget'));if(focused&&!popover?.matches(':popover-open'))show();});}else show();});trigger.addEventListener('blur',()=>{focused=false;close();});
+ trigger.addEventListener('focus',()=>{focused=true;
+  // Only keyboard focus opens the tooltip; focus moved by a dialog or script does not.
+  if(typeof trigger.matches==='function'&&!trigger.matches(':focus-visible'))return;
+  if(trigger.getAttribute('popovertarget')){queueMicrotask(()=>{const popover=document.getElementById(trigger.getAttribute('popovertarget'));if(focused&&!popover?.matches(':popover-open'))show();});}else show();});trigger.addEventListener('blur',()=>{focused=false;close();});
  root.addEventListener('keydown',event=>{if(event.key==='Escape'){if(!tip.hidden){event.preventDefault();event.stopPropagation();}close();}});
  const binding={tip,show,close,update(text){if(tip.textContent!==text){close();setText(tip,text);}}};tooltipBindings.set(trigger,binding);return binding;
 }

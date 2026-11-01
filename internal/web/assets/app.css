@@ -512,3 +512,22 @@ a.resource-menu-item{display:flex;align-items:center;box-sizing:border-box;borde
 .footer-meta{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;justify-content:flex-end}
 .footer-version:empty{display:none}
 .footer-version:not(:empty)+span::before{content:"·";margin-right:var(--space-3)}
+/* Source pages: the source's services (the Dashboard table without Source), then its configuration. */
+.dashboard-table.source-table th:nth-child(1){width:26%}
+.dashboard-table.source-table th:nth-child(2){width:auto}
+.dashboard-table.source-table th:nth-child(3){width:18%}
+.dashboard-table.source-table th:nth-child(4){width:64px}
+.source-services .dashboard-empty{padding:var(--space-6);text-align:left}
+.source-services .dashboard-empty p{margin:0}
+.source-section-title{margin:var(--space-8) 0 var(--space-4);font-size:var(--text-heading)}
+/* Phones: a source page heading matches the Dashboard heading (title, refresh, Add service on one line); long titles push the actions to their own right-aligned line. */
+@media(max-width:720px){.module-heading{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);min-height:80px;margin:0}.module-heading>#module-title{min-height:0}.module-actions{width:auto;margin-left:auto}.module-toolbar{width:auto;gap:var(--space-4)}}
+@media(max-width:720px){#module-actions{display:flex;align-items:center;margin-left:auto}#module-actions .module-toolbar:not([hidden]){display:flex;flex-wrap:nowrap;align-items:center}}
+@media(max-width:359px){.module-heading{column-gap:var(--space-2)}.module-heading .module-title{font-size:22px}#module-actions .module-toolbar{gap:var(--space-2)}#module-actions .module-toolbar button.refresh-icon{min-width:40px;min-height:40px;width:40px}#module-actions .module-toolbar .source-add-service{padding-inline:11px}}
+/* The table card no longer clips (row menus overflow it), so the table must never be wider than its card. */
+.dashboard-table,.dashboard-table.source-table{min-width:0}
+/* Status never truncates: its column has a fixed width; Address and Target share the rest. */
+.dashboard-table th:nth-child(4),.dashboard-table.source-table th:nth-child(3){width:148px}
+.dashboard-table:not(.source-table) th:nth-child(2){width:150px}
+.dashboard-table.source-table th:nth-child(1){width:32%}
+.dashboard-table.source-table th:nth-child(4){width:64px}

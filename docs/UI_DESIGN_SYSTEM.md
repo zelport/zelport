@@ -150,8 +150,15 @@ line and a target warning appears as a line under the target. The empty state is
 
 ### Source pages and Settings
 
-Each source has a page in the Services menu: the source title and its
-configuration form. Ports over Relay adds its device catalog below the form.
+Each source has a page in the Services menu. Its heading matches Dashboard:
+the source title, Refresh status and Add service (the same drawer with this
+source preselected; saving returns to the source page). Below it the page lists
+the source's services in the Dashboard table without the Source column, with the
+same row menu (Open, Edit, Remove) and status rules, or one short sentence when
+it has none. A "Configuration" heading then introduces the source
+configuration; Ports over Relay adds its relay status before the form and its
+device catalog below it. Dashboard stays the overview of every service and the
+quick way to add one.
 
 Every page uses the full content width: Dashboard's table, source page cards
 and Settings sections share the right edge of the header and footer. Inside a

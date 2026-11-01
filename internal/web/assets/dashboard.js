@@ -1,4 +1,5 @@
-// Dashboard is the only list of services: one row each, with its status and actions.
+// The service table: Dashboard lists every service; a source page lists only its own
+// services (moduleId) without the Source column. One row each, with status and actions.
 // Status is the service state only; target security properties come from routeWarning(route).
 export const sourceChoices=[
  {id:'local_ports',description:'This computer',icon:'laptop'},
@@ -13,29 +14,30 @@ export function defaultRouteStatus(route){
  if(summary.detail)return {tone:'warning',label:'Warning',detail:summary.detail};
  return {tone:'neutral',label:'Configured'};
 }
-export function createDashboard({root,modules,client,navigate,ui}){
- const rows=new Map();let table,body,empty;
+export function createDashboard({root,modules,client,navigate,ui,moduleId=null,returnTo='dashboard'}){
+ const rows=new Map(),columns=moduleId?['Address','Target','Status','Actions']:['Address','Source','Target','Status','Actions'];let table,body,empty;
  const enabled=module=>module?.descriptor.ui_placement==='settings'||client.state()?.module_availability?.[module?.descriptor.id]?.enabled!==false;
  // Add service is one drawer; choosing another source swaps its content in place.
- function openAddService(trigger,{sourceId,domain,container}={}){
+ function openAddService(trigger,{sourceId=moduleId,domain,container}={}){
   const sources=sourceChoices.map(choice=>{const module=modules.get(choice.id);return {...choice,label:module?.descriptor.name||choice.id,available:!!module?.instance&&enabled(module)};}).filter(choice=>choice.available);
   const selected=sources.find(choice=>choice.id===sourceId)||sources[0];
   if(!selected)return null;
   return modules.get(selected.id).instance.edit(null,null,{sources,sourceId:selected.id,domain,trigger,container,
    onSource(id,draft){openAddService(trigger,{sourceId:id,...draft});},
-   onSaved(){navigate('dashboard');}});
+   onSaved(){navigate(returnTo);}});
  }
  function addressText(state,route,address){if(state.remote_admin&&address){try{return new URL(address).host;}catch{}}return state.port===80?route.domain:`${route.domain}:${state.port}`;}
  function render(state=client.state()){
-  const routes=Object.values(state.states).flatMap(module=>module.routes||[]);
+  const routes=(moduleId?[state.states[moduleId]||{}]:Object.values(state.states)).flatMap(module=>module.routes||[]);
   if(!table){
-   const wrap=ui.el('div','dashboard-table-wrap');table=ui.el('table','dashboard-table data-table');
+   const wrap=ui.el('div','dashboard-table-wrap');table=ui.el('table',`dashboard-table data-table${moduleId?' source-table':''}`);
    const head=ui.el('tr'),thead=ui.el('thead');body=ui.el('tbody');
-   for(const name of ['Address','Source','Target','Status','Actions']){const cell=ui.el('th',null,name);cell.scope='col';if(name==='Actions')cell.className='visually-hidden-label';head.append(cell);}
+   for(const name of columns){const cell=ui.el('th',null,name);cell.scope='col';if(name==='Actions')cell.className='visually-hidden-label';head.append(cell);}
    thead.append(head);table.append(thead,body);wrap.append(table);empty=ui.el('div','empty dashboard-empty');root.append(wrap,empty);
   }
   table.parentElement.hidden=!routes.length;empty.hidden=!!routes.length;
-  if(!routes.length)ui.renderChanged(empty,{modules:!!state.modules.length,port:state.port},()=>{
+  if(!routes.length&&moduleId)ui.renderChanged(empty,{moduleId},()=>{empty.replaceChildren(ui.el('p',null,`No ${modules.get(moduleId)?.descriptor.name||moduleId} services yet.`));});
+  else if(!routes.length)ui.renderChanged(empty,{modules:!!state.modules.length,port:state.port},()=>{
    empty.replaceChildren(ui.el('h2',null,state.modules.length?'No services yet':'Core only'),ui.el('p',null,state.modules.length?`Give a web service a stable name, for example my-app.localhost:${state.port}.`:'This build contains only the core. Add feature build tags to configure services.'));
   });
   const present=new Set(routes.map(route=>route.id));
@@ -55,7 +57,7 @@ export function createDashboard({root,modules,client,navigate,ui}){
     const remove=ui.button('Remove',()=>{item.menu.close(true);modules.get(item.route.module)?.instance?.remove?.(item.route);},'resource-menu-item service-menu-remove');
     for(const control of [edit,remove])control.setAttribute('role','menuitem');
     menu.append(open,edit,remove);item.open=open;item.remove=remove;
-    row.append(domain,source,target,status,action);body.append(row);
+    row.append(...(moduleId?[domain,target,status,action]:[domain,source,target,status,action]));body.append(row);
    }
    item.route=route;item.trigger.setAttribute('aria-label',`Actions for ${route.domain}`);
    const address=ui.serviceURL(state,route),linked=!!address,instance=modules.get(route.module)?.instance;

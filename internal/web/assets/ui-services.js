@@ -33,11 +33,11 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
  const remove=route=>{
   const d=el('dialog'),title=dialogHeader('Remove service',d),error=el('p','route-error'),actions=el('div','dialog-actions'),endpoint=serviceURL(getState(),route)||`http://${route.domain}:${getState().port}`;
   let busy=false;const run=async work=>{if(busy)return;busy=true;feedback.clear();for(const control of actions.children)control.disabled=true;let failure;try{await work();d.close();}catch(e){failure=e.message;}finally{busy=false;for(const control of actions.children)control.disabled=false;if(failure)feedback.show(failure);}};
-  actions.append(button('Cancel',()=>d.close()));
+  const cancel=button('Cancel',()=>d.close());actions.append(cancel);
   for(const action of definition.removeActions?.(route)||[])actions.append(button(action.label,()=>run(action.run),action.className||'danger'));
   actions.append(button('Remove',()=>run(()=>ctx.mutate(()=>ctx.api(`/api/routes/${route.id}?revision=${getState().revision}`,{method:'DELETE'}),{reportError:false})),'danger'));
   d.append(title,el('p','remove-service-address',endpoint),el('p','small muted','The service itself keeps running.'),error,actions);
-  const feedback=formFeedback(d,error);showDialog(d,{signal:ctx.signal});
+  const feedback=formFeedback(d,error);showDialog(d,{signal:ctx.signal,initialFocus:cancel});
  };
  function edit(route=null,group=null,options={}){
   const reuse=options.container?.open?options.container:null;

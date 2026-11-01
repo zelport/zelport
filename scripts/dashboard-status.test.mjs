@@ -24,7 +24,7 @@ class Node {
 }
 
 function setup(){
- globalThis.document={body:new Node('body'),activeElement:null,createElement:tag=>new Node(tag),createElementNS:(_,tag)=>new Node(tag)};
+ globalThis.document={body:new Node('body'),activeElement:null,createElement:tag=>new Node(tag),createElementNS:(_,tag)=>new Node(tag),addEventListener(){},removeEventListener(){}};
 }
 
 
@@ -61,4 +61,22 @@ test('Sources report security properties as warnings, not as a status label',()=
  const local=readFileSync(new URL('../internal/modules/local_ports/assets/module.js',import.meta.url),'utf8');
  assert.doesNotMatch(remote,/label:'Unencrypted'/);assert.match(remote,/routeWarning\(route\)\{return route\.summary\.detail/);
  assert.doesNotMatch(local,/label:'Exposed'/);assert.match(local,/routeWarning\(route\)/);
+});
+
+test('A source page lists only its own services, without the Source column, and Add service returns to it',()=>{
+ setup();
+ const route=(id,module)=>({id,module,domain:`${id}.localhost`,summary:{state:'configured',target:`https://${id}.example.test`}});
+ const state={port:7070,module_availability:{},modules:[{}],states:{remote_http:{routes:[route('a','remote_http')]},local_ports:{routes:[route('b','local_ports'),route('c','local_ports')]}}};
+ const calls=[],navigated=[],modules=new Map();
+ for(const [id,name] of [['local_ports','Local Ports'],['remote_http','Remote HTTP']])modules.set(id,{descriptor:{id,name},instance:{edit:(r,g,options)=>{calls.push(options);return {};}}});
+ const root=new Node(),page=createDashboard({root,modules,client:{state:()=>state},navigate:id=>navigated.push(id),ui,moduleId:'local_ports',returnTo:'local'});
+ page.render(state);
+ const table=find(root,'dashboard-table');
+ assert.ok(table.className.includes('source-table'));
+ assert.deepEqual(table.children[0].children[0].children.map(cell=>cell.textContent),['Address','Target','Status','Actions']);
+ assert.deepEqual(table.children[1].children.map(row=>row.children[0].children[0].textContent),['b.localhost:7070','c.localhost:7070']);
+ page.openAddService({focus(){}});
+ assert.equal(calls[0].sourceId,'local_ports');calls[0].onSaved();assert.deepEqual(navigated,['local']);
+ state.states.local_ports.routes=[];page.render(state);
+ assert.equal(find(root,'dashboard-empty').children[0].textContent,'No Local Ports services yet.');
 });

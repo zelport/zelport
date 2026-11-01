@@ -88,7 +88,7 @@ function render(){
  const remote=$('remote-administration');remote.hidden=!state.remote_admin;
  if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);
  for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
- dashboard.render(state);
+ dashboard.render(state);for(const m of modules.values())m.services?.render(state);
  ui.setText($('footer-version'),footerVersion(state));
  const rt=state.runtime,fields=[['Version',rt.version],['Hostname',rt.hostname],['Configuration',rt.config_display_path||rt.config_path],['Listeners',rt.listeners?.join(', ')],['Modules',state.modules.map(m=>m.name).join(', ')||'Core only']];
  for(const [label,value]of fields){let cell=[...$('runtime-info').children].find(c=>c.dataset.label===label);if(!cell){cell=ui.el('div',label==='Modules'?'runtime-modules':null);cell.dataset.label=label;cell.append(ui.el('dt',null,label),ui.el('dd'));$('runtime-info').append(cell);}if(label==='Modules')renderRuntimeModules(cell);else ui.setText(cell.children[1],value);if(label==='Configuration'){cell.children[1].tabIndex=0;ui.setTooltip(cell.children[1],rt.config_path||'');}}
@@ -158,6 +158,17 @@ function showBootStatus(){
  const bootStatus=ui.el('div','boot-status');bootStatus.id='boot-status';bootStatus.setAttribute('role','status');bootStatus.setAttribute('aria-label','Loading Zelport');
  const spinner=ui.el('span');spinner.className='boot-spinner';spinner.setAttribute('aria-hidden','true');bootStatus.append(spinner);document.body.prepend(bootStatus);document.body.setAttribute('aria-busy','true');return bootStatus;
 }
+let refreshingStatus=false;
+// Every page that lists services offers the same status refresh.
+function statusRefreshControl(){const control=ui.refreshControl('Refresh status',async()=>{if(refreshingStatus)return;refreshingStatus=true;control.disabled=true;try{await refreshVisible();for(const m of modules.values())if(moduleActive(m))m.instance?.refreshRouteStatus?.();}finally{refreshingStatus=false;control.disabled=false;}});return control;}
+// A source page lists its own services (same table as Dashboard) above its configuration.
+function addSourceServices(m){
+ const {descriptor,panel,toolbar}=m,services=ui.el('section','source-services'),heading=ui.el('h2','source-section-title','Configuration');
+ services.setAttribute('aria-label',`${descriptor.name} services`);panel.prepend(services,heading);
+ m.services=createDashboard({root:services,modules,client,navigate,ui,moduleId:descriptor.id,returnTo:descriptor.tab_id});
+ const add=ui.button('Add service',()=>m.services.openAddService(add),'source-add-service');
+ toolbar.append(statusRefreshControl(),add);
+}
 async function init(){
  const bootStatus=showBootStatus();
  for(const link of document.querySelectorAll('[data-tooltip]'))ui.setTooltip(link,link.dataset.tooltip);
@@ -165,8 +176,7 @@ async function init(){
  state=await client.refresh();tab('dashboard','Dashboard');
  dashboard=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui});
  const addService=$('add-service');addService.addEventListener('click',()=>openAddService(addService));
- let refreshingStatus=false;const refreshStatus=ui.refreshControl('Refresh status',async()=>{if(refreshingStatus)return;refreshingStatus=true;refreshStatus.disabled=true;try{await refreshVisible();for(const m of modules.values())if(moduleActive(m))m.instance?.refreshRouteStatus?.();}finally{refreshingStatus=false;refreshStatus.disabled=false;}});
- refreshStatus.id='refresh-status';addService.before(refreshStatus);
+ const refreshStatus=statusRefreshControl();refreshStatus.id='refresh-status';addService.before(refreshStatus);
  ui.moduleHeading($('module-title'));
  const settings=ui.el('section');settings.id='panel-settings';settings.setAttribute('role','region');settings.setAttribute('aria-labelledby','tab-settings');settings.hidden=true;
  settings.append(ui.el('h1','page-title','Settings'));$('panels').append(settings);
@@ -182,9 +192,10 @@ async function init(){
   const style=ui.el('link');style.rel='stylesheet';style.href=`/assets/modules/${descriptor.id}/style.css`;document.head.append(style);
   try{const code=await import(`/assets/modules/${descriptor.id}/module.js`);m.headerStatus=code.headerStatus;m.instance=code.mount({moduleId:descriptor.id,moduleName:descriptor.name,panel,toolbar,signal:controller.signal,api,refresh,mutate,navigate,ui:{...ui,state:()=>state}});}
   catch(e){panel.append(ui.el('p','route-error',`Module interface unavailable: ${e.message}`));}
+  if(!inSettings&&m.instance)addSourceServices(m);
  }
  addAvailability(settings);addRemoteFileAccess(settings);addAbout(settings);
  tab('settings','Settings');composed=true;render();navigate(location.hash.slice(1),false);
  navigation=createNavigation({tabs:$('tabs'),onNavigate:navigate});navigation.sync(active);if(bootStatus){document.body.dataset.view='ready';document.body.setAttribute('aria-busy','false');bootStatus.remove();}
 }
-window.addEventListener('popstate',()=>navigate(location.hash.slice(1),false));window.addEventListener('hashchange',()=>navigate(location.hash.slice(1),false));document.addEventListener('visibilitychange',()=>{schedule();if(!document.hidden)refreshVisible();});window.addEventListener('focus',()=>{if(state)refreshVisible();});window.addEventListener('pagehide',()=>{clearTimeout(timer);navigation?.dispose();dashboard?.dispose();client?.dispose();for(const m of modules.values()){m.controller.abort();m.instance?.dispose();}});init().catch(e=>{if(document.body){document.body.dataset.view='error';document.body.setAttribute('aria-busy','false');document.getElementById('boot-status')?.remove();}message(e.message);});
+window.addEventListener('popstate',()=>navigate(location.hash.slice(1),false));window.addEventListener('hashchange',()=>navigate(location.hash.slice(1),false));document.addEventListener('visibilitychange',()=>{schedule();if(!document.hidden)refreshVisible();});window.addEventListener('focus',()=>{if(state)refreshVisible();});window.addEventListener('pagehide',()=>{clearTimeout(timer);navigation?.dispose();dashboard?.dispose();for(const m of modules.values())m.services?.dispose();client?.dispose();for(const m of modules.values()){m.controller.abort();m.instance?.dispose();}});init().catch(e=>{if(document.body){document.body.dataset.view='error';document.body.setAttribute('aria-busy','false');document.getElementById('boot-status')?.remove();}message(e.message);});

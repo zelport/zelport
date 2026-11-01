@@ -1,7 +1,7 @@
 import {el} from './ui-dom.js';
 
-// A source page shows its configuration. Status or catalog content a module keeps
-// beside it is placed before or after; service lists live only on Services.
+// A source page shows its configuration below the shell's list of the source's
+// services. Status or catalog content a module keeps beside it is placed before or after.
 export function moduleViews(ctx,{overview=el('section'),configuration=el('section'),onChange,overviewPlacement='hidden'}={}){
  const actions=el('div','module-view-actions');
  let configured=false,disposed=false;
