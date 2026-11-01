@@ -494,8 +494,12 @@ dialog.service-drawer[data-state=closing]{pointer-events:none}
 .field-label-row>label{margin:0;font-size:var(--text-help)}
 .field-label-row button.service-target-trigger{width:24px;height:24px;min-width:24px;min-height:24px;margin:-2px 0}
 dialog .route-error:focus{outline:none}
-/* Target security warning: the glyph starts on the column edge and precedes the target text. */
-.dashboard-table .service-target .service-warning{margin:0 var(--space-1) 0 -3px}
+/* Target security warning follows the target text, so every target starts on the column edge. Long targets truncate before the glyph. */
+.dashboard-table .service-target-line{display:flex;align-items:center;min-width:0;max-width:100%}
+.dashboard-table .service-target-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dashboard-table .service-target .service-warning{flex:none;margin:0 0 0 var(--space-1)}
 /* Phones show the warning text on its own line under the target, like the status detail. */
 .dashboard-table .service-target-detail{display:none}
-@media(max-width:720px){.dashboard-table .service-target .service-warning{margin:0 var(--space-2) 0 0;vertical-align:-4px}.dashboard-table .service-target .warning-trigger{width:18px;height:20px;min-width:0;min-height:0;pointer-events:none}.dashboard-table .service-target-detail:not([hidden]){display:block;white-space:normal;color:var(--warning);font-size:var(--text-help)}}
+@media(max-width:720px){.dashboard-table .service-target .service-warning{margin:0 0 0 var(--space-2)}.dashboard-table .service-target .warning-trigger{width:18px;height:20px;min-width:0;min-height:0;pointer-events:none}.dashboard-table .service-target-detail:not([hidden]){display:block;white-space:normal;color:var(--warning);font-size:var(--text-help)}}
+/* The narrowest phones: keep the page title, refresh and Add service on one line without horizontal scrolling. */
+@media(max-width:359px){.page-heading{gap:var(--space-2)}.page-heading .page-title{font-size:22px}.page-heading #refresh-status{min-width:40px;min-height:40px}.page-heading #add-service{padding-inline:12px}}

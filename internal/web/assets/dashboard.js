@@ -47,8 +47,8 @@ export function createDashboard({root,modules,client,navigate,ui}){
     for(const [cell,label]of [[domain,'Address'],[source,'Source'],[target,'Target'],[status,'Status'],[action,'Actions']])cell.dataset.label=label;
     const indicator=ui.serviceStatus(),actionRoot=ui.el('div','resource-actions dashboard-actions'),trigger=ui.el('button','resource-menu-trigger','⋮'),menu=ui.el('div','resource-menu');
     trigger.setAttribute('aria-haspopup','menu');menu.setAttribute('role','menu');actionRoot.append(trigger,menu);action.append(actionRoot);status.append(indicator.root);
-    // A security property of the target (for example unencrypted) is a warning beside Target; Status stays the service state.
-    const warning=ui.warningIndicator('',`Security warning for ${route.domain}`),targetText=ui.el('span','service-target-text'),targetDetail=ui.el('span','service-target-detail');target.append(warning.root,targetText,targetDetail);
+    // A security property of the target (for example unencrypted) is a warning after the target text, so targets stay aligned; Status stays the service state.
+    const warning=ui.warningIndicator('',`Security warning for ${route.domain}`),targetLine=ui.el('span','service-target-line'),targetText=ui.el('span','service-target-text'),targetDetail=ui.el('span','service-target-detail');targetLine.append(targetText,warning.root);target.append(targetLine,targetDetail);
     item={row,domain,source,target,targetText,targetDetail,warning,indicator,trigger,route,menu:ui.disclosureMenu(actionRoot,trigger,menu)};rows.set(route.id,item);
     const open=ui.el('a','resource-menu-item','Open');open.setAttribute('role','menuitem');open.target='_blank';open.rel='noopener';open.addEventListener('click',()=>item.menu.close(true));
     const edit=ui.button('Edit',()=>{item.menu.close(true);modules.get(item.route.module)?.instance?.edit(item.route);},'resource-menu-item');
