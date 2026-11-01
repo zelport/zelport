@@ -89,9 +89,12 @@ function render(){
  if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);
  for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
  dashboard.render(state);
+ ui.setText($('footer-version'),footerVersion(state));
  const rt=state.runtime,fields=[['Version',rt.version],['Hostname',rt.hostname],['Configuration',rt.config_display_path||rt.config_path],['Listeners',rt.listeners?.join(', ')],['Modules',state.modules.map(m=>m.name).join(', ')||'Core only']];
  for(const [label,value]of fields){let cell=[...$('runtime-info').children].find(c=>c.dataset.label===label);if(!cell){cell=ui.el('div',label==='Modules'?'runtime-modules':null);cell.dataset.label=label;cell.append(ui.el('dt',null,label),ui.el('dd'));$('runtime-info').append(cell);}if(label==='Modules')renderRuntimeModules(cell);else ui.setText(cell.children[1],value);if(label==='Configuration'){cell.children[1].tabIndex=0;ui.setTooltip(cell.children[1],rt.config_path||'');}}
 }
+// The footer names the running build so testers see it on every page.
+function footerVersion(s){const version=s.runtime?.version;return version?`Zelport ${version}`:'';}
 function renderRuntimeModules(cell){
  if(!runtimeModules){
   const value=cell.lastElementChild,root=ui.el('div','runtime-modules-disclosure'),trigger=ui.el('button','runtime-modules-trigger'),popover=ui.el('div','header-popover runtime-modules-popover');

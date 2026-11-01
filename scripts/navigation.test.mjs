@@ -73,6 +73,7 @@ test('primary navigation is Dashboard, the Services menu of source pages, and Se
  assert.doesNotMatch(app,/tab\('sources'/,'there is no separate Sources page');
  const html=readFileSync(new URL('../internal/web/assets/index.html',import.meta.url),'utf8');
  assert.match(html,/<h1 class="page-title">Dashboard<\/h1>/);
+ assert.match(html,/<span id="footer-version" class="footer-version"><\/span><span>Made for localhost\.<\/span>/);assert.match(app,/ui\.setText\(\$\('footer-version'\),footerVersion\(state\)\)/);assert.match(app,/`Zelport \$\{version\}`/);
  assert.doesNotMatch(html,/id="panel-dashboard"[^>]*tabindex/,'page regions are not focus targets');assert.doesNotMatch(app,/settings\.tabIndex=0/);
  const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8');assert.match(css,/#panels>section\[data-module\],#panel-settings>\.settings-accordion\{max-width:none\}/,'source pages and Settings use the full page width like Dashboard');assert.match(css,/--form-measure:640px/,'fields and prose keep a readable measure');assert.doesNotMatch(html,/panel-sources/);
 });

@@ -509,3 +509,6 @@ a.resource-menu-item{display:flex;align-items:center;box-sizing:border-box;borde
 .resource-menu .resource-menu-item{min-height:36px;padding-block:8px;line-height:18px;font-size:var(--text-help);border:1px solid transparent}
 .dashboard-table-wrap{overflow:visible}
 .resource-menu.opens-up{top:auto;bottom:calc(100% + 6px)}
+.footer-meta{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;justify-content:flex-end}
+.footer-version:empty{display:none}
+.footer-version:not(:empty)+span::before{content:"·";margin-right:var(--space-3)}

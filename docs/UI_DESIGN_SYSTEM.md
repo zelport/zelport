@@ -167,7 +167,8 @@ sources controls visibility in the Services menu and Add service only; hidden so
 their services running.
 About keeps Version, Hostname, Configuration, Listeners and Modules in one row.
 Modules uses a compact count button whose non-modal popover lists the included
-module names and maturity. Build time and uptime are not shown.
+module names and maturity. Build time and uptime are not shown. The footer shows the running version (`Zelport <version>`) on
+every page, before "Made for localhost."
 
 ## Layers, feedback and lifecycle
 
