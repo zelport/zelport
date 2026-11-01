@@ -503,3 +503,9 @@ dialog .route-error:focus{outline:none}
 @media(max-width:720px){.dashboard-table .service-target .service-warning{margin:0 0 0 var(--space-2)}.dashboard-table .service-target .warning-trigger{width:18px;height:20px;min-width:0;min-height:0;pointer-events:none}.dashboard-table .service-target-detail:not([hidden]){display:block;white-space:normal;color:var(--warning);font-size:var(--text-help)}}
 /* The narrowest phones: keep the page title, refresh and Add service on one line without horizontal scrolling. */
 @media(max-width:359px){.page-heading{gap:var(--space-2)}.page-heading .page-title{font-size:22px}.page-heading #refresh-status{min-width:40px;min-height:40px}.page-heading #add-service{padding-inline:12px}}
+/* Row menus: always a vertical list, even inside nowrap table cells, and never clipped by the table card. */
+.resource-menu{display:flex;flex-direction:column;white-space:normal}
+a.resource-menu-item{display:flex;align-items:center;box-sizing:border-box;border-radius:7px;text-decoration:none}
+.resource-menu .resource-menu-item{min-height:36px;padding-block:8px;line-height:18px;font-size:var(--text-help);border:1px solid transparent}
+.dashboard-table-wrap{overflow:visible}
+.resource-menu.opens-up{top:auto;bottom:calc(100% + 6px)}
