@@ -135,12 +135,17 @@ when the user expects the service to become available.
 
 Dashboard is the only list of services. The table has fixed columns: Address,
 Source, Target, Status and the row menu (Open, Edit, Remove). Every row is one
-line; long values truncate with an ellipsis. Status shows a dot or the shared
-warning glyph with a short label (Listening, Configured, Available, No listener,
-Exposed, Unencrypted, Unreachable, Unavailable). Its detail is a tooltip on the
-label, never a second line. At 720px and below each service becomes a list item
-with address, source, target and status on separate single lines; the status
-detail follows the label on its line. The empty state is one short sentence.
+line; long values truncate with an ellipsis. Status is only the service state:
+a dot or the shared warning glyph with a short label (Listening, Configured,
+Available, No listener, Unreachable, Unavailable). Its detail is a tooltip on
+the label, never a second line. A security property of the target is not a
+state: an unencrypted or unverified Remote HTTP target and a Local Ports backend
+that also listens beyond loopback show the warning glyph before the Target text,
+with the explanation in its tooltip, while Status keeps the state (for example
+Configured or Listening). Sources provide it through `routeWarning(route)`. At
+720px and below each service becomes a list item with address, source, target
+and status on separate single lines; the status detail follows the label on its
+line and a target warning appears as a line under the target. The empty state is one short sentence.
 
 ### Source pages and Settings
 

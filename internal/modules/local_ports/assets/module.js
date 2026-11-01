@@ -157,8 +157,13 @@ export function mount(ctx){
    const listener=inventory.byPort.get(port);
    const checked=inventory.checkedAt?` Checked at ${inventory.checkedAt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}.`:'';
    if(!listener)return {tone:'warning',label:'No listener',detail:`Nothing listens on port ${port}.${checked}`};
-   if(listener.listens_beyond_loopback)return {tone:'warning',label:'Exposed',detail:`${nonLoopbackWarning}${checked}`};
    return {tone:'ok',label:'Listening',detail:checked.trim()};
+  },
+  routeWarning(route){
+   const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return '';
+   const listener=inventory.byPort.get(port);if(!listener?.listens_beyond_loopback)return '';
+   const checked=inventory.checkedAt?` Checked at ${inventory.checkedAt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}.`:'';
+   return `${nonLoopbackWarning}${checked}`;
   },
   routeNotice(route){
    const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return '';

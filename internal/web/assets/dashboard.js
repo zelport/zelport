@@ -1,4 +1,5 @@
 // Dashboard is the only list of services: one row each, with its status and actions.
+// Status is the service state only; target security properties come from routeWarning(route).
 export const sourceChoices=[
  {id:'local_ports',description:'This computer',icon:'laptop'},
  {id:'ports_over_ssh',description:'An SSH server',icon:'terminal'},
@@ -46,7 +47,9 @@ export function createDashboard({root,modules,client,navigate,ui}){
     for(const [cell,label]of [[domain,'Address'],[source,'Source'],[target,'Target'],[status,'Status'],[action,'Actions']])cell.dataset.label=label;
     const indicator=ui.serviceStatus(),actionRoot=ui.el('div','resource-actions dashboard-actions'),trigger=ui.el('button','resource-menu-trigger','⋮'),menu=ui.el('div','resource-menu');
     trigger.setAttribute('aria-haspopup','menu');menu.setAttribute('role','menu');actionRoot.append(trigger,menu);action.append(actionRoot);status.append(indicator.root);
-    item={row,domain,source,target,indicator,trigger,route,menu:ui.disclosureMenu(actionRoot,trigger,menu)};rows.set(route.id,item);
+    // A security property of the target (for example unencrypted) is a warning beside Target; Status stays the service state.
+    const warning=ui.warningIndicator('',`Security warning for ${route.domain}`),targetText=ui.el('span','service-target-text'),targetDetail=ui.el('span','service-target-detail');target.append(warning.root,targetText,targetDetail);
+    item={row,domain,source,target,targetText,targetDetail,warning,indicator,trigger,route,menu:ui.disclosureMenu(actionRoot,trigger,menu)};rows.set(route.id,item);
     const open=ui.el('a','resource-menu-item','Open');open.setAttribute('role','menuitem');open.target='_blank';open.rel='noopener';open.addEventListener('click',()=>item.menu.close(true));
     const edit=ui.button('Edit',()=>{item.menu.close(true);modules.get(item.route.module)?.instance?.edit(item.route);},'resource-menu-item');
     const remove=ui.button('Remove',()=>{item.menu.close(true);modules.get(item.route.module)?.instance?.remove?.(item.route);},'resource-menu-item service-menu-remove');
@@ -60,7 +63,7 @@ export function createDashboard({root,modules,client,navigate,ui}){
    ui.setText(item.link,addressText(state,route,address));if(linked&&item.address!==address){item.link.href=address;item.open.href=address;}item.address=address;item.open.hidden=!linked;
    item.remove.hidden=!instance?.remove;
    ui.setText(item.source,modules.get(route.module)?.descriptor.name||route.module);
-   ui.setText(item.target,instance?.routeTarget?.(route)||route.summary.target||'');
+   ui.setText(item.targetText,instance?.routeTarget?.(route)||route.summary.target||'');const warning=instance?.routeWarning?.(route)||'';item.warning.update(warning);ui.setText(item.targetDetail,warning);item.targetDetail.hidden=!warning;
    const status=instance?.routeStatus?.(route)||defaultRouteStatus(route);
    if(!linked&&status.tone==='neutral')Object.assign(status,{label:'Not connected',detail:'Not connected on this device.'});
    item.indicator.update(status);
