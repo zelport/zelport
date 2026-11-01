@@ -395,7 +395,11 @@ header .connection-status{margin-left:auto}
 .runtime-facts dd{margin:0;font-size:var(--text-help);overflow-wrap:anywhere}
 @media(max-width:900px){.runtime-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.runtime-facts .runtime-modules{grid-column:1/-1}}
 /* Form pages share one readable width; only Dashboard's table uses the full width. */
-#panels>section[data-module],#panel-settings>.settings-accordion{max-width:720px}
+/* Every page uses the full content width, so cards line up with the header, footer and Dashboard table. Inside cards, fields and prose keep a readable measure; switches and actions stay on the card edge. */
+:root{--form-measure:640px}
+#panels>section[data-module],#panel-settings>.settings-accordion{max-width:none}
+:is(#panels>section[data-module],#panel-settings) :is(.form-field,p.small,p.muted,p.route-error,.relay-access-warning){max-width:var(--form-measure)}
+@media(min-width:481px){#panel-settings .relay-network{grid-template-columns:minmax(0,calc(var(--form-measure) - 120px - var(--space-4))) 120px}}
 @media(max-width:720px){.dashboard-table .service-status-label{flex:none}}
 @media(max-width:480px){header{gap:var(--space-4)}header .brand{flex:none;width:32px;overflow:hidden}header .brand-logo{flex:none;width:117.333px;height:32px;max-width:none}header .primary-navigation{gap:var(--space-4)}}
 .page-heading #refresh-status{margin-left:auto}

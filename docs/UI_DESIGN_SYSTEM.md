@@ -145,9 +145,13 @@ detail follows the label on its line. The empty state is one short sentence.
 ### Source pages and Settings
 
 Each source has a page in the Services menu: the source title and its
-configuration form (at most 720px wide, the same width as the Settings
-sections). Only Dashboard's table uses the full content width. Ports over Relay adds its device catalog
-below the form. Source pages never repeat the service list.
+configuration form. Ports over Relay adds its device catalog below the form.
+
+Every page uses the full content width: Dashboard's table, source page cards
+and Settings sections share the right edge of the header and footer. Inside a
+card, fields, help text and callouts keep a readable measure
+(`--form-measure`, 640px); switches, badges, dividers and the Save/Discard
+actions stay on the card edge. Source pages never repeat the service list.
 
 Settings contains Built-in Relay, Service sources, Remote administration and
 About. Remote administration has one switch, Allow remote file access (off by

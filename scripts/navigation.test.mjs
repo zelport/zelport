@@ -74,7 +74,7 @@ test('primary navigation is Dashboard, the Services menu of source pages, and Se
  const html=readFileSync(new URL('../internal/web/assets/index.html',import.meta.url),'utf8');
  assert.match(html,/<h1 class="page-title">Dashboard<\/h1>/);
  assert.doesNotMatch(html,/id="panel-dashboard"[^>]*tabindex/,'page regions are not focus targets');assert.doesNotMatch(app,/settings\.tabIndex=0/);
- const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8');assert.match(css,/#panels>section\[data-module\],#panel-settings>\.settings-accordion\{max-width:720px\}/,'source pages and Settings share one width');assert.doesNotMatch(html,/panel-sources/);
+ const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8');assert.match(css,/#panels>section\[data-module\],#panel-settings>\.settings-accordion\{max-width:none\}/,'source pages and Settings use the full page width like Dashboard');assert.match(css,/--form-measure:640px/,'fields and prose keep a readable measure');assert.doesNotMatch(html,/panel-sources/);
 });
 
 test('layout tokens define one rhythm for header, page titles, rows and surfaces',()=>{
