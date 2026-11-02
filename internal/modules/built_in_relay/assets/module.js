@@ -13,11 +13,13 @@ export function mount(ctx) {
  const {el,field,button,adornedField,adornmentButton,dialogHeader,showDialog,statusTone,picker}=ctx.ui;
  const form=el('form','relay-settings'),enabled=field('Enable relay',false,'checkbox');
  const requireToken=field('Require access token',false,'checkbox');
- const accessWarning=el('p','small relay-access-warning','Anyone who can reach this relay can use it. Changing this disconnects current clients.');
+ // Explanations live in info hints; only the open-access risk stays visible, as one warning line.
+ ctx.ui.withInfo(enabled,'Lets other Zelport apps connect through this computer.');ctx.ui.withInfo(requireToken,'Changing this disconnects current clients.');
+ const accessWarning=el('p','field-hint field-warning relay-access-warning');accessWarning.append(ctx.ui.icon('warning',{className:'warning-glyph'}),el('span',null,'Anyone who can reach this relay can use it.'));
  const port=adornedField('Port',8070,'number'),bind=adornedField('Bind address','');
  const network=el('div','relay-network'),error=el('p','route-error'),actions=el('div','relay-actions');
  let current,revision,dirty=false,saving=false,dialog,active=false,disposed=false,generation=0,secretRevision;
- port.input.min='1';port.input.max='65535';port.input.required=true;bind.input.placeholder='All interfaces';
+ port.input.min='1';port.input.max='65535';port.input.required=true;bind.input.placeholder='All interfaces';ctx.ui.withInfo(bind,'Blank listens on all interfaces, including VPN and public ones.');
  const feedback=el('p','small muted');feedback.setAttribute('role','status');
  const reveal=adornmentButton('Reveal access token','eye',async()=>{
   if(token.input.value){clearSecret();return;}
@@ -30,7 +32,7 @@ export function mount(ctx) {
  });
  const rotate=adornmentButton('Change access token','edit',openRotation);
  const token=adornedField('Relay access token','','password',{actions:[reveal,copy,rotate]});
- token.input.readOnly=true;token.input.autocomplete='off';token.input.spellcheck=false;
+ token.input.readOnly=true;token.input.autocomplete='off';token.input.spellcheck=false;ctx.ui.withInfo(token,'Kept when protection is off. Never reuse the E2E secret.');
  function clearSecret(){generation++;token.input.value='';token.input.type='password';reveal.setAttribute('aria-label','Reveal access token');ctx.ui.setTooltip(reveal,'Reveal access token');feedback.textContent='';}
  async function readToken(){
   if(token.input.value)return token.input.value;
@@ -66,7 +68,7 @@ export function mount(ctx) {
   showDialog(d,{signal:ctx.signal,onClose(){mode.dispose();replacement.input.value='';if(dialog===d)dialog=null;}});
  }
  requireToken.input.addEventListener('change',()=>{accessWarning.hidden=requireToken.input.checked;clearSecret();});
- network.append(bind.wrap,port.wrap,el('p','small muted','Blank listens on all interfaces, including VPN and public ones.'));
+ network.append(bind.wrap,port.wrap);
  const save=el('button','primary','Save');save.type='submit';
  function sync(){enabled.input.checked=!!current.enabled;port.input.value=String(current.port);bind.input.value=current.bind_address||'';requireToken.input.checked=current.require_access_token===true;revision=ctx.ui.state().revision;dirty=false;accessWarning.hidden=requireToken.input.checked;}
  function changed(){dirty=enabled.input.checked!==!!current.enabled||Number(port.input.value)!==current.port||bind.input.value!==(current.bind_address||'')||requireToken.input.checked!==(current.require_access_token===true);updateButtons();}
@@ -74,8 +76,9 @@ export function mount(ctx) {
  function updateButtons(){save.disabled=reload.disabled=saving||!dirty;reveal.disabled=copy.disabled=saving||!current?.has_token;rotate.disabled=saving||!current?.has_token;form.setAttribute('aria-busy',String(saving));}
 
  const header=el('div','relay-header'),title=el('div'),connection=el('div','relay-connection'),credentials=el('div','relay-credentials');
- title.append(el('p','muted','Let other Zelport apps connect through this computer.'));header.append(title);
- connection.append(enabled.wrap);credentials.append(requireToken.wrap,accessWarning,token.wrap,feedback,el('p','small muted','Kept when protection is off. Never reuse the E2E secret.'));
+ // Status line: dot, state, then listeners and clients as values.
+ const statusDot=el('span','builtin-relay-dot'),statusLabel=el('strong',null,''),statusFacts=el('span','builtin-relay-facts');title.className='builtin-relay-status';title.append(statusDot,statusLabel,statusFacts);header.append(title);
+ connection.append(enabled.wrap);credentials.append(requireToken.wrap,accessWarning,token.wrap,feedback);
  actions.append(reload,save);form.append(header,connection,network,credentials,error,actions);
  const validation=ctx.ui.formFeedback(form,error,[{input:port.input,matches:/port/i},{input:bind.input,matches:/bind|address/i}]);
  form.addEventListener('input',e=>{if(e.target===token.input)return;changed();},{signal:ctx.signal});
@@ -86,15 +89,15 @@ export function mount(ctx) {
   finally{saving=false;updateButtons();if(failure)validation.show(failure);}
  },{signal:ctx.signal});
  const views=ctx.ui.moduleViews({...ctx,toolbar:null,moduleName:ctx.moduleName||'Built-in Relay'},{overviewPlacement:'before',onChange(){clearSecret();dialog?.close();}});
- const overviewStatus=el('span','badge status-badge'),overviewListeners=el('p','small muted'),overviewError=el('p','route-error');
- overviewError.setAttribute('role','status');views.overview.className='relay-overview';views.overview.append(overviewStatus,overviewListeners,overviewError);views.configuration.append(form);
+ const overviewError=el('p','route-error');
+ overviewError.setAttribute('role','status');views.overview.className='relay-overview';views.overview.append(overviewError);views.configuration.append(form);
  return {
   openSettings(){views.show('configuration');},
   render(state){current=state.data;if(!dirty&&!saving){revision=state.revision;enabled.input.checked=current.enabled;if(port.input.value!==String(current.port))port.input.value=current.port;if(bind.input.value!==current.bind_address)bind.input.value=current.bind_address;requireToken.input.checked=current.require_access_token===true;}
    accessWarning.hidden=requireToken.input.checked;
    if(token.input.value&&secretRevision!==state.revision)clearSecret();
    const s=current.status;
-   ctx.ui.setText(overviewStatus,s.state);overviewStatus.dataset.tone=statusTone(s.state);ctx.ui.setText(overviewListeners,`${s.clients} connected clients${s.listeners.length?' · '+s.listeners.join(', '):''}`);ctx.ui.setText(overviewError,s.error||'');
+   ctx.ui.setText(statusLabel,s.state);statusDot.dataset.tone=statusTone(s.state);ctx.ui.setText(statusFacts,[...(s.listeners||[]),`${s.clients} ${s.clients===1?'client':'clients'}`].join(' · '));ctx.ui.setText(overviewError,s.error||'');
    token.input.placeholder=current.has_token?'Token hidden':'Created when token protection is enabled';updateButtons();
   },
   activate(){active=true;},deactivate(){active=false;clearSecret();dialog?.close();},dispose(){disposed=true;active=false;clearSecret();dialog?.close();views.dispose();}

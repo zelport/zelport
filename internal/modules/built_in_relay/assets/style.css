@@ -23,3 +23,18 @@
 .relay-overview{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
 .relay-overview p{margin:0;overflow-wrap:anywhere}
 .relay-overview .route-error:empty{display:none}
+/* v2: status line, no dividers, warnings as one line. */
+.builtin-relay-status{display:flex;align-items:center;gap:var(--space-2);min-height:44px;margin-bottom:var(--space-2)}
+.builtin-relay-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;flex:none}
+.builtin-relay-dot::before{content:"";width:8px;height:8px;border-radius:50%;box-sizing:border-box;border:2px solid var(--neutral-mark)}
+.builtin-relay-dot[data-tone=ok]::before{border-color:var(--ok);background:var(--ok)}
+.builtin-relay-dot[data-tone=error]::before{border-color:var(--red);background:var(--red)}
+.builtin-relay-dot[data-tone=pending]::before{border-color:var(--amber);background:var(--amber)}
+.builtin-relay-status>strong{font-weight:600}
+.builtin-relay-facts{color:var(--muted);font-size:14px}
+.relay-network,.relay-credentials{border-top:0}
+.relay-credentials{margin-top:var(--space-4)}
+.relay-connection{margin-bottom:var(--space-4)}
+.relay-access-warning{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-3);padding:0;border:0;background:transparent}
+.relay-access-warning .warning-glyph{width:16px;height:16px}
+.relay-settings .relay-actions{border-top:0;padding-top:0;margin-top:var(--space-4)}

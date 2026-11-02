@@ -142,9 +142,12 @@ function addAvailability(settings){
 }
 // Remote file access is changed only on this computer; remote sessions see it read-only.
 function addRemoteFileAccess(settings){
- const section=ui.accordion('Remote administration'),control=ui.switchField('Allow remote file access'),help=ui.el('p','small muted','Lets devices that administer this Zelport remotely change the SSH configuration and CA file paths and edit those files. This can run commands on this computer.'),note=ui.el('p','small muted');
+ const section=ui.accordion('Remote administration'),control=ui.switchField('Allow remote file access'),help=ui.el('p','visually-hidden','Lets devices that administer this Zelport remotely change the SSH configuration and CA file paths and edit those files.'),note=ui.el('p','small muted');
+ ui.withInfo(control,'Lets devices that administer this Zelport remotely change the SSH configuration and CA file paths and edit those files.');
+ // The risk stays visible while the switch is on.
+ const risk=ui.el('p','field-hint field-warning remote-file-access-risk');risk.append(ui.icon('warning',{className:'warning-glyph'}),ui.el('span',null,'Remote devices can run commands on this computer.'));risk.hidden=true;
  help.id='remote-file-access-help';note.id='remote-file-access-note';control.input.setAttribute('aria-describedby','remote-file-access-help remote-file-access-note');
- section.content.append(control.wrap,help,note);settings.append(section.root);remoteFileAccess={input:control.input,note};
+ section.content.append(control.wrap,risk,help,note);settings.append(section.root);remoteFileAccess={input:control.input,note,risk};
  control.input.addEventListener('change',async()=>{
   if(remoteFileAccessSaving)return;remoteFileAccessSaving=true;renderRemoteFileAccess();
   try{await mutate(()=>api('/api/remote-file-access',{method:'PUT',body:JSON.stringify({revision:state.revision,enabled:control.input.checked})}));}
@@ -155,7 +158,7 @@ function addRemoteFileAccess(settings){
 function renderRemoteFileAccess(){
  if(!remoteFileAccess||!state)return;const remote=!!state.remote_admin;
  if(!remoteFileAccessSaving)remoteFileAccess.input.checked=!!state.remote_file_access;
- remoteFileAccess.input.disabled=remote||remoteFileAccessSaving;
+ remoteFileAccess.input.disabled=remote||remoteFileAccessSaving;if(remoteFileAccess.risk)remoteFileAccess.risk.hidden=!remoteFileAccess.input.checked;
  ui.setText(remoteFileAccess.note,remote?'Change this on the computer itself.':'');remoteFileAccess.note.hidden=!remote;
 }
 function addAbout(settings){const section=ui.accordion('About'),facts=ui.el('dl','runtime-facts');facts.id='runtime-info';section.content.append(facts);settings.append(section.root);}
