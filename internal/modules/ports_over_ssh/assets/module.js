@@ -126,5 +126,12 @@ export function mount(ctx){
    else if(!saving&&baseline===savedPath())revision=ctx.ui.state().revision;
    updateControls();
   }
- },openSettings,edit:routes.edit,remove:routes.remove,routeStatus(route){return route.summary.state==='unavailable'?{tone:'warning',label:'Unreachable',detail:route.summary.detail||'SSH connection failed.'}:{tone:'neutral',label:'Configured'};},activate(){routes.activate?.();},deactivate(){routes.deactivate?.();},dispose(){disposed=true;webEditor?.dispose();routes.dispose();views.dispose();}};
+ },openSettings,edit:routes.edit,remove:routes.remove,routeStatus(route){
+  // The connection pool state: idle until the first request, then connecting / connected, or error.
+  const connection=ctx.ui.state()?.states?.[ctx.moduleId]?.data?.connections?.[route.id];
+  if(route.summary.state==='unavailable'||connection?.state==='error')return {tone:'error',label:'Unreachable',detail:route.summary.detail||'SSH connection failed.'};
+  if(connection?.state==='connected')return {tone:'ok',label:'Connected'};
+  if(connection?.state==='connecting')return {tone:'neutral',label:'Connecting'};
+  return {tone:'neutral',label:'Idle',detail:'Connects on the first request.'};
+ },activate(){routes.activate?.();},deactivate(){routes.deactivate?.();},dispose(){disposed=true;webEditor?.dispose();routes.dispose();views.dispose();}};
 }

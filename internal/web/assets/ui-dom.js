@@ -79,7 +79,8 @@ export function serviceStatus(){
  const root=el('span','service-status'),mark=el('span','service-status-mark'),label=el('span','service-status-label'),detail=el('span','service-status-detail'),tip=el('span','ui-tooltip status-tooltip');
  const tooltip=attachTooltip(root,label,tip);root.append(mark,label,detail,tip);
  function update({tone='neutral',label:text='',detail:more=''}={}){
-  if(root.dataset.tone!==tone){root.dataset.tone=tone;mark.replaceChildren(...(tone==='warning'?[icon('warning',{className:'warning-glyph'})]:[]));}
+  // Colour lives only in the dot; the label reads the same for every tone.
+  if(root.dataset.tone!==tone)root.dataset.tone=tone;
   setText(label,text);setText(detail,more);setText(tip,more);detail.hidden=!more;
   if(more)label.tabIndex=0;else{label.removeAttribute('tabindex');tooltip.close();}
  }

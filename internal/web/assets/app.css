@@ -531,3 +531,58 @@ a.resource-menu-item{display:flex;align-items:center;box-sizing:border-box;borde
 .dashboard-table:not(.source-table) th:nth-child(2){width:150px}
 .dashboard-table.source-table th:nth-child(1){width:32%}
 .dashboard-table.source-table th:nth-child(4){width:64px}
+/* v2 tables (2026-11-02). Status: a dot in a fixed 16px slot, the label in normal text; colour only in the dot. */
+:root{--amber:#c98a1a;--red:#c0392b}
+@media(prefers-color-scheme:dark){:root{--amber:#e3a83f;--red:#f07a6a}}
+.service-status{gap:var(--space-2)}
+.service-status-mark{width:16px}
+.service-status[data-tone]{color:var(--ink);font-weight:400}
+.service-status[data-tone="warning"] .service-status-mark:empty::before{border-color:var(--amber);background:var(--amber)}
+.service-status[data-tone="error"] .service-status-mark:empty::before{border-color:var(--red);background:var(--red)}
+/* Column widths: Address 32%, Source 80px, Status 148px (fits "Not checked"), actions 56px; Target takes the rest. */
+.dashboard-table th:nth-child(1),.dashboard-table.source-table th:nth-child(1){width:32%}
+.dashboard-table:not(.source-table) th:nth-child(2){width:80px}
+.dashboard-table:not(.source-table) th:nth-child(3),.dashboard-table.source-table th:nth-child(2){width:auto}
+.dashboard-table:not(.source-table) th:nth-child(4),.dashboard-table.source-table th:nth-child(3){width:148px}
+.dashboard-table th:last-child,.dashboard-table:not(.source-table) th:nth-child(5),.dashboard-table.source-table th:nth-child(4){width:56px}
+/* Sortable headers: plain text buttons; only the active column shows its arrow, in the cell padding so widths never change. */
+.dashboard-table th .sort-button{position:relative;display:inline-flex;align-items:center;min-height:0;padding:0;margin:0;border:0;border-radius:4px;background:transparent;color:inherit;font:inherit;font-weight:inherit;cursor:pointer}
+.dashboard-table th .sort-button:hover{color:var(--ink);filter:none}
+.dashboard-table th[aria-sort=ascending] .sort-button,.dashboard-table th[aria-sort=descending] .sort-button{color:var(--ink)}
+.dashboard-table th .sort-arrow{position:absolute;left:calc(100% + 4px);top:50%;transform:translateY(-50%);font-size:9px;line-height:1;color:var(--accent)}
+.dashboard-table th .sort-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dashboard-table .no-matches-row td{text-align:center;color:var(--muted)}
+/* Heading tools: Search, Rescan ports and Add service share one 44px row. */
+.table-tools{display:flex;align-items:center;gap:var(--space-3);margin-left:auto}
+.table-tools:not(:has(> :not([hidden]))){display:none}
+.page-heading .table-tools+#add-service{margin-left:0}
+.page-heading .table-tools:not(:has(> :not([hidden])))+#add-service{margin-left:auto}
+.page-heading{gap:var(--space-3)}
+.table-search{position:relative;display:flex;align-items:center;gap:var(--space-2);width:240px;height:44px;margin:0;padding:0 var(--space-2) 0 var(--space-3);border:1px solid var(--line);border-radius:var(--radius-control);background:var(--surface);font-weight:400;cursor:text}
+.table-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.table-search-icon{flex:none;width:16px;height:16px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round}
+.table-search input{flex:1;min-width:0;height:100%;margin:0;padding:0;border:0;background:transparent;color:var(--ink);font-size:var(--text-body);outline:none}
+.table-search input::-webkit-search-cancel-button{display:none}
+.table-search-clear{flex:none;width:28px;height:28px;min-height:0;padding:0;border:0;border-radius:6px;background:transparent;color:var(--muted);font-size:18px;font-weight:400;line-height:1}
+.table-search-clear:hover{background:var(--accent-soft);filter:none}
+#add-service,.source-add-service{min-height:44px}
+.table-tools .rescan-ports{width:44px;height:44px;min-height:44px;border:1px solid var(--line);border-radius:var(--radius-control);background:var(--surface);color:var(--muted)}
+.table-tools .rescan-ports:hover{color:var(--ink);border-color:var(--accent);filter:none}
+/* Phones: title, Rescan ports and Add service on the first line; the search field takes the whole second line. */
+@media(max-width:720px){
+ .page-heading,.module-heading{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);min-height:0;padding:var(--space-4) 0}
+ .page-heading .table-tools,#module-heading #module-actions,#module-heading #module-actions .module-toolbar:not([hidden]),#module-heading .table-tools{display:contents}
+ .table-search{order:3;flex:1 0 100%;width:auto}
+ .table-tools .rescan-ports{margin-left:auto}
+ .page-heading #add-service,.module-heading .source-add-service{margin-left:0}
+ .page-heading:has(.rescan-ports[hidden]) #add-service,.page-heading:not(:has(.rescan-ports)) #add-service,.module-toolbar:not([hidden]):has(.rescan-ports[hidden]) .source-add-service,.module-toolbar:not([hidden]):not(:has(.rescan-ports)) .source-add-service{margin-left:auto}
+ /* One line each: address, source · target, status label. Details stay in the accessible names. */
+ .dashboard-table:not(.source-table) .service-source{display:none}
+ .dashboard-table:not(.source-table) .service-target-line::before{content:attr(data-source) " · ";flex:none;white-space:pre}
+ .dashboard-table .service-status-detail,.dashboard-table .service-target-detail{display:none!important}
+}
+/* Phones: Add service shrinks to "+" (its text stays the accessible name). */
+@media(max-width:480px){#add-service,.source-add-service{width:44px;min-width:44px;padding:0;font-size:0}#add-service::before,.source-add-service::before{content:"+";font-size:24px;font-weight:500;line-height:1}}
+/* Empty list: one centred label in the table card. */
+.dashboard-empty,.source-services .dashboard-empty{display:flex;align-items:center;justify-content:center;min-height:112px;padding:var(--space-6);border:1px solid var(--line);border-radius:var(--radius-panel);background:var(--surface);color:var(--muted);text-align:center}
+.dashboard-empty p{margin:0}

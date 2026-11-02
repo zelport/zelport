@@ -31,5 +31,5 @@ export function mount(ctx){
    return {element,read:()=>({target_url:target.input.value.trim(),skip_tls_verify:!verify.row.hidden&&!verify.input.checked,rewrite_origin:origin.input.checked})};
   }
  });
- return {...routes,routeStatus(){return {tone:'neutral',label:'Configured'};},routeWarning(route){return route.summary.detail||'';},render(state){routes.render(state);settings.render(state);settings.open(false);},openSettings(){views.show('configuration');settings.open();},dispose(){settings.dispose();routes.dispose();views.dispose();}};
+ return {...routes,routeStatus(){return {tone:'neutral',label:'Not checked',detail:'Zelport does not check remote URLs.'};},routeWarning(route){return route.summary.detail||'';},render(state){routes.render(state);settings.render(state);settings.open(false);},openSettings(){views.show('configuration');settings.open();},dispose(){settings.dispose();routes.dispose();views.dispose();}};
 }

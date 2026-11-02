@@ -73,10 +73,38 @@ test('A source page lists only its own services, without the Source column, and 
  page.render(state);
  const table=find(root,'dashboard-table');
  assert.ok(table.className.includes('source-table'));
- assert.deepEqual(table.children[0].children[0].children.map(cell=>cell.textContent),['Address','Target','Status','Actions']);
+ assert.deepEqual(table.children[0].children[0].children.map(cell=>cell.children[0]?.textContent??cell.textContent),['Address','Target','Status','Actions']);
  assert.deepEqual(table.children[1].children.map(row=>row.children[0].children[0].textContent),['b.localhost:7070','c.localhost:7070']);
  page.openAddService({focus(){}});
  assert.equal(calls[0].sourceId,'local_ports');calls[0].onSaved();assert.deepEqual(navigated,['local']);
  state.states.local_ports.routes=[];page.render(state);
- assert.equal(find(root,'dashboard-empty').children[0].textContent,'No Local Ports services yet.');
+ assert.equal(find(root,'dashboard-empty').children[0].textContent,'No services');
+});
+
+test('Search matches the service name, or the whole address once the query has a dot or colon',async()=>{
+ const {addressMatches}=await import('../internal/web/assets/dashboard.js');
+ assert.equal(addressMatches('',"logs.localhost",'logs.localhost:7070'),true);
+ assert.equal(addressMatches('LOG','logs.localhost','logs.localhost:7070'),true);
+ assert.equal(addressMatches('localhost','logs.localhost','logs.localhost:7070'),false);
+ assert.equal(addressMatches('7070','logs.localhost','logs.localhost:7070'),false);
+ assert.equal(addressMatches('logs.localh','logs.localhost','logs.localhost:7070'),true);
+ assert.equal(addressMatches('.localhost:7070','logs.localhost','logs.localhost:7070'),true);
+ assert.equal(addressMatches(':8080','logs.localhost','logs.localhost:7070'),false);
+});
+
+test('Status sorting puts problems first and Source uses the short connection names',()=>{
+ setup();globalThis.localStorage={store:{},getItem(k){return this.store[k]??null},setItem(k,v){this.store[k]=v}};
+ const route=(id,module)=>({id,module,domain:`${id}.localhost`,summary:{state:'configured',target:id}});
+ const tones={a:'ok',b:'error',c:'warning',d:'neutral'};
+ const state={port:7070,module_availability:{},modules:[{}],states:{local_ports:{routes:['a','b','c','d'].map(id=>route(id,'local_ports'))}}};
+ const modules=new Map([['local_ports',{descriptor:{id:'local_ports',name:'Local Ports'},instance:{routeStatus:r=>({tone:tones[r.id],label:r.id})}}]]);
+ const root=new Node(),dashboard=createDashboard({root,modules,client:{state:()=>state},navigate(){},ui});
+ dashboard.render(state);
+ const table=find(root,'dashboard-table'),body=table.children[1],head=table.children[0].children[0];
+ assert.equal(find(body.children[0],'service-source').textContent,'Local');
+ const statusButton=head.children[3].children[0];assert.equal(statusButton.textContent,'Status');
+ body.children=[];statusButton.events.click();
+ assert.deepEqual(body.children.filter(row=>row.className!=='no-matches-row').map(row=>row.children[0].children[0].textContent),['b.localhost:7070','c.localhost:7070','d.localhost:7070','a.localhost:7070']);
+ assert.equal(head.children[3].attrs['aria-sort'],'ascending');
+ assert.deepEqual(JSON.parse(localStorage.store['zelport.sort.dashboard']),{column:'Status',direction:1});
 });

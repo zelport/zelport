@@ -137,10 +137,10 @@ export function mount(ctx){
    const result=await ctx.api(`/api/modules/${ctx.moduleId}/listeners`,{method:'GET',signal:controller.signal});
    if(!visible||disposed||controller.signal.aborted)return;
    inventory={health:result.discovery_enabled===false?'disabled':'ready',checkedAt:new Date(),byPort:new Map((result.configured_listeners||result.listeners||[]).map(listener=>[Number(listener.port),listener]))};
-   view.render(latest);
+   view.render(latest);ctx.statusChanged?.();
   }catch{
    if(!visible||disposed||controller.signal.aborted)return;
-   inventory={health:'unavailable',byPort:new Map()};view.render(latest);
+   inventory={health:'unavailable',byPort:new Map()};view.render(latest);ctx.statusChanged?.();
   }finally{if(request===controller)request=null;}
  }
  function stop(){visible=false;request?.abort();request=null;}
@@ -153,7 +153,7 @@ export function mount(ctx){
    return port>0?`Port ${port}${listener?.processes?.length?` · ${processLabels(listener.processes).text}`:''}`:'';
   },
   routeStatus(route){
-   const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return {tone:'neutral',label:'Configured'};
+   const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return {tone:'neutral',label:'Not checked'};
    const listener=inventory.byPort.get(port);
    const checked=inventory.checkedAt?` Checked at ${inventory.checkedAt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}.`:'';
    if(!listener)return {tone:'warning',label:'No listener',detail:`Nothing listens on port ${port}.${checked}`};

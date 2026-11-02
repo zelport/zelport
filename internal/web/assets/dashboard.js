@@ -7,16 +7,48 @@ export const sourceChoices=[
  {id:'remote_http',description:'Any URL',icon:'globe'},
  {id:'ports_over_relay',description:'Your other devices',icon:'devices'}
 ];
+// Sources are named by connection; the Source column and menus use these short names.
+const sourceLabels={local_ports:'Local',ports_over_ssh:'SSH',remote_http:'HTTP',ports_over_relay:'Relay'};
+export function sourceLabel(id,fallback){return sourceLabels[id]||fallback||id;}
+// Tones: ok (green), warning (amber: target offers nothing now), error (red: connection failed), neutral (grey outline: not known).
 export function defaultRouteStatus(route){
  const summary=route.summary||{};
  if(summary.state==='unavailable')return {tone:'warning',label:'Unavailable',detail:summary.detail||''};
  if(summary.state==='ready')return {tone:'ok',label:'Available',detail:summary.detail||''};
  if(summary.detail)return {tone:'warning',label:'Warning',detail:summary.detail};
- return {tone:'neutral',label:'Configured'};
+ return {tone:'neutral',label:'Not checked'};
 }
-export function createDashboard({root,modules,client,navigate,ui,moduleId=null,returnTo='dashboard'}){
- const rows=new Map(),columns=moduleId?['Address','Target','Status','Actions']:['Address','Source','Target','Status','Actions'];let table,body,empty;
+const sortable=new Set(['Address','Source','Status']);
+// "Problems first" when sorting by Status.
+const statusRank={error:0,warning:1,neutral:2,ok:3};
+// A query without "." or ":" matches the service name only; with one it matches the whole address.
+export function addressMatches(query,domain,address){
+ const q=String(query||'').trim().toLowerCase();if(!q)return true;
+ if(/[.:]/.test(q))return String(address||'').toLowerCase().includes(q);
+ return String(domain||'').toLowerCase().replace(/\.localhost$/,'').includes(q);
+}
+function storedSort(key){try{const value=JSON.parse(localStorage.getItem(key)||'null');if(value&&sortable.has(value.column)&&(value.direction===1||value.direction===-1))return value;}catch{}return {column:'Address',direction:1};}
+function storeSort(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch{}}
+export function createDashboard({root,modules,client,navigate,ui,moduleId=null,returnTo='dashboard',tools=null,onRescan=null}){
+ const rows=new Map(),columns=moduleId?['Address','Target','Status','Actions']:['Address','Source','Target','Status','Actions'];let table,body,empty,noMatches;
+ const sortKey=`zelport.sort.${moduleId||'dashboard'}`,headers=new Map();let sort=storedSort(sortKey),query='',order='';
  const enabled=module=>module?.descriptor.ui_placement==='settings'||client.state()?.module_availability?.[module?.descriptor.id]?.enabled!==false;
+ // Search and Rescan ports live in the page heading next to Add service.
+ let search,input,clear,rescan;
+ if(tools){
+  search=ui.el('label','table-search');input=ui.el('input');input.type='search';input.placeholder='Search';input.autocomplete='off';input.spellcheck=false;input.setAttribute('aria-label','Search services by address');
+  clear=ui.el('button','table-search-clear','×');clear.type='button';clear.setAttribute('aria-label','Clear search');clear.hidden=true;
+  search.append(ui.icon('search',{className:'table-search-icon'}),input,clear);
+  const setQuery=value=>{query=value;input.value=value;clear.hidden=!value;applyView();};
+  input.addEventListener('input',()=>setQuery(input.value));
+  input.addEventListener('keydown',event=>{if(event.key==='Escape'&&input.value){event.preventDefault();setQuery('');}});
+  clear.addEventListener('click',()=>{setQuery('');input.focus();});
+  tools.append(search);
+  if(onRescan){
+   rescan=ui.refreshControl('Rescan ports',async()=>{if(rescan.disabled)return;rescan.disabled=true;try{await onRescan();}finally{rescan.disabled=false;}});
+   rescan.classList.add('rescan-ports');tools.append(rescan);
+  }
+ }
  // Add service is one drawer; choosing another source swaps its content in place.
  function openAddService(trigger,{sourceId=moduleId,domain,container}={}){
   const sources=sourceChoices.map(choice=>{const module=modules.get(choice.id);return {...choice,label:module?.descriptor.name||choice.id,available:!!module?.instance&&enabled(module)};}).filter(choice=>choice.available);
@@ -27,18 +59,44 @@ export function createDashboard({root,modules,client,navigate,ui,moduleId=null,r
    onSaved(){navigate(returnTo);}});
  }
  function addressText(state,route,address){if(state.remote_admin&&address){try{return new URL(address).host;}catch{}}return state.port===80?route.domain:`${route.domain}:${state.port}`;}
+ function headerCell(name){
+  const cell=ui.el('th');cell.scope='col';
+  if(name==='Actions'){cell.className='visually-hidden-label';cell.textContent=name;return cell;}
+  if(!sortable.has(name)){cell.textContent=name;return cell;}
+  const control=ui.el('button','sort-button',name);control.type='button';
+  const arrow=ui.el('span','sort-arrow');arrow.setAttribute('aria-hidden','true');control.append(arrow);
+  control.addEventListener('click',()=>{sort=sort.column===name?{column:name,direction:-sort.direction}:{column:name,direction:1};storeSort(sortKey,sort);applyView();});
+  cell.append(control);headers.set(name,{cell,arrow});return cell;
+ }
+ function compare(a,b){
+  const byName=a.route.domain.localeCompare(b.route.domain);
+  if(sort.column==='Source')return sort.direction*(a.source.textContent.localeCompare(b.source.textContent)||byName);
+  if(sort.column==='Status')return sort.direction*((statusRank[a.tone]??2)-(statusRank[b.tone]??2)||byName);
+  return sort.direction*byName;
+ }
+ // Sort, then filter by the query; rows are moved only when the order changes.
+ function applyView(){
+  if(!body)return;
+  for(const [name,{cell,arrow}]of headers){const on=sort.column===name;cell.setAttribute('aria-sort',on?(sort.direction===1?'ascending':'descending'):'none');arrow.textContent=on?(sort.direction===1?'▲':'▼'):'';}
+  const items=[...rows.values()].sort(compare),next=items.map(item=>item.route.id).join(' ');
+  if(next!==order){for(const item of items)body.append(item.row);order=next;}
+  let shown=0;for(const item of items){const match=addressMatches(query,item.route.domain,item.addressText);item.row.hidden=!match;if(match)shown++;}
+  noMatches.hidden=!(items.length&&!shown);if(!noMatches.hidden)body.append(noMatches);
+ }
  function render(state=client.state()){
   const routes=(moduleId?[state.states[moduleId]||{}]:Object.values(state.states)).flatMap(module=>module.routes||[]);
   if(!table){
    const wrap=ui.el('div','dashboard-table-wrap');table=ui.el('table',`dashboard-table data-table${moduleId?' source-table':''}`);
    const head=ui.el('tr'),thead=ui.el('thead');body=ui.el('tbody');
-   for(const name of columns){const cell=ui.el('th',null,name);cell.scope='col';if(name==='Actions')cell.className='visually-hidden-label';head.append(cell);}
+   for(const name of columns)head.append(headerCell(name));
+   noMatches=ui.el('tr','no-matches-row');const cell=ui.el('td',null,'No matches');cell.colSpan=columns.length;noMatches.append(cell);noMatches.hidden=true;
    thead.append(head);table.append(thead,body);wrap.append(table);empty=ui.el('div','empty dashboard-empty');root.append(wrap,empty);
   }
   table.parentElement.hidden=!routes.length;empty.hidden=!!routes.length;
-  if(!routes.length&&moduleId)ui.renderChanged(empty,{moduleId},()=>{empty.replaceChildren(ui.el('p',null,`No ${modules.get(moduleId)?.descriptor.name||moduleId} services yet.`));});
-  else if(!routes.length)ui.renderChanged(empty,{modules:!!state.modules.length,port:state.port},()=>{
-   empty.replaceChildren(ui.el('h2',null,state.modules.length?'No services yet':'Core only'),ui.el('p',null,state.modules.length?`Give a web service a stable name, for example my-app.localhost:${state.port}.`:'This build contains only the core. Add feature build tags to configure services.'));
+  if(search)search.hidden=!routes.length;
+  if(rescan){const local=modules.get('local_ports');rescan.hidden=!(local&&enabled(local)&&routes.some(route=>route.module==='local_ports'));}
+  if(!routes.length)ui.renderChanged(empty,{modules:!!state.modules.length},()=>{
+   empty.replaceChildren(ui.el('p',null,state.modules.length?'No services':'This build contains only the core.'));
   });
   const present=new Set(routes.map(route=>route.id));
   for(const [id,item] of rows)if(!present.has(id)){item.menu.dispose();item.row.remove();rows.delete(id);}
@@ -57,19 +115,21 @@ export function createDashboard({root,modules,client,navigate,ui,moduleId=null,r
     const remove=ui.button('Remove',()=>{item.menu.close(true);modules.get(item.route.module)?.instance?.remove?.(item.route);},'resource-menu-item service-menu-remove');
     for(const control of [edit,remove])control.setAttribute('role','menuitem');
     menu.append(open,edit,remove);item.open=open;item.remove=remove;
-    row.append(...(moduleId?[domain,target,status,action]:[domain,source,target,status,action]));body.append(row);
+    // applyView places the row in sort order.
+    row.append(...(moduleId?[domain,target,status,action]:[domain,source,target,status,action]));
    }
    item.route=route;item.trigger.setAttribute('aria-label',`Actions for ${route.domain}`);
    const address=ui.serviceURL(state,route),linked=!!address,instance=modules.get(route.module)?.instance;
    if(!item.link||item.linked!==linked){item.link=ui.el(linked?'a':'span');item.linked=linked;item.domain.replaceChildren(item.link);if(linked){item.link.target='_blank';item.link.rel='noopener';}}
-   ui.setText(item.link,addressText(state,route,address));if(linked&&item.address!==address){item.link.href=address;item.open.href=address;}item.address=address;item.open.hidden=!linked;
+   item.addressText=addressText(state,route,address);ui.setText(item.link,item.addressText);if(linked&&item.address!==address){item.link.href=address;item.open.href=address;}item.address=address;item.open.hidden=!linked;
    item.remove.hidden=!instance?.remove;
-   ui.setText(item.source,modules.get(route.module)?.descriptor.name||route.module);
+   const label=sourceLabel(route.module,modules.get(route.module)?.descriptor.name);ui.setText(item.source,label);item.targetText.parentElement.dataset.source=label;
    ui.setText(item.targetText,instance?.routeTarget?.(route)||route.summary.target||'');const warning=instance?.routeWarning?.(route)||'';item.warning.update(warning);ui.setText(item.targetDetail,warning);item.targetDetail.hidden=!warning;
-   const status=instance?.routeStatus?.(route)||defaultRouteStatus(route);
+   const status={...(instance?.routeStatus?.(route)||defaultRouteStatus(route))};
    if(!linked&&status.tone==='neutral')Object.assign(status,{label:'Not connected',detail:'Not connected on this device.'});
-   item.indicator.update(status);
+   item.tone=status.tone;item.indicator.update(status);
   }
+  applyView();
  }
  return {render,openAddService,dispose(){for(const item of rows.values())item.menu.dispose();rows.clear();}};
 }

@@ -58,6 +58,8 @@ function schedule(){
  const descriptors=state.modules.filter(d=>{const m=modules.get(d.id);return m&&moduleEnabled(m)&&(active==='dashboard'||(d.ui_placement==='settings'?active==='settings':d.tab_id===active));});
  const intervals=descriptors.map(d=>d.poll_interval/1e6).filter(v=>v>0);
  if([...modules.values()].some(m=>m.headerStatus))intervals.push(5000);
+ // Service lists follow changes made elsewhere (another tab, an agent over the API) without a click.
+ if(active==='dashboard'||sourcePage(active))intervals.push(5000);
  const interval=intervals.length?Math.min(...intervals):0;
  if(interval)timer=setTimeout(async()=>{await refreshVisible();schedule();},interval);
 }
@@ -158,25 +160,25 @@ function showBootStatus(){
  const bootStatus=ui.el('div','boot-status');bootStatus.id='boot-status';bootStatus.setAttribute('role','status');bootStatus.setAttribute('aria-label','Loading Zelport');
  const spinner=ui.el('span');spinner.className='boot-spinner';spinner.setAttribute('aria-hidden','true');bootStatus.append(spinner);document.body.prepend(bootStatus);document.body.setAttribute('aria-busy','true');return bootStatus;
 }
-let refreshingStatus=false;
-// Every page that lists services offers the same status refresh.
-function statusRefreshControl(){const control=ui.refreshControl('Refresh status',async()=>{if(refreshingStatus)return;refreshingStatus=true;control.disabled=true;try{await refreshVisible();for(const m of modules.values())if(moduleActive(m))m.instance?.refreshRouteStatus?.();}finally{refreshingStatus=false;control.disabled=false;}});return control;}
+// The service list refreshes itself; reading listening ports is the expensive part and runs on demand.
+async function rescanPorts(){await refreshVisible();modules.get('local_ports')?.instance?.refreshRouteStatus?.();}
 // A source page lists its own services (same table as Dashboard) above its configuration.
 function addSourceServices(m){
  const {descriptor,panel,toolbar}=m,services=ui.el('section','source-services'),heading=ui.el('h2','source-section-title','Configuration');
  services.setAttribute('aria-label',`${descriptor.name} services`);panel.prepend(services,heading);
- m.services=createDashboard({root:services,modules,client,navigate,ui,moduleId:descriptor.id,returnTo:descriptor.tab_id});
+ const tools=ui.el('div','table-tools');
+ m.services=createDashboard({root:services,modules,client,navigate,ui,moduleId:descriptor.id,returnTo:descriptor.tab_id,tools,onRescan:rescanPorts});
  const add=ui.button('Add service',()=>m.services.openAddService(add),'source-add-service');
- toolbar.append(statusRefreshControl(),add);
+ toolbar.append(tools,add);
 }
 async function init(){
  const bootStatus=showBootStatus();
  for(const link of document.querySelectorAll('[data-tooltip]'))ui.setTooltip(link,link.dataset.tooltip);
  client=createClient({owner:()=>active,onError:message,onState(next){state=next;clearRefreshErrors();if(composed)render();}});
  state=await client.refresh();tab('dashboard','Dashboard');
- dashboard=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui});
- const addService=$('add-service');addService.addEventListener('click',()=>openAddService(addService));
- const refreshStatus=statusRefreshControl();refreshStatus.id='refresh-status';addService.before(refreshStatus);
+ const addService=$('add-service'),tools=ui.el('div','table-tools');tools.id='dashboard-tools';addService.before(tools);
+ dashboard=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui,tools,onRescan:rescanPorts});
+ addService.addEventListener('click',()=>openAddService(addService));
  ui.moduleHeading($('module-title'));
  const settings=ui.el('section');settings.id='panel-settings';settings.setAttribute('role','region');settings.setAttribute('aria-labelledby','tab-settings');settings.hidden=true;
  settings.append(ui.el('h1','page-title','Settings'));$('panels').append(settings);
@@ -190,7 +192,7 @@ async function init(){
   const controller=new AbortController(),m={descriptor,panel,toolbar,tab:tabButton,controller,accordion:section?.root};modules.set(descriptor.id,m);
   section?.root.addEventListener('toggle',()=>{const visible=moduleVisible(m);panel.hidden=!visible;if(visible)m.instance?.activate();else m.instance?.deactivate();});
   const style=ui.el('link');style.rel='stylesheet';style.href=`/assets/modules/${descriptor.id}/style.css`;document.head.append(style);
-  try{const code=await import(`/assets/modules/${descriptor.id}/module.js`);m.headerStatus=code.headerStatus;m.instance=code.mount({moduleId:descriptor.id,moduleName:descriptor.name,panel,toolbar,signal:controller.signal,api,refresh,mutate,navigate,ui:{...ui,state:()=>state}});}
+  try{const code=await import(`/assets/modules/${descriptor.id}/module.js`);m.headerStatus=code.headerStatus;m.instance=code.mount({moduleId:descriptor.id,moduleName:descriptor.name,panel,toolbar,signal:controller.signal,api,refresh,mutate,navigate,statusChanged:()=>{if(composed)render();},ui:{...ui,state:()=>state}});}
   catch(e){panel.append(ui.el('p','route-error',`Module interface unavailable: ${e.message}`));}
   if(!inSettings&&m.instance)addSourceServices(m);
  }

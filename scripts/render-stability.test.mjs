@@ -165,7 +165,7 @@ test('Dashboard retains rows and runtime nodes across polling and uptime changes
  context.update(state);const rows=tree(get('dashboard-services')),runtime=tree(get('runtime-info'));
  assert.equal(rows.filter(n=>n.tag==='thead').length,1);assert.equal(rows.filter(n=>n.tag==='tbody').length,1);
  assert.ok(rows.find(n=>n.tag==='table').className.includes('data-table'));
- assert.deepEqual(rows.filter(n=>n.tag==='th').map(n=>n.textContent),['Address','Source','Target','Status','Actions']);
+ assert.deepEqual(rows.filter(n=>n.tag==='th').map(n=>n.children[0]?.textContent??n.textContent),['Address','Source','Target','Status','Actions']);
  assert.ok(!rows.some(n=>n.className.includes('status-badge')));
  const warning=rows.find(n=>n.className==='service-status'&&n.dataset.tone==='warning');assert.ok(warning,'a route detail is a warning status');
  assert.equal(warning.parentElement.dataset.label,'Status');
@@ -180,9 +180,10 @@ test('Dashboard retains rows and runtime nodes across polling and uptime changes
  context.update({...state,modules:[{id:'stable',name:'Stable module',maturity:'stable'},{id:'preview',name:'Preview module',maturity:'experimental'}]});
  assert.ok(tree(moduleCell).some(n=>n.className.includes('runtime-modules-trigger')&&n.textContent==='Show modules (2)'));
  assert.ok(tree(moduleCell).some(n=>n.textContent==='Stable module'));assert.ok(tree(moduleCell).some(n=>n.className.includes('maturity-experimental')));
- const stableDomain=tree(get('dashboard-services')).find(n=>n.tag==='a');
+ // Rows are sorted by address, so pick the test route's link by its text.
+ const isTest=n=>n.tag==='a'&&n.textContent==='test.localhost:8080',stableDomain=tree(get('dashboard-services')).find(isTest);
  const changed={...state,states:{test:{routes:[{...state.states.test.routes[0],summary:{state:'unavailable',target:'localhost'}}]}}};context.update(changed);
- assert.equal(tree(get('dashboard-services')).find(n=>n.tag==='a'),stableDomain,'a status update must retain the selected domain node');
+ assert.equal(tree(get('dashboard-services')).find(isTest),stableDomain,'a status update must retain the selected domain node');
  for(const status of ['ready','stale','unavailable','waiting','error','configured']){
   const route={...state.states.test.routes[0],summary:{state:status,target:'localhost',detail:'Known connection diagnostic'}};
   const next={...state,states:{test:{routes:[route]}}};context.update(next);
