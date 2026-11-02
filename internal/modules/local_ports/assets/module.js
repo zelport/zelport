@@ -26,7 +26,7 @@ function processIndicator(ui,listener){
 
 // The port field is also the filter: typing digits or a process name narrows the
 // detected ports below it; Use fills the field and shows the whole list again.
-export function listenerPicker(ctx,port,{container=port.wrap}={}){
+export function listenerPicker(ctx,port,{container=port.wrap,address=null}={}){
  const {adornmentButton,choiceList,choiceRow,choiceState,el,warningIndicator}=ctx.ui;
  const menu=choiceList('Listening ports');menu.className+=' listener-picker-menu';container.append(menu);
 
@@ -36,6 +36,15 @@ export function listenerPicker(ctx,port,{container=port.wrap}={}){
  const tools=el('div','input-adornment-actions');tools.append(refresh);(port.control||port.wrap).append(tools);
  port.input.setAttribute('aria-controls',menu.id);
  let options=[],query='',filling=false;
+ // A new service takes its name from the process of the picked port while the address is still the suggestion.
+ let suggestedName=address?.value||'';
+ const count=el('span','listener-picker-count');if(tools.prepend)tools.prepend(count);else tools.append(count);
+ function usedPorts(){const used=new Map();for(const route of ctx.ui.state?.()?.states?.[ctx.moduleId]?.routes||[]){const value=Number(route.editor?.aux_port);if(value>0&&!used.has(value))used.set(value,route.domain);}return used;}
+ function freeName(base){
+  const clean=String(base||'').toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,50);if(!clean)return '';
+  const taken=new Set(Object.values(ctx.ui.state?.()?.states||{}).flatMap(s=>(s.routes||[]).map(r=>r.domain)));
+  let name=clean,n=2;while(taken.has(`${name}.localhost`))name=`${clean}-${n++}`;return name;
+ }
 
  function clearRows(){menu.replaceChildren();options=[];}
  function state(message,{spinner=false,warning=false}={}){
@@ -44,21 +53,32 @@ export function listenerPicker(ctx,port,{container=port.wrap}={}){
   menu.append(row);
  }
  function usePort(value){
-  query='';filling=true;port.input.value=String(value);port.input.dispatchEvent(new Event('input',{bubbles:true}));filling=false;render();port.input.focus();
+  query='';filling=true;port.input.value=String(value);port.input.dispatchEvent(new Event('input',{bubbles:true}));filling=false;
+  const listener=listeners.find(item=>Number(item.port)===Number(value)),name=listener?freeName(listener.processes?.[0]?.name):'';
+  if(address&&name&&address.value===suggestedName){suggestedName=name;address.value=name;address.dispatchEvent(new Event('input',{bubbles:true}));}
+  render();port.input.focus();
  }
  function updateSelection(){for(const option of options)option.select(Number(String(port.input.value).trim())===option.value);}
  function render(rows=listeners,error=renderError){
   const scroll=menu.scrollTop;clearRows();tools.hidden=!enabled;refresh.disabled=loading||!enabled;refresh.setAttribute('aria-busy',String(loading));
-  const filtered=rows.filter(listener=>`${listener.port} ${processLabels(listener.processes).full}`.toLowerCase().includes(query));
+  // Free ports first, then ports a service already uses (still selectable); each group by number.
+  const used=usedPorts(),filtered=rows.filter(listener=>`${listener.port} ${processLabels(listener.processes).full}`.toLowerCase().includes(query)).sort((a,b)=>(used.has(Number(a.port))-used.has(Number(b.port)))||Number(a.port)-Number(b.port));
+  ctx.ui.setText(count,query&&enabled&&rows.length?`${filtered.length} of ${rows.length}`:'');
   if(!enabled)state('Port detection is off.');
   else if(loading&&!rows.length)state('',{spinner:true});
   else if(error)state(discoveryFailure,{warning:true});
   else if(!rows.length)state('No listening ports found.');
-  else if(!filtered.length)state('No detected port matches.');
+  else if(!filtered.length&&!/^\d+$/.test(query))state('No detected port matches.');
   for(const listener of enabled?filtered:[]){
-   const process=processLabels(listener.processes).full,choice=choiceRow({primary:String(listener.port),secondary:process,label:`Use port ${listener.port}: ${process}`,onSelect:()=>usePort(listener.port),trailing:listener.listens_beyond_loopback?[warningIndicator(nonLoopbackWarning).root]:[]});
+   const process=processLabels(listener.processes).full,owner=used.get(Number(listener.port)),trailing=[...(listener.listens_beyond_loopback?[warningIndicator(nonLoopbackWarning).root]:[]),...(owner?[el('span','listener-used-by',owner)]:[])];
+   const choice=choiceRow({primary:String(listener.port),secondary:process,label:`Use port ${listener.port}: ${process}${owner?`, used by ${owner}`:''}`,onSelect:()=>usePort(listener.port),trailing});if(owner)choice.row.dataset.used='true';
    choice.row.className+=' listener-option';choice.row.dataset.port=String(listener.port);choice.row.setAttribute('role','listitem');choice.main.className+=' listener-use-port';choice.main.children[0].className+=' listener-port';if(choice.main.children[1])choice.main.children[1].className+=' listener-process';
    menu.append(choice.row);options.push({...choice,value:Number(listener.port)});
+  }
+  // A port that is not listening yet (a service will start later) can still be used.
+  const typedPort=/^\d+$/.test(query)?Number(query):0;
+  if(enabled&&typedPort>=1&&typedPort<=65535&&!rows.some(listener=>Number(listener.port)===typedPort)){
+   const choice=choiceRow({primary:`Use port ${typedPort}`,label:`Use port ${typedPort}`,onSelect:()=>usePort(typedPort)});choice.row.className+=' listener-manual';choice.row.dataset.port=String(typedPort);choice.row.setAttribute('role','listitem');menu.append(choice.row);options.push({...choice,value:typedPort});
   }
   updateSelection();menu.scrollTop=scroll;
  }
@@ -123,10 +143,10 @@ export function mount(ctx){
    return indicators;
   },
   emptyState:{kind:'not-configured',message:'No local services yet. Add a domain and the port where your service listens on this computer.',actionLabel:'+ Add service'},
-  fields(s){
-   const element=el('div','service-fields-fill'),port=adornedField('Port',String(s.aux_port||3000));port.input.required=true;port.input.autocomplete='off';port.input.spellcheck=false;port.input.placeholder='Port number or process name';
+  fields(s,group,state,{address,isNew}={}){
+   const element=el('div','service-fields-fill'),port=adornedField('Port',s.aux_port?String(s.aux_port):isNew===false?'3000':'');port.input.required=true;port.input.autocomplete='off';port.input.spellcheck=false;port.input.placeholder='Port number or process name';
    port.control.prepend(ctx.ui.icon('search',{className:'input-adornment-icon'}));element.append(port.wrap);
-   const picker=listenerPicker(ctx,port,{container:element});pickers.add(picker);
+   const picker=listenerPicker(ctx,port,{container:element,address:isNew?address:null});pickers.add(picker);
    return {element,read(){const value=port.input.value.trim(),number=Number(value);if(!/^\d+$/.test(value)||number<1||number>65535){const error=Error('Enter a port number or pick one below.');error.input=port.input;throw error;}return {aux_port:number};},dispose(){pickers.delete(picker);picker.dispose();}};
   }
  });

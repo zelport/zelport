@@ -92,3 +92,6 @@ button.relay-linked-import-button{min-height:36px;padding:0 14px;font-size:14px}
 .relay-status-line{gap:var(--space-2)}
 .relay-status-line .service-status-mark{display:none}
 .relay-linked-dot[data-tone=error]::before{border-color:var(--red);background:var(--red)}
+/* Add service → Relay: group header names the Zelport as-is with "imported of shared"; imported rows show their local address. */
+.relay-group-count{margin-left:auto;color:var(--muted);font-size:13px;font-weight:400;text-transform:none;letter-spacing:0}
+.relay-imported-as{margin-left:auto;color:var(--muted);font-size:13px;white-space:nowrap}

@@ -1,4 +1,4 @@
-import {adornmentButton,button,el,emptyState,icon,renderChanged,serviceTargetIndicator,serviceURL,statusBadge,warningIndicator} from './ui-dom.js';
+import {adornmentButton,button,el,emptyState,icon,renderChanged,serviceTargetIndicator,serviceURL,setText,statusBadge,warningIndicator} from './ui-dom.js';
 import {adornedField,formFeedback} from './ui-forms.js';
 import {dialogHeader,disclosureMenu,formActions,showDialog} from './ui-dialogs.js';
 
@@ -49,11 +49,14 @@ export function serviceModule(ctx,definition){let current={routes:[],data:{}},di
   input.id=`domain-${ctx.moduleId}`;label.htmlFor=input.id;input.required=true;
   input.pattern='[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?)*';
   input.maxLength=243;input.value=route?.domain.replace(/\.localhost$/,'')||options.domain||suggest(group?.name||'service',!group?.name);
-  // The name is right-aligned against the fixed suffix, so the address reads as one hostname.
+  // The name is typed from the left; the fixed suffix follows it, so the address reads as one hostname.
   domain.control.className+=' address-adornment';
+  const mirror=el('span','address-mirror');mirror.setAttribute('aria-hidden','true');domain.control.append(mirror);
+  const fit=()=>{setText(mirror,input.value||input.placeholder||'');if(mirror.offsetWidth)input.style.width=`${mirror.offsetWidth+2}px`;};
+  input.addEventListener('input',fit);globalThis.requestAnimationFrame?.(fit);
   domain.control.addEventListener('mousedown',event=>{if(event.target===input)return;if(event.target===domain.control||event.target.classList?.contains('input-adornment-text')){event.preventDefault();input.focus();input.setSelectionRange?.(input.value.length,input.value.length);}});
   if(options.sources){
-   const choices=el('fieldset','service-source-choices');choices.append(el('legend',null,'Where does the service run?'));
+   const choices=el('fieldset','service-source-choices');choices.append(el('legend',null,'Source'));
    for(const source of options.sources){
     const choice=el('label','service-source-choice'),radio=el('input'),text=el('span','service-source-text');
     radio.type='radio';radio.name='service-source';radio.value=source.id;radio.checked=source.id===options.sourceId;radio.className='service-source-radio';

@@ -235,7 +235,7 @@ test('Import on a shared service opens the import with a free address',async()=>
  const edits=[];
  const h=harness({enabled:true,relay_url:'ws://relay.example.test',status:{connected:true,records:[provider]}},{serviceModule:()=>({render(){},edit:route=>edits.push(route),dispose(){}})},[imported]);
  assert.ok(h.find('1 of 2 imported'));await click(h.find('Import app-1 from sandbox'));
- assert.equal(edits.length,1);assert.equal(edits[0].editor.service_id,'app-1');assert.equal(edits[0].editor.provider_key,'key');assert.equal(edits[0].domain,'app-1-2.localhost');h.view.dispose();
+ assert.equal(edits.length,1);assert.equal(edits[0].editor.service_id,'app-1');assert.equal(edits[0].editor.provider_key,'key');assert.equal(edits[0].domain,'app-1-sandbox.localhost');h.view.dispose();
 });
 
 test('Add service lists services shared by other devices and imports the chosen one',async()=>{
@@ -248,13 +248,13 @@ test('Add service lists services shared by other devices and imports the chosen 
  Node.prototype.querySelector=function(){return null;};Node.prototype.contains=function(n){return tree(this).includes(n);};Node.prototype.dispatchEvent=function(e){this.events[e.type]?.(e);return true;};
  const drawer=h.view.edit(null,null,{});const nodes=tree(drawer);
  const choices=nodes.filter(n=>n.tag==='button'&&n.className.includes('choice-main'));
- assert.deepEqual(choices.map(c=>[c.dataset.key,c.disabled]),[['device-b/s1',false],['device-b/s2',false],['device-c/s3',true]],'offline devices are listed but not selectable');
+ assert.deepEqual(choices.map(c=>[c.dataset.key,c.disabled]),[['device-b/s2',false],['device-b/s1',false]],'services sorted by name; an offline Zelport lists no services');
  assert.deepEqual(nodes.filter(n=>n.className==='choice-group').map(g=>g.children[0].textContent),['build-server','laptop-old'],'services are grouped by device');
  const address=nodes.find(n=>n.tag==='input'&&n.id==='domain-ports_over_relay');
  const submit=nodes.find(n=>n.tag==='button'&&n.type==='submit');assert.equal(submit.disabled,true,'Import waits until a service is chosen');
- choices[1].events.click({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));assert.equal(address.value,'docs','picking a service suggests its address');
+ choices[0].events.click({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));assert.equal(address.value,'docs','picking a service suggests its address');
  assert.equal(submit.disabled,false);
- assert.equal(choices[1].getAttribute('aria-pressed'),'true');
+ assert.equal(choices[0].getAttribute('aria-pressed'),'true');
  const form=nodes.find(n=>n.tag==='form');await form.events.submit({preventDefault(){}});
  const saved=h.requests.at(-1);assert.equal(saved.route.module,'ports_over_relay');assert.equal(saved.route.domain,'docs.localhost');
  assert.deepEqual(saved.route.settings,{group:'g1',device_id:'device-b',service_id:'s2',provider_key:'pk',rewrite_origin:false});

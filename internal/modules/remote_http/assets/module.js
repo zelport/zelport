@@ -17,9 +17,9 @@ export function mount(ctx){
   fields(s){
    const {el,field,fieldHint,optionSwitch,serviceOptions}=ctx.ui;
    const element=el('div'),target=field('Target URL',s.target_url||'','url'),options=serviceOptions();
-   const verify=optionSwitch('Verify TLS certificate',!s.skip_tls_verify),origin=optionSwitch('Use target origin',s.rewrite_origin,'For services that reject requests from localhost.');
+   const verify=optionSwitch('Verify TLS certificate',!s.skip_tls_verify,'Turn off only for services you trust. Off shows a warning next to the target.'),origin=optionSwitch('Use target origin',s.rewrite_origin,'For services that reject requests from localhost.');
    target.input.required=true;target.input.placeholder='https://example.com';target.input.autocomplete='off';target.input.spellcheck=false;
-   const hint=fieldHint(trustNotice,'remote-trust-notice'),warning=fieldHint('','field-warning');warning.setAttribute('role','status');target.wrap.append(hint,warning);
+   ctx.ui.withInfo(target,trustNotice);const hint={hidden:true},warning=fieldHint('','field-warning');warning.setAttribute('role','status');target.wrap.append(warning);
    const update=()=>{
     let protocol='';try{protocol=new URL(target.input.value.trim()).protocol;}catch{}
     verify.row.hidden=protocol!=='https:';

@@ -73,6 +73,13 @@ export function mount(ctx) {
   const base=service.domain.replace(/\.localhost$/,'');let domain=service.domain,n=2;
   while(used.has(domain))domain=`${base}-${n++}.localhost`;return domain;
  }
+ // The import keeps the shared name; when it is taken, the Zelport's name tells them apart (grafana-build-server).
+ function importName(service,provider){
+  const used=new Set(Object.values(ctx.ui.state().states||{}).flatMap(s=>(s.routes||[]).map(r=>r.domain)));for(const route of current?.routes||[])used.add(route.domain);
+  const base=service.domain.replace(/\.localhost$/,''),host=String(provider?.hostname||'').toLowerCase().replace(/[^a-z0-9-]+/g,'-').replace(/^-+|-+$/g,'');
+  if(!used.has(`${base}.localhost`))return base;if(host&&!used.has(`${base}-${host}.localhost`))return `${base}-${host}`;
+  let n=2;while(used.has(`${base}-${n}.localhost`))n++;return `${base}-${n}`;
+ }
  function sharedServicePicker(address,setReady=()=>{}){
   const {choiceGroup,choiceList,choiceRow,choiceState,optionSwitch,serviceOptions}=ctx.ui;
   const element=el('div','service-fields-fill'),list=choiceList('Shared services'),options=serviceOptions(),origin=optionSwitch('Use target origin',false,originHelp);
@@ -81,27 +88,31 @@ export function mount(ctx) {
   const tab=ctx.ui.state().modules?.find(m=>m.id===ctx.moduleId)?.tab_id;
   const settingsLink=()=>{if(!tab)return undefined;const link=el('a','choice-state-link','Relay settings');link.href=`#${tab}`;return link;};
   function pick(entry){selected=entry;setReady(true);for(const row of rows)row.select(row.key===entry.key);
-   if(address&&address.value===suggested){suggested=availableDomain(entry.service).replace(/\.localhost$/,'');address.value=suggested;address.dispatchEvent(new Event('input',{bubbles:true}));}}
+   if(address&&address.value===suggested){suggested=importName(entry.service,entry.provider);address.value=suggested;address.dispatchEvent(new Event('input',{bubbles:true}));}}
   function draw(){
    const d=current?.data||{},status=d.status||{},connected=!!status.connected,providers=(status.records||[]).filter(r=>r.device_id!==d.device_id&&r.publish);
    const peers=(d.administration_peers||[]).filter(p=>p.device_id!==d.device_id&&!providers.some(r=>r.device_id===p.device_id));
    const configured=!!d.relay_url?.trim()&&d.enabled,key=JSON.stringify([configured,connected,providers.map(r=>[r.device_id,r.hostname,r.port,r.expires_at*1000>Date.now(),r.services.filter(s=>s.kind==='application').map(s=>[s.id,s.domain])]),peers.map(p=>[p.device_id,p.hostname,p.available])]);
    if(key===drawn)return;drawn=key;const focused=list.contains(document.activeElement)?document.activeElement.dataset?.key:null;
    list.replaceChildren();rows.length=0;let keepSelection=false;
-   const badge=online=>{const b=statusBadge(online?'Online':'Offline');b.dataset.tone=online?'ok':'neutral';return b;};
+   const imports=current?.routes||[];
+   const badge=(online,device,services)=>el('span','relay-group-count',importSummary({online,shared:services.length,imported:imports.filter(r=>r.editor.device_id===device.device_id).length}));
    const names=[...providers,...peers].map(device=>device.hostname),deviceName=device=>names.filter(name=>name===device.hostname).length>1?`${device.hostname} · ${device.device_id.slice(0,8)}`:device.hostname;
    for(const provider of [...providers].sort((a,b)=>a.hostname.localeCompare(b.hostname))){
     const online=connected&&provider.expires_at*1000>Date.now(),services=provider.services.filter(s=>s.kind==='application');
-    list.append(choiceGroup(deviceName(provider),badge(online)));
+    list.append(choiceGroup(deviceName(provider),badge(online,provider,services)));
+    if(!online)continue;
     if(!services.length)list.append(choiceState('No services shared.'));
-    for(const service of services){
-     const key=`${provider.device_id}/${service.id}`,entry={key,provider,service};
-     const choice=choiceRow({primary:provider.port?`${service.domain}:${provider.port}`:service.domain,label:`Import ${service.domain} from ${deviceName(provider)}`,onSelect:()=>pick(entry),disabled:!online});
+    for(const service of [...services].sort((a,b)=>a.domain.localeCompare(b.domain))){
+     const key=`${provider.device_id}/${service.id}`,entry={key,provider,service},name=service.domain.replace(/\.localhost$/,'');
+     // A service already imported cannot be imported twice; its row shows the local address instead.
+     const existing=imports.find(r=>r.editor.group===provider.group&&r.editor.device_id===provider.device_id&&r.editor.service_id===service.id);
+     const choice=choiceRow({primary:name,label:existing?`${name} from ${deviceName(provider)}, imported as ${existing.domain}`:`Import ${name} from ${deviceName(provider)}`,onSelect:()=>pick(entry),disabled:!!existing,trailing:existing?[el('span','relay-imported-as',existing.domain)]:[]});
      if(selected?.key===key&&online){keepSelection=true;selected=entry;}
      choice.row.className+=' relay-shared-option';choice.main.dataset.key=key;choice.select(selected?.key===key);list.append(choice.row);rows.push({...choice,key});
     }
    }
-   for(const peer of peers){list.append(choiceGroup(deviceName(peer),badge(peer.available)),choiceState('No services shared.'));}
+   for(const peer of peers){list.append(choiceGroup(deviceName(peer),badge(!!(connected&&peer.available),peer,[])));if(connected&&peer.available)list.append(choiceState('No services shared.'));}
    const listed=providers.length+peers.length>0;
    if(!listed)list.append(choiceState(!configured?'The relay is not set up.':!connected?'Not connected to the relay.':'No other devices yet.',{action:settingsLink()}));
    else if(!connected)list.prepend(choiceState('Not connected to the relay.',{action:settingsLink()}));
@@ -112,10 +123,7 @@ export function mount(ctx) {
   return {element,read(){if(!selected)throw Error('Choose a service to import.');const {provider,service}=selected;return {group:provider.group,device_id:provider.device_id,service_id:service.id,provider_key:provider.public_key,rewrite_origin:origin.input.checked};},dispose(){pickers.delete(picker);}};
  }
  function importService(provider,service){
-  const used=new Set(Object.values(ctx.ui.state().states||{}).flatMap(s=>(s.routes||[]).map(r=>r.domain)));
-  for(const route of current.routes||[])used.add(route.domain);
-  const base=service.domain.replace(/\.localhost$/,'');let domain=service.domain,n=2;
-  while(used.has(domain))domain=`${base}-${n++}.localhost`;
+  const domain=`${importName(service,provider)}.localhost`;
   routes.edit({id:'',domain,editor:{group:provider.group,device_id:provider.device_id,service_id:service.id,provider_key:provider.public_key,rewrite_origin:false}});
  }
  function chooseService(deviceId,trigger){

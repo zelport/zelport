@@ -3,9 +3,9 @@
 // Status is the service state only; target security properties come from routeWarning(route).
 export const sourceChoices=[
  {id:'local_ports',description:'This computer',icon:'laptop'},
- {id:'ports_over_ssh',description:'An SSH server',icon:'terminal'},
+ {id:'ports_over_ssh',description:'A server',icon:'terminal'},
  {id:'remote_http',description:'Any URL',icon:'globe'},
- {id:'ports_over_relay',description:'Your other devices',icon:'devices'}
+ {id:'ports_over_relay',description:'A linked Zelport',icon:'devices'}
 ];
 // Sources are named by connection; the Source column and menus use these short names.
 const sourceLabels={local_ports:'Local',ports_over_ssh:'SSH',remote_http:'HTTP',ports_over_relay:'Relay'};

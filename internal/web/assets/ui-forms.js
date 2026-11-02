@@ -1,4 +1,4 @@
-import {adornmentButton,button,el,experimentalBadge,icon,nextUIID,setText} from './ui-dom.js';
+import {adornmentButton,button,el,experimentalBadge,icon,nextUIID,setText,withInfo} from './ui-dom.js';
 import {disclosureMenu} from './ui-dialogs.js';
 
 export function inputAdornment(input,{prefix='',suffix='',startActions=[],actions=[]}={}){const root=el('div','input-adornment');if(startActions.length){const start=el('div','input-adornment-actions');start.append(...startActions);root.append(start);}if(prefix)root.append(el('span','input-adornment-text',prefix));root.append(input);if(suffix)root.append(el('span','input-adornment-text',suffix));if(actions.length){const end=el('div','input-adornment-actions');end.append(...actions);root.append(end);}return root;}
@@ -50,4 +50,5 @@ export function choiceState(message,{warning=false,action}={}){const state=el('d
 export function fieldHint(text,className=''){return el('p',`field-hint${className?` ${className}`:''}`,text);}
 export function fieldRow(...wraps){const row=el('div','field-row');row.append(...wraps);return row;}
 export function serviceOptions(){return el('div','service-options');}
-export function optionSwitch(label,checked=false,help=''){const row=el('div','option-row'),control=switchField(label,checked);row.append(control.wrap);if(help){const note=el('p','option-help',help);note.id=nextUIID('option-help');control.input.setAttribute('aria-describedby',note.id);row.append(note);}return {...control,row};}
+// Option help is an info hint next to the switch label, not a sentence under it.
+export function optionSwitch(label,checked=false,help=''){const row=el('div','option-row'),control=switchField(label,checked);if(help)withInfo(control,help);row.append(control.wrap);return {...control,row};}

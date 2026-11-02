@@ -649,3 +649,11 @@ button.info-hint-trigger:hover{color:var(--ink);filter:none}
 .module-availability-row .switch-field .maturity-experimental{margin-left:var(--space-2)}
 .module-availability-row .switch-field .info-hint{margin-left:var(--space-1)}
 .module-availability-info .switch-field label{flex:none}
+/* Add service address: the name from the left, the fixed suffix right after it. */
+.address-adornment{position:relative;justify-content:flex-start}
+.address-adornment>input{flex:0 0 auto;width:auto;min-width:1ch;max-width:calc(100% - 140px);text-align:left;padding-right:0}
+.address-adornment>.input-adornment-text{flex:1 1 auto;min-width:0}
+.address-mirror{position:absolute;visibility:hidden;white-space:pre;font:inherit;font-size:var(--text-body);pointer-events:none}
+.option-row .switch-field{width:100%}
+/* Add service: options follow the fields without a divider. */
+.service-options{border-top:0!important;padding-top:0!important}
