@@ -32,7 +32,8 @@ export function mountConfiguration(ctx,panel){
    proxy.input.placeholder='http://proxy.example.com:8080';
    ca.input.spellcheck=proxy.input.spellcheck=username.input.spellcheck=false;ca.input.autocomplete=proxy.input.autocomplete=username.input.autocomplete='off';password.input.autocomplete='new-password';
    const auth=el('details','remote-proxy-auth'),actions=el('div','remote-settings-actions');auth.append(el('summary',null,'Authentication'),username.wrap,password.wrap,clear.wrap);actions.append(discard,save);
-   form.append(ca.wrap,el('p','small muted','Trusted in addition to system certificates.'),editorReason,runtime,proxy.wrap,el('p','small muted','HTTP(S) or SOCKS5. Blank connects directly.'),auth,error,actions,feedback);
+   ctx.ui.withInfo(ca,'Trusted in addition to system certificates.');ctx.ui.withInfo(proxy,'HTTP(S) or SOCKS5. Blank connects directly.');
+   form.append(ca.wrap,editorReason,runtime,proxy.wrap,auth,error,actions,feedback);
    form.addEventListener('input',()=>{dirty=ca.input.value!==(current.ca_cert_path||'')||proxy.input.value!==(current.proxy_url||'')||username.input.value!==(current.proxy_username||'')||!!password.input.value||clear.input.checked;feedback.textContent='';update();});
    validation=ctx.ui.formFeedback(form,error,[{input:ca.input,matches:/certificate|PEM|CA /i},{input:proxy.input,matches:/proxy|URL|scheme/i}]);
    form.addEventListener('submit',submit);panel.append(form);sync();update();

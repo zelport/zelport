@@ -81,25 +81,22 @@ for(const id of ['local_ports','remote_http','ports_over_ssh'])test(`${id}: unco
  const before=tree(ctx.panel);view.render({routes:[],data:{}});sameNodes(tree(ctx.panel),before);
 });
 
-test('relay client preserves separate sections and updates expiration without new data',t=>{
+test('relay client retains its nodes across metadata polls and marks an expired Zelport offline',t=>{
  let now=1000;t.mock.method(Date,'now',()=>now);
  const ctx=context(),view=relayMount(ctx),provider={group:'group',device_id:'other',hostname:'peer',port:8080,public_key:'key',publish:true,expires_at:2,services:[{id:'service',kind:'application',domain:'app.localhost'}]};
- const state={revision:1,routes:[],data:{device_id:'self',has_identity:true,enabled:true,publish:false,administration_peers:[],status:{connected:true,records:[provider]}}};
- view.render(state);const services=tree(ctx.panel).find(n=>n.className==='relay-services-view'),setup=tree(ctx.panel).find(n=>n.className==='relay-setup');
- const [routes,catalog]=services.children,original=tree(ctx.panel),setupBefore=tree(setup);
+ const state={revision:1,routes:[],data:{device_id:'self',has_identity:true,enabled:true,relay_url:'ws://relay.example.test',publish:false,administration_peers:[],status:{connected:true,records:[provider]}}};
+ view.render(state);const original=tree(ctx.panel);
  view.render({...state,revision:2,data:{...state.data,status:{...state.data.status,metadata_counter:7}}});sameNodes(tree(ctx.panel),original);
  now=3000;view.render(state);
- assert.equal(services.children[0],routes);assert.equal(services.children[1],catalog);
- assert.equal(tree(catalog).find(n=>n.tag==='button').disabled,true);
- sameNodes(tree(setup),setupBefore);
+ const row=tree(ctx.panel).find(n=>n.className==='relay-linked-row');assert.equal(row.tag,'div','an offline Zelport cannot be expanded');
+ assert.ok(tree(row).some(n=>n.textContent==='Offline · 0 imported'));
 });
 
-test('relay page has no view switch and keeps Refresh catalog in the shared toolbar',()=>{
+test('relay page has no view switch and no separate catalog refresh (the page polls)',()=>{
  const ctx=context(),view=relayMount(ctx);
  assert.equal(tree(ctx.toolbar).some(n=>n.className==='module-view-nav'),false);
- const refresh=tree(ctx.toolbar).find(n=>n['aria-label']==='Refresh catalog');
- assert.ok(refresh);assert.equal(refresh.hidden,false);
- view.dispose();assert.equal(tree(ctx.toolbar).includes(refresh),false);
+ assert.equal(tree(ctx.toolbar).some(n=>n['aria-label']==='Refresh catalog'&&!n.hidden),false);
+ view.dispose();
 });
 
 test('relay page shows configuration first and the device catalog after it, without an imports list',()=>{

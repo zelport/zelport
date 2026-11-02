@@ -5,6 +5,16 @@ function connectionStatus(data) {
  const status=data.status||{};
  return status.connected?{status:'Connected',tone:'ok'}:status.error?{status:'Connection failed',tone:'error'}:{status:'Connecting',tone:'pending'};
 }
+// The status line on the Relay page uses the service status vocabulary: Off, Connecting, Connected, Unreachable.
+export function relayStatusLine(data){
+ const connection=connectionStatus(data);let host='';try{host=data.relay_url?new URL(data.relay_url).host:'';}catch{}
+ if(connection.status==='Not configured'||connection.status==='Disabled')return {host,tone:'neutral',label:'Off'};
+ if(connection.tone==='ok')return {host,tone:'ok',label:'Connected'};
+ if(connection.tone==='error')return {host,tone:'error',label:'Unreachable',detail:[connectionMessage(data),data.status?.error].filter(Boolean).join(' ')};
+ return {host,tone:'neutral',label:'Connecting'};
+}
+// "2 of 6 imported": imported services are part of what a linked Zelport shares.
+export function importSummary({online,shared,imported}){return online?`${imported} of ${shared} imported`:`Offline · ${imported} imported`;}
 export function connectionMessage(data){
  if(!data.enabled||!data.relay_url?.trim()||data.status?.connected||!data.status?.error)return '';
  const error=data.status.error;
@@ -23,13 +33,13 @@ export function headerStatus(state) {
  return {...connection,rows};
 }
 export function mount(ctx) {
- const {el,button,field,serviceModule,renderChanged,statusBadge,refreshButton}=ctx.ui;
- let current,configuration,servicePicker=null,active=false,refreshing=false;
+ const {el,button,field,serviceModule,renderChanged,statusBadge,refreshButton}=ctx.ui,ui=ctx.ui;
+ let current,configuration,servicePicker=null,active=false,refreshing=false,expandedInitialized=false;const expanded=new Set();
  const overviewView=el('section','relay-services-view'),configurationView=el('section','relay-configuration-view');
  const routePanel=el('section'),setup=el('section','relay-setup'),catalog=el('section','relay-catalog'),settingsPanel=el('section','relay-settings-panel');
  // Imports are listed on Services; routePanel only hosts the shared import form state.
  routePanel.hidden=true;overviewView.append(routePanel,catalog);
- configurationView.append(setup,settingsPanel);configurationView.hidden=true;
+ configurationView.append(settingsPanel);configurationView.hidden=true;
  const views=ctx.ui.moduleViews({...ctx,moduleName:ctx.moduleName||'Ports over Relay'},{overview:overviewView,configuration:configurationView,overviewPlacement:'after',onChange(view){
   ensureConfiguration();if(active)configuration?.activate();
  }});
@@ -122,64 +132,68 @@ export function mount(ctx) {
  function providerName(route){return current?.data?.status?.records?.find(r=>r.device_id===route.editor?.device_id)?.hostname||current?.data?.administration_peers?.find(p=>p.device_id===route.editor?.device_id)?.hostname||route.summary.target;}
  function ensureConfiguration(){if(configuration||!current)return;configuration=mountConfiguration(ctx);settingsPanel.append(configuration.element);configuration.render(current);}
  function openSettings(){views.show('configuration');ensureConfiguration();if(active)configuration?.activate();configuration?.focus();}
- function renderConnection(root,data){
-  const connection=connectionStatus(data),count=(data.administration_peers||[]).filter(p=>p.available).length;
-  const message=connectionMessage(data);
-  renderChanged(root,{connection,count,message,publish:!!data.publish,error:data.status?.error},()=>{
-   root.replaceChildren();const row=el('div','relay-connection-summary'),badge=statusBadge(connection.status);badge.dataset.tone=connection.tone;
-   row.append(el('strong',null,'Relay server'),badge,el('span','small muted',`${count} ${count===1?'device':'devices'}`));root.append(row);
-   if(message){root.append(el('p','route-error',message));const details=el('details','relay-diagnostic');details.append(el('summary',null,'Technical details'),el('p','small muted',data.status.error));root.append(details);}
-  });
+ const statusIndicator=ctx.ui.serviceStatus(),statusDot=el('span','relay-linked-dot'),statusHost=el('strong','relay-status-host');
+ function renderConnection(data){
+  const root=configuration?.status;if(!root)return;
+  if(!root.children.length)root.append(statusDot,statusHost,statusIndicator.root);
+  const line=relayStatusLine(data);statusIndicator.update(line);statusDot.dataset.tone=line.tone;ui.setText(statusHost,line.host);statusHost.hidden=!line.host;
  }
  async function refreshCatalog(){if(refreshing)return;refreshing=true;refresh.disabled=true;try{await ctx.mutate(()=>ctx.api(api('refresh'),{method:'POST',body:'{}'}));}finally{refreshing=false;refresh.disabled=false;}}
- const refresh=refreshButton('Refresh catalog',refreshCatalog);refresh.hidden=false;views.actions.append(refresh);
+ // The catalog follows the relay through the regular state refresh; no separate refresh control.
+ const refresh=refreshButton('Refresh catalog',refreshCatalog);refresh.hidden=true;
  function render(state){current=state;routes.render(state);for(const picker of pickers)picker.draw();const d=state.data||{},status=d.status||{records:[]};
-  renderConnection(setup,d);if(configuration)configuration.render(state);else{ensureConfiguration();if(active)configuration?.activate();}
+  if(configuration)configuration.render(state);else{ensureConfiguration();if(active)configuration?.activate();}renderConnection(d);
   const providers=(status.records||[]).filter(r=>r.device_id!==d.device_id&&r.publish&&r.services.some(s=>s.kind==='application'));
   const byDevice=new Map((d.administration_peers||[]).filter(p=>p.device_id!==d.device_id).map(peer=>[peer.device_id,{id:peer.device_id,hostname:peer.hostname,peer}]));
   for(const provider of providers){const device=byDevice.get(provider.device_id)||{id:provider.device_id,hostname:provider.hostname};device.provider=provider;byDevice.set(device.id,device);}
   const devices=[...byDevice.values()].sort((a,b)=>a.hostname.localeCompare(b.hostname)||a.id.localeCompare(b.id));
   const connection=connectionStatus(d),needsSetup=connection.status==='Not configured'||connection.status==='Disabled';
+  if(!expandedInitialized&&devices.length){expandedInitialized=true;if(devices.length===1)expanded.add(devices[0].id);}
   refresh.hidden=needsSetup&&!devices.length;
   catalog.hidden=needsSetup&&!devices.length;
 
-  const remote=!!ctx.ui.state().remote_admin;
-  renderChanged(catalog,{devices:devices.map(v=>({id:v.id,hostname:v.hostname,peer:v.peer&&{available:v.peer.available,uuid_url:v.peer.uuid_url,hostname_url:v.peer.hostname_url,conflict:v.peer.conflict},provider:v.provider&&{port:v.provider.port,group:v.provider.group,public_key:v.provider.public_key,services:v.provider.services.filter(s=>s.kind==='application'),expired:v.provider.expires_at*1000<=Date.now()}})),remote,connected:!!status.connected,imports:(state.routes||[]).map(r=>r.editor)},()=>{
-   catalog.replaceChildren();
-   if(!devices.length){
-    const empty=el('section','empty-state empty-state-no-results');
-    empty.append(el('p','empty-state-message','No other devices yet.'),el('p','small muted','Connect another Zelport to this relay with the same E2E secret.'));
-    catalog.append(empty);return;
-   }
-   catalog.append(el('h2',null,'Shared services'));
-   for(const device of devices){
-    const {peer,provider}=device,online=!!status.connected&&(peer?peer.available:provider?.expires_at*1000>Date.now());
-    const section=el('section','relay-provider'),header=el('div','relay-device-header'),deviceActions=el('div','relay-device-actions');
-    const duplicate=devices.some(other=>other.id!==device.id&&other.hostname===device.hostname);
-    const heading=el('h3',null,duplicate?`${device.hostname} · ${device.id.slice(0,8)}`:device.hostname);
-    heading.id=`relay-provider-${device.id}`;const badge=statusBadge(online?'Online':'Offline');badge.dataset.tone=online?'ok':'neutral';header.append(heading,badge);
-    if(!remote&&peer){
-     const address=peer.uuid_url||(!peer.conflict&&peer.hostname_url);
-     if(address){const admin=el(online?'a':'span','relay-admin-link','Open administration');if(online){admin.href=address;admin.target='_blank';admin.rel='noopener';admin.setAttribute('aria-label',`Open administration on ${device.hostname}`);}else admin.setAttribute('aria-disabled','true');deviceActions.append(admin);}
+  // Linked Zelports sit between the imports and Configuration.
+  const heading=[...(ctx.panel.children||[])].find(node=>node.classList?.contains('source-section-title'));
+  if(heading&&catalog.nextSibling!==heading)ctx.panel.insertBefore(catalog,heading);
+  // Until relay is set up the page shows only its configuration.
+  const services=[...(ctx.panel.children||[])].find(node=>node.classList?.contains('source-services'));
+  if(services)services.hidden=needsSetup&&!(state.routes||[]).length;
+  const imports=state.routes||[],port=ctx.ui.state().port;
+  const view=devices.map(device=>{
+   const {peer,provider}=device,online=!!status.connected&&(peer?peer.available:provider?.expires_at*1000>Date.now());
+   const shared=(provider?.services||[]).filter(s=>s.kind==='application').map(service=>{const route=imports.find(r=>r.editor.group===provider.group&&r.editor.device_id===provider.device_id&&r.editor.service_id===service.id);return {id:service.id,name:service.domain.replace(/\.localhost$/,''),domain:service.domain,imported:route?.domain||''};}).sort((a,b)=>a.name.localeCompare(b.name));
+   const duplicate=devices.some(other=>other.id!==device.id&&other.hostname===device.hostname);
+   return {id:device.id,name:duplicate?`${device.hostname} · ${device.id.slice(0,8)}`:device.hostname,online,shared,imported:imports.filter(r=>r.editor.device_id===device.id).length};
+  });
+  renderChanged(catalog,{view,port,expanded:[...expanded],needsSetup},()=>{
+   catalog.replaceChildren();catalog.hidden=needsSetup&&!devices.length;if(catalog.hidden)return;
+   catalog.append(el('h2','source-section-title','Linked Zelports'));
+   const card=el('div','relay-linked');catalog.append(card);
+   if(!view.length){card.append(el('p','relay-linked-empty',status.connected?'No linked Zelports':'Not connected'));return;}
+   for(const device of view){
+    const open=device.online&&expanded.has(device.id),row=el(device.online?'button':'div','relay-linked-row'),chevron=el('span','relay-chevron'),dot=el('span','relay-linked-dot'),name=el('strong',null,device.name);
+    dot.dataset.tone=device.online?'ok':'off';
+    row.append(chevron,dot,name,el('span','relay-linked-count',importSummary({online:device.online,shared:device.shared.length,imported:device.imported})));
+    if(device.online){row.type='button';row.setAttribute('aria-expanded',String(open));chevron.append(ctx.ui.icon(open?'chevronDown':'chevronRight',{className:'relay-chevron-icon'}));row.addEventListener('click',()=>{if(expanded.has(device.id))expanded.delete(device.id);else expanded.add(device.id);render(current);});}
+    const group=el('section','relay-linked-device');group.append(row);
+    if(open){
+     const list=el('div','relay-linked-services');list.setAttribute('role','list');
+     for(const service of device.shared){
+      const item=el('div','relay-linked-service');item.setAttribute('role','listitem');item.append(el('span','relay-linked-service-name',service.name));
+      if(service.imported){const link=el('a','relay-linked-import',`${service.imported}:${port}`);link.href=`http://${service.imported}:${port}`;link.target='_blank';link.rel='noopener';item.append(link);}
+      else{const add=button('Import',()=>{const provider=current.data?.status?.records?.find(r=>r.device_id===device.id);const shared=provider?.services?.find(s=>s.id===service.id);if(provider&&shared)importService(provider,shared);},'secondary relay-linked-import-button');add.setAttribute('aria-label',`Import ${service.name} from ${device.name}`);item.append(add);}
+      list.append(item);
+     }
+     if(!device.shared.length)list.append(el('p','relay-linked-empty','No shared services'));
+     group.append(list);
     }
-    header.append(deviceActions);section.append(header);
-    const services=(provider?.services||[]).filter(s=>s.kind==='application');
-    if(!services.length){section.append(el('p','small muted',online?'No services shared.':'Device offline.'));catalog.append(section);continue;}
-    const unavailable=!status.connected?'Connect to the relay to import services.':!online||provider.expires_at*1000<=Date.now()?'Device offline. Imports resume when it reconnects.':'';
-    if(unavailable){const reason=el('p','small muted',unavailable);reason.id=`${heading.id}-availability`;section.append(reason);}
-    const add=ctx.ui.adornmentButton(`Import service from ${device.hostname}`,'plus',()=>chooseService(device.id,add));add.className='module-action-icon relay-import-icon';add.disabled=!!unavailable;if(unavailable)add.setAttribute('aria-describedby',`${heading.id}-availability`);deviceActions.append(add);
-    const wrap=el('div','relay-services-wrap'),table=el('table','relay-services-table data-table'),head=el('thead'),labels=el('tr'),body=el('tbody');
-    table.setAttribute('aria-labelledby',heading.id);
-    for(const title of ['Service','Status']){const cell=el('th',null,title);cell.scope='col';labels.append(cell);}
-    head.append(labels);table.append(head,body);
-    for(const service of services){
-     const row=el('tr'),domain=el('td',null,provider.port?`${service.domain}:${provider.port}`:service.domain),statusCell=el('td','small muted');
-     const imported=(state.routes||[]).some(r=>r.editor.group===provider.group&&r.editor.device_id===provider.device_id&&r.editor.service_id===service.id);
-     domain.dataset.label='Service';statusCell.dataset.label='Status';statusCell.textContent=imported?'Imported':'Not imported';row.append(domain,statusCell);body.append(row);
-    }
-    wrap.append(table);section.append(wrap);catalog.append(section);
+    card.append(group);
    }
   });
  }
- return {render,openSettings,edit:routes.edit,remove:routes.remove,activate(){active=true;if(!configurationView.hidden)configuration?.activate();},deactivate(){active=false;configuration?.deactivate();},dispose(){active=false;servicePicker?.close();configuration?.dispose();routes.dispose();views.dispose();}};
+ function routeTarget(route){
+  const record=current?.data?.status?.records?.find(r=>r.device_id===route.editor?.device_id),service=record?.services?.find(s=>s.id===route.editor?.service_id);
+  const name=service?.domain?.replace(/\.localhost$/,'');return name?`${providerName(route)} · ${name}`:providerName(route);
+ }
+ return {render,routeTarget,openSettings,edit:routes.edit,remove:routes.remove,activate(){active=true;if(!configurationView.hidden)configuration?.activate();},deactivate(){active=false;configuration?.deactivate();},dispose(){active=false;servicePicker?.close();configuration?.dispose();routes.dispose();views.dispose();}};
 }

@@ -623,3 +623,29 @@ body[data-administration=remote]{background:var(--bg)}
 .dashboard-table th.col-local{width:150px!important}
 /* Phones: the chip keeps only its icon; the banner names the administered Zelport. */
 @media(max-width:480px){.zelport-chip.remote .zelport-chip-name{display:none}.zelport-chip.remote{padding:0 10px;gap:6px}}
+/* Info hints: a thin 14px circle after a label (explanations live in its tooltip). */
+.info-hint{position:relative;display:inline-flex;vertical-align:middle}
+button.info-hint-trigger{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;min-width:22px;min-height:22px;margin:-4px 0;padding:0;border:0;border-radius:50%;background:transparent;color:var(--neutral-mark)}
+button.info-hint-trigger:hover{color:var(--ink);filter:none}
+.info-hint-glyph{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.1;stroke-linecap:round}
+.info-hint-glyph .info-hint-dot{fill:currentColor;stroke:none}
+.switch-label-row{display:inline-flex;align-items:center;gap:var(--space-1)}
+.switch-label-row>label{margin:0}
+/* SSH hosts from the config file, as chips. */
+.ssh-hosts-head{margin-top:var(--space-4)}
+.ssh-hosts-label{font-size:var(--text-help);font-weight:600}
+.ssh-hosts-count{font-size:var(--text-help);color:var(--muted)}
+.ssh-hosts{display:flex;flex-wrap:wrap;gap:var(--space-2);max-width:var(--form-measure)}
+.ssh-host-chip{padding:4px 10px;border:1px solid var(--line);border-radius:14px;background:var(--surface);font-size:13px}
+/* Services menu: source name, Experimental badge, service count at the right edge. */
+.services-menu>.navigation-item>.maturity-experimental{margin-left:var(--space-1)}
+.services-menu-count{margin-left:auto;padding-left:var(--space-4);color:var(--muted);font-size:13px;font-weight:400}
+.services-menu>.navigation-item{min-width:220px}
+/* Settings → Service sources: name, badge, count, switch; one info hint for the whole list. */
+.availability-intro{margin:var(--space-2) 0 var(--space-1)}
+.availability-intro-label{font-size:var(--text-help);font-weight:600}
+.module-availability-count{margin-left:var(--space-2);color:var(--muted);font-size:14px;font-weight:400}
+.module-availability-row .switch-field>.module-availability-count+input,.module-availability-row .switch-field>input{margin-left:auto}
+.module-availability-row .switch-field .maturity-experimental{margin-left:var(--space-2)}
+.module-availability-row .switch-field .info-hint{margin-left:var(--space-1)}
+.module-availability-info .switch-field label{flex:none}

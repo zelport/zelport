@@ -44,21 +44,21 @@ test('settings save sends raw path and current unchanged-settings revision, then
  const h=harness();h.view.openSettings();const input=h.input();input.value='/tmp/team ssh';fire(input,'input',{bubbles:true});h.render({},4);
  h.ctx.mutate=async work=>{const result=await work();h.render({ssh_config_path:'/tmp/team ssh',effective_config_path:'/tmp/team ssh'},5);return result;};
  fire(h.form(),'submit');await tick();
- assert.deepEqual(h.requests[0],{path:'/api/modules/ports_over_ssh/settings',method:'PUT',body:{revision:4,ssh_config_path:'/tmp/team ssh'}});
+ assert.deepEqual(h.requests.filter(r=>r.method==='PUT')[0],{path:'/api/modules/ports_over_ssh/settings',method:'PUT',body:{revision:4,ssh_config_path:'/tmp/team ssh'}});
  assert.equal(h.find('Edit file').disabled,false);assert.equal(input.title,undefined);assert.equal(input.getAttribute('aria-describedby'),undefined,'path input must not open a tooltip over its label');
 });
 
 test('polling a changed saved path preserves a draft and stale revision conflicts require explicit retry',async()=>{
  const h=harness();h.view.openSettings();h.input().value='/tmp/draft';fire(h.input(),'input',{bubbles:true});h.render({ssh_config_path:'/tmp/elsewhere',effective_config_path:'/tmp/elsewhere'},2);
  h.ctx.mutate=async work=>{await work();throw Object.assign(Error('revision conflict'),{status:409});};
- fire(h.form(),'submit');await tick();assert.equal(h.requests[0].body.revision,1);assert.equal(h.input().value,'/tmp/draft');
+ fire(h.form(),'submit');await tick();const puts=()=>h.requests.filter(r=>r.method==='PUT');assert.equal(puts()[0].body.revision,1);assert.equal(h.input().value,'/tmp/draft');
  assert.match(h.nodes().find(n=>n.getAttribute('role')==='alert').textContent,/changed elsewhere.*draft.*Save again/i);
- h.ctx.mutate=work=>work();fire(h.form(),'submit');await tick();assert.equal(h.requests[1].body.revision,2);
+ h.ctx.mutate=work=>work();fire(h.form(),'submit');await tick();assert.equal(puts()[1].body.revision,2);
 });
 
 test('discard restores the latest saved path and blank can be saved as the default',async()=>{
  const h=harness({ssh_config_path:'/tmp/old'});h.view.openSettings();h.input().value='/tmp/draft';fire(h.input(),'input',{bubbles:true});h.render({ssh_config_path:'/tmp/new'},2);
- fire(h.find('Discard'),'click');assert.equal(h.input().value,'/tmp/new');h.input().value='';fire(h.input(),'input',{bubbles:true});fire(h.form(),'submit');await tick();assert.equal(h.requests[0].body.ssh_config_path,'');
+ fire(h.find('Discard'),'click');assert.equal(h.input().value,'/tmp/new');h.input().value='';fire(h.input(),'input',{bubbles:true});fire(h.form(),'submit');await tick();assert.equal(h.requests.filter(r=>r.method==='PUT')[0].body.ssh_config_path,'');
 });
 
 test('saving disables the form, preserves pending drafts and surfaces errors',async()=>{
@@ -66,8 +66,8 @@ test('saving disables the form, preserves pending drafts and surfaces errors',as
  assert.equal(h.find('Edit file').disabled,true);assert.equal(h.input().disabled,true);h.render({ssh_config_path:'/tmp/poll'},2);assert.equal(h.input().value,'/tmp/draft');reject(Error('Permission denied'));await tick();assert.equal(h.input().disabled,false);assert.equal(h.input().value,'/tmp/draft');assert.equal(h.nodes().find(n=>n.getAttribute('role')==='alert').textContent,'Permission denied');
 });
 
-test('Refresh hosts reads the configured source after editing and reports the result',async()=>{
- const h=harness({ssh_config_path:'/tmp/config',effective_config_path:'/tmp/config'});h.view.openSettings();fire(h.find('Refresh hosts'),'click');await tick();assert.equal(h.requests[0].path,'/api/modules/ports_over_ssh/hosts');assert.equal(h.requests[0].method,'GET');assert.ok(h.nodes().some(n=>n.getAttribute('role')==='status'&&n.textContent==='1 SSH host loaded.'));
+test('Refresh hosts reads the configured source and lists the hosts as chips',async()=>{
+ const h=harness({ssh_config_path:'/tmp/config',effective_config_path:'/tmp/config'});h.view.openSettings();const before=h.requests.length;fire(h.find('Refresh hosts'),'click');await tick();const last=h.requests.at(-1);assert.ok(h.requests.length>before);assert.equal(last.path,'/api/modules/ports_over_ssh/hosts');assert.equal(last.method,'GET');assert.ok(h.nodes().some(n=>n.className==='ssh-host-chip'&&n.textContent==='example-host'));assert.ok(h.nodes().some(n=>n.className==='ssh-hosts-count'&&n.textContent==='1'));
 });
 
 test('SSH picker help follows the configured file; the host field filters and Use selects',async()=>{

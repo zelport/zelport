@@ -27,9 +27,10 @@ export function mountConfiguration(ctx,panel){
  function open(){
   if(disposed||form)return;
   form=el('form','local-configuration-form');enabled=field('Automatic port detection',true,'checkbox');ports=field('Ignored ports');processes=field('Ignored processes');
-  ports.input.placeholder='22, 5432, 8000-8099';processes.input.placeholder='sshd, postgres';
+  ports.input.placeholder='22, 5432, 6379';processes.input.placeholder='sshd, postgres';
+  ctx.ui.withInfo(enabled,'Suggests listening ports when you add a service.');ctx.ui.withInfo(ports,'Comma-separated ports or ranges.');ctx.ui.withInfo(processes,'Comma-separated, case-insensitive.');
   for(const control of [ports,processes]){control.input.autocomplete='off';control.input.spellcheck=false;}
-  form.append(enabled.wrap,el('p','small muted','Suggests listening ports when you add a service.'),ports.wrap,el('p','small muted','Comma-separated ports or ranges.'),processes.wrap,el('p','small muted','Comma-separated, case-insensitive.'),error,actions,feedback);
+  form.append(enabled.wrap,ports.wrap,processes.wrap,error,actions,feedback);
   for(const control of [enabled,ports,processes])control.input.addEventListener('input',changed);
   validation=ctx.ui.formFeedback(form,error,[{input:ports.input,matches:/port/i},{input:processes.input,matches:/process|comma|quote/i}]);
    form.addEventListener('submit',submit);panel.append(form);sync();update();

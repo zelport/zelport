@@ -52,12 +52,14 @@ export function mountConfiguration(ctx) {
   event.clipboardData.setData('text/plain',rawSecret.slice(rawOffset(multiline.selectionStart),rawOffset(multiline.selectionEnd)));
   event.preventDefault();
  });
- group.wrap.append(el('p','small muted','At least 32 characters. Use the same secret on your devices.'),feedback);
- const enabled=field('Connect to relay',false,'checkbox'),publish=field('Share my services',false,'checkbox');
- const switches=el('div','relay-connection-options');switches.append(enabled.wrap,publish.wrap,el('p','small muted','Devices with this E2E secret can always administer each other.'));
+ ctx.ui.withInfo(group,'At least 32 characters. The same secret links your Zelports, and they can administer each other.');group.wrap.append(feedback);
+ const enabled=field('Enabled',false,'checkbox'),publish=field('Share my services',false,'checkbox');ctx.ui.withInfo(publish,'Linked Zelports can import all services of this Zelport.');
+ const switches=el('div','relay-connection-options');switches.append(enabled.wrap,publish.wrap);
  const error=el('p','route-error'),actions=el('div','relay-actions'),save=el('button','primary','Save');save.type='submit';
  const discard=button('Discard',()=>{if(saving)return;sync();validation.clear();url.input.focus();});
- actions.append(discard,save);form.append(url.wrap,modeWrap,access.wrap,group.wrap,switches,error,actions);
+ // The connection state heads the card: dot, relay host, state (details in its tooltip).
+ const status=el('div','relay-status-line');
+ actions.append(discard,save);form.append(status,url.wrap,modeWrap,access.wrap,group.wrap,switches,error,actions);
  url.input.placeholder='ws://relay.example.com:8070';access.input.autocomplete=group.input.autocomplete='off';group.input.spellcheck=false;
  const validation=ctx.ui.formFeedback(form,error,[{input:url.input,matches:/url|scheme|wss?:/i},{input:access.input,matches:/access token/i},{get input(){return secretInput();},matches:/E2E|group token/i}]);
  function mask(){generation++;const value=editing?secret():'';group.input.type='password';setSecret(value);feedback.textContent='';update();}
@@ -115,7 +117,7 @@ export function mountConfiguration(ctx) {
   }catch(cause){if(cause.status===409){revision=ctx.ui.state().revision;failure='Changed elsewhere. Your draft is kept. Save again or discard.';}else failure=cause.message.replace(/^ports_over_relay settings: /,'');}
   finally{saving=false;update();if(failure)validation.show(failure);}
  });
- return {element:form,render(state){
+ return {element:form,status,render(state){
   const next=state.data||{},before=JSON.stringify([saved.enabled,saved.publish,saved.relay_url,saved.has_access_token,saved.has_identity]),after=JSON.stringify([next.enabled,next.publish,next.relay_url,next.has_access_token,next.has_identity]);
   saved=next;
   if(!dirty&&!saving){if(before!==after||!revision)sync();else revision=ctx.ui.state().revision;}

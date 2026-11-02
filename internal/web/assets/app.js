@@ -1,7 +1,9 @@
 import * as ui from './ui.js';
 import {createClient} from './client.js';
 import {createNavigation} from './navigation.js';
-import {createDashboard} from './dashboard.js';
+import {createDashboard,sourceLabel} from './dashboard.js';
+// Services menu order: Local, SSH, HTTP, Relay (the Add service tiles use the same order).
+const sourceOrder=['local_ports','ports_over_ssh','remote_http','ports_over_relay'];
 import {createSwitcher,renderRemoteBanner} from './zelport-switcher.js';
 import {renderHeaderStatus as renderRuntimeHeaderStatus,renderAvailability as renderRuntimeAvailability} from './runtime.js';
 const $=id=>document.getElementById(id);
@@ -92,6 +94,7 @@ function render(){
  renderRemoteBanner({banner:$('remote-administration'),state,ui});
  for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
  dashboard.render(state);for(const m of modules.values())m.services?.render(state);
+ for(const m of modules.values()){const count=m.tab?.querySelector?.('.services-menu-count');if(count){ui.setText(count,String(state.states[m.descriptor.id]?.routes?.length||0));if(m.tab.lastElementChild!==count)m.tab.append(count);}}
  ui.setText($('footer-version'),footerVersion(state));
  const rt=state.runtime,fields=[['Version',rt.version],['Hostname',rt.hostname],['Configuration',rt.config_display_path||rt.config_path],['Listeners',rt.listeners?.join(', ')],['Modules',state.modules.map(m=>m.name).join(', ')||'Core only']];
  for(const [label,value]of fields){let cell=[...$('runtime-info').children].find(c=>c.dataset.label===label);if(!cell){cell=ui.el('div',label==='Modules'?'runtime-modules':null);cell.dataset.label=label;cell.append(ui.el('dt',null,label),ui.el('dd'));$('runtime-info').append(cell);}if(label==='Modules')renderRuntimeModules(cell);else ui.setText(cell.children[1],value);if(label==='Configuration'){cell.children[1].tabIndex=0;ui.setTooltip(cell.children[1],rt.config_path||'');}}
@@ -118,12 +121,13 @@ function renderAvailability(){
 }
 function addAvailability(settings){
  const section=ui.accordion('Service sources');
- section.content.append(ui.el('p','small muted availability-intro','Hidden sources leave the Services menu and Add service. Their services keep running.'));
- for(const d of state.modules.filter(d=>d.ui_placement!=='settings')){
-  const control=ui.switchField(d.name),row=ui.el('div','module-availability-row'),info=ui.el('div','module-availability-info');
-  const reason=ui.el('p','small muted');reason.id=`availability-reason-${d.id}`;
-  control.input.setAttribute('aria-describedby',reason.id);if(d.maturity==='experimental')control.wrap.insertBefore(ui.experimentalBadge(),control.input);info.append(control.wrap,reason);row.append(info);section.content.append(row);
-  availabilityControls.set(d.id,{input:control.input,reason});
+ const intro=ui.el('div','field-label-row availability-intro');intro.append(ui.el('span','availability-intro-label','Shown in Services and Add service'),ui.infoHint('Hidden sources leave the Services menu and Add service. Their services keep running.','About hidden sources').root);section.content.append(intro);
+ for(const d of state.modules.filter(d=>d.ui_placement!=='settings').sort((a,b)=>sourceOrder.indexOf(a.id)-sourceOrder.indexOf(b.id))){
+  const control=ui.switchField(d.name),row=ui.el('div','module-availability-row'),info=ui.el('div','module-availability-info'),count=ui.el('span','module-availability-count');
+  // Why a switch is locked stays in its accessible description and in an info hint, not as a sentence.
+  const reason=ui.el('p','visually-hidden');reason.id=`availability-reason-${d.id}`;const lock=ui.infoHint('','Why this source stays shown');lock.root.hidden=true;
+  control.input.setAttribute('aria-describedby',reason.id);if(d.maturity==='experimental')control.wrap.insertBefore(ui.experimentalBadge(),control.input);control.wrap.insertBefore(count,control.input);control.wrap.insertBefore(lock.root,control.input);info.append(control.wrap,reason);row.append(info);section.content.append(row);
+  availabilityControls.set(d.id,{input:control.input,reason,count,lock});
   control.input.addEventListener('change',async()=>{
    if(availabilitySaving)return;
    const enabled=control.input.checked,revision=state.revision;availabilitySaving=true;
@@ -177,6 +181,8 @@ async function init(){
  for(const link of document.querySelectorAll('[data-tooltip]'))ui.setTooltip(link,link.dataset.tooltip);
  client=createClient({owner:()=>active,onError:message,onState(next){state=next;clearRefreshErrors();if(composed)render();}});
  state=await client.refresh();tab('dashboard','Dashboard');
+ // Sources are named by connection everywhere in the UI: Local, SSH, HTTP, Relay.
+ for(const d of state.modules)if(d.ui_placement!=='settings')d.name=sourceLabel(d.id,d.name);
  const addService=$('add-service'),tools=ui.el('div','table-tools');tools.id='dashboard-tools';addService.before(tools);
  dashboard=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui,tools,onRescan:rescanPorts});
  addService.addEventListener('click',()=>openAddService(addService));
@@ -188,7 +194,7 @@ async function init(){
   panel.id=inSettings?`settings-${descriptor.id}`:`panel-${descriptor.tab_id}`;panel.dataset.module=descriptor.id;panel.hidden=true;
   let section=null;
   let tabButton=null;
-  if(inSettings){section=ui.accordion(descriptor.name,descriptor.maturity);section.content.append(panel);settings.append(section.root);}else{panel.setAttribute('role','region');panel.setAttribute('aria-labelledby','module-title');$('panels').append(panel);tabButton=tab(descriptor.tab_id,descriptor.name);if(descriptor.maturity==='experimental'){tabButton.setAttribute('aria-label',`${descriptor.name} (Experimental)`);tabButton.append(ui.experimentalBadge());}}
+  if(inSettings){section=ui.accordion(descriptor.name,descriptor.maturity);section.content.append(panel);settings.append(section.root);}else{panel.setAttribute('role','region');panel.setAttribute('aria-labelledby','module-title');$('panels').append(panel);tabButton=tab(descriptor.tab_id,descriptor.name);tabButton.dataset.order=String(sourceOrder.indexOf(descriptor.id)<0?99:sourceOrder.indexOf(descriptor.id));tabButton.append(ui.el('span','services-menu-count'));if(descriptor.maturity==='experimental'){tabButton.setAttribute('aria-label',`${descriptor.name} (Experimental)`);tabButton.append(ui.experimentalBadge());}}
   const toolbar=ui.el('div','module-toolbar');toolbar.hidden=true;$('module-actions').append(toolbar);
   const controller=new AbortController(),m={descriptor,panel,toolbar,tab:tabButton,controller,accordion:section?.root};modules.set(descriptor.id,m);
   section?.root.addEventListener('toggle',()=>{const visible=moduleVisible(m);panel.hidden=!visible;if(visible)m.instance?.activate();else m.instance?.deactivate();});

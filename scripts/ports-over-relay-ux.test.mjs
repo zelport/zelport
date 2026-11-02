@@ -2,14 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import * as ui from '../internal/web/assets/ui.js';
-import {headerStatus,mount} from '../internal/modules/ports_over_relay/assets/module.js';
-
-test('Overview section headings use one vertical rhythm',async()=>{
- const css=await readFile(new URL('../internal/modules/ports_over_relay/assets/style.css',import.meta.url),'utf8');
- assert.match(css,/\.relay-services-view>\.relay-setup\{margin-bottom:var\(--space-8\)\}/);
- assert.match(css,/\.relay-services-view>h2,\.relay-catalog>h2\{margin:0 0 var\(--space-3\)\}/);
- assert.match(css,/\.relay-catalog\{margin-top:var\(--space-8\)\}/);
-});
+import {headerStatus,mount,relayStatusLine,importSummary} from '../internal/modules/ports_over_relay/assets/module.js';
 
 class Node {
  constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.style={};this.className='';this.textContent='';this.events={};this.hidden=false;this.value='';}
@@ -46,11 +39,14 @@ for(const scenario of [
  {data:{enabled:true,relay_url:'wss://relay.example.test',status:{}},label:'Connecting',tone:'pending'},
  {data:{enabled:true,relay_url:'wss://relay.example.test',status:{connected:true}},label:'Connected',tone:'ok'},
  {data:{enabled:true,relay_url:'wss://relay.example.test',status:{error:'failed'}},label:'Connection failed',tone:'error'}
-])test(`Relay header and Configuration show ${scenario.label}`,async()=>{
+])test(`Relay status line shows ${scenario.label}`,async()=>{
  const status=headerStatus({data:scenario.data});
  if(scenario.label==='Not configured')assert.equal(status,null,'an unconfigured relay has no header indicator');else{assert.equal(status.status,scenario.label);assert.equal(status.tone,scenario.tone);}
- const h=harness(scenario.data);
- assert.ok(h.nodes().some(n=>n.className.includes('status-badge')&&n.textContent===scenario.label&&n.dataset.tone===scenario.tone));
+ // The page uses the service status words: Off, Connecting, Connected, Unreachable.
+ const line={'Not configured':'Off','Disabled':'Off','Connecting':'Connecting','Connected':'Connected','Connection failed':'Unreachable'}[scenario.label];
+ assert.equal(relayStatusLine(scenario.data).label,line);
+ const h=harness(scenario.data),root=h.nodes().find(n=>n.className==='relay-status-line');
+ assert.ok(tree(root).some(n=>n.className==='service-status-label'&&n.textContent===line));
 });
 
 for(const data of [{relay_url:''},{relay_url:'wss://relay.example.test',enabled:false}])test(`Relay ${data.relay_url?'disabled':'unconfigured'} connection shows the form without an onboarding detour`,()=>{
@@ -110,18 +106,16 @@ test('replacement drafts retain their original revision across external credenti
  const h=harness({has_identity:true});h.view.openSettings();await click(h.find('Change E2E secret'));input(h,'E2E secret').value='replacement-secret-123456789012345';const form=h.nodes().find(n=>n.tag==='form');form.events.input({});
  h.render({},2);await form.events.submit({preventDefault(){}});assert.equal(h.requests.at(-1).revision,1);
 });
-test('connection failure is actionable in Overview and raw diagnostics remain collapsed',()=>{
+test('connection failure names the problem in the status tooltip with the raw error',()=>{
  const h=harness({enabled:true,relay_url:'ws://relay.example.test',status:{connected:false,error:'failed to get reader: failed to read frame header: EOF',records:[]}});
- assert.ok(h.nodes().some(n=>visible(n)&&/Check.*access mode.*token/i.test(n.textContent)));
- const details=h.nodes().find(n=>n.tag==='details'&&tree(n).some(x=>x.textContent.includes('frame header')));assert.ok(details);assert.ok(!details.open);
+ const root=h.nodes().find(n=>n.className==='relay-status-line'),tip=tree(root).find(n=>n.className?.includes?.('status-tooltip'));
+ assert.ok(tree(root).some(n=>n.textContent==='Unreachable'));assert.match(tip.textContent,/access mode.*token/i);assert.match(tip.textContent,/frame header/);
 });
-test('connected relay reports zero devices without claiming an E2E mismatch',()=>{
+test('connected relay with no other Zelports says so without claiming an E2E mismatch',()=>{
  const h=harness({enabled:true,relay_url:'ws://relay.example.test',status:{connected:true,records:[]}});
- assert.ok(h.nodes().some(n=>visible(n)&&n.textContent==='0 devices'));
- assert.ok(h.nodes().some(n=>visible(n)&&/same E2E secret/.test(n.textContent)));
+ assert.ok(h.nodes().some(n=>visible(n)&&n.textContent==='No linked Zelports'));
  assert.equal(h.nodes().some(n=>/wrong E2E|invalid E2E/i.test(n.textContent)),false);
 });
-
 
 test('Relay configuration tracks edits, reverts, discard, and a successful save',async()=>{
  const h=harness({has_identity:true});h.view.openSettings();let form=h.nodes().find(n=>n.tag==='form'),url=document.activeElement;
@@ -169,32 +163,32 @@ test('ordinary 40-character secret is accepted and short input fails before a re
  assert.equal(h.requests.length,0);assert.ok(h.nodes().some(n=>/at least 32 characters/.test(n.textContent)));
  const secret='synthetic-40-character-secret-for-test-1';input(h,'E2E secret').value=secret;form.events.input({});await form.events.submit({preventDefault(){}});assert.equal(h.requests.at(-1).group_token,secret);
 });
-test('no-device Overview uses one service-focused empty state',()=>{
- const h=harness({has_identity:true,enabled:true,relay_url:'ws://relay.example.test',status:{connected:true,records:[]}});
- assert.equal(h.nodes().some(n=>visible(n)&&n.textContent==='Zelport administration'),false);
- assert.ok(h.nodes().some(n=>visible(n)&&n.textContent==='No other devices yet.'));
- assert.ok(h.nodes().some(n=>visible(n)&&n.textContent==='Relay server'));
-});
-test('remote device has one card for services and administration',()=>{
- const provider={device_id:'linux-device',group:'group',public_key:'pin',hostname:'sandbox',port:7271,publish:true,expires_at:Date.now()/1000+60,services:[{id:'service',kind:'application',domain:'sandbox.localhost'}]};
+test('a linked Zelport is one row with "imported of shared"; its services list below it',()=>{
+ const provider={device_id:'linux-device',group:'group',public_key:'pin',hostname:'sandbox',port:7271,publish:true,expires_at:Date.now()/1000+60,services:[{id:'service',kind:'application',domain:'web.localhost'},{id:'other',kind:'application',domain:'api.localhost'}]};
  const peer={device_id:'linux-device',hostname:'sandbox',available:true,uuid_url:'http://linux-device.zelport.localhost:7270/',hostname_url:'http://sandbox.zelport.localhost:7270/'};
- const h=harness({has_identity:true,enabled:true,relay_url:'ws://relay.example.test',administration_peers:[peer],status:{connected:true,records:[provider]}});
- const cards=h.nodes().filter(n=>n.className==='relay-provider');assert.equal(cards.length,1);
- const nodes=tree(cards[0]);assert.equal(nodes.find(n=>n.textContent==='Online').dataset.tone,'ok');assert.ok(nodes.some(n=>n.tag==='a'&&n.textContent==='Open administration'));assert.ok(nodes.some(n=>n.textContent==='sandbox.localhost:7271'));assert.equal(h.nodes().some(n=>n.textContent==='Zelport administration'),false);
- const before=cards[0];h.render({});assert.equal(h.nodes().find(n=>n.className==='relay-provider'),before);
+ const imported={id:'r',domain:'mine.localhost',summary:{state:'ready',target:'linux-device'},editor:{group:'group',device_id:'linux-device',service_id:'service'}};
+ const h=harness({has_identity:true,enabled:true,relay_url:'ws://relay.example.test',administration_peers:[peer],status:{connected:true,records:[provider]}},{},[imported]);
+ assert.equal(importSummary({online:true,shared:2,imported:1}),'1 of 2 imported');assert.equal(importSummary({online:false,shared:0,imported:2}),'Offline · 2 imported');
+ assert.ok(h.find('1 of 2 imported'));assert.ok(h.find('Linked Zelports'));
+ assert.equal(h.nodes().some(n=>n.textContent==='Open administration'),false,'administration is reached from the header switcher');
+ // The only linked Zelport starts expanded: services sorted by name, the imported one links to its local address.
+ const names=h.nodes().filter(n=>n.className==='relay-linked-service-name').map(n=>n.textContent);assert.deepEqual(names,['api','web']);
+ assert.ok(h.nodes().some(n=>n.tag==='a'&&n.textContent==='mine.localhost:8080'));assert.ok(h.find('Import api from sandbox'));
+ const before=h.nodes().find(n=>n.className==='relay-linked');h.render({});assert.equal(h.nodes().find(n=>n.className==='relay-linked'),before);
 });
 
-test('offline devices keep their card but cannot open administration or import',()=>{
+test('an offline linked Zelport cannot be expanded and keeps its local import count',()=>{
  const peer={device_id:'linux',hostname:'sandbox',available:false,uuid_url:'http://linux.zelport.localhost:7270/'};
  const provider={device_id:'linux',hostname:'sandbox',group:'g',public_key:'key',publish:true,expires_at:1,services:[{kind:'application',id:'app',domain:'app.localhost'}]};
- const h=harness({enabled:true,relay_url:'ws://relay.example.test',administration_peers:[peer],status:{connected:true,records:[provider]}});
- const card=h.nodes().find(n=>n.className==='relay-provider'),nodes=tree(card);assert.ok(nodes.some(n=>n.textContent==='Offline'));assert.equal(nodes.find(n=>n.textContent==='Open administration').tag,'span');assert.equal(nodes.find(n=>n['aria-label']==='Import service from sandbox').disabled,true);
+ const h=harness({enabled:true,relay_url:'ws://relay.example.test',administration_peers:[peer],status:{connected:true,records:[provider]}},{},[{id:'r',domain:'app.localhost',summary:{state:'ready',target:'linux'},editor:{group:'g',device_id:'linux',service_id:'app'}}]);
+ const row=h.nodes().find(n=>n.className==='relay-linked-row');assert.equal(row.tag,'div');assert.ok(tree(row).some(n=>n.textContent==='Offline · 1 imported'));
+ assert.equal(h.nodes().some(n=>n.className==='relay-linked-services'),false);
 });
-test('catalog renewal metadata retains device card and import controls',()=>{
+test('catalog renewal metadata retains the Linked Zelports nodes',()=>{
  const provider={device_id:'linux',hostname:'sandbox',group:'g',public_key:'key',publish:true,sequence:1,expires_at:Date.now()/1000+60,services:[{kind:'application',id:'app',domain:'app.localhost'}]};
- const h=harness({enabled:true,relay_url:'ws://relay.example.test',status:{connected:true,records:[provider]}}),card=h.nodes().find(n=>n.className==='relay-provider');
+ const h=harness({enabled:true,relay_url:'ws://relay.example.test',status:{connected:true,records:[provider]}}),card=h.nodes().find(n=>n.className==='relay-linked');
  h.render({status:{connected:true,records:[{...provider,sequence:2,expires_at:provider.expires_at+60}]}});
- assert.equal(h.nodes().find(n=>n.className==='relay-provider'),card);
+ assert.equal(h.nodes().find(n=>n.className==='relay-linked'),card);
 });
 
 for(const secret of [' '.repeat(32), ' '+ '😀'.repeat(30)+' ', '!'.repeat(32)])test('minimum-length secret preserves every character: '+JSON.stringify(secret),async()=>{
@@ -235,23 +229,13 @@ test('manual copying a revealed multiline secret retains CRLF',async()=>{
  assert.equal(copied,raw);
 });
 
-test('catalog import action stays in the device header and addresses follow provider port changes',()=>{
- const provider={device_id:'linux',hostname:'sandbox',port:7271,group:'g',public_key:'key',publish:true,expires_at:Date.now()/1000+60,services:[{kind:'application',id:'app',domain:'app.localhost'}]};
- const h=harness({enabled:true,relay_url:'ws://relay.example.test',status:{connected:true,records:[provider]}});
- const add=h.nodes().find(n=>n['aria-label']==='Import service from sandbox');assert.ok(add);assert.equal(add.parentElement.className,'relay-device-actions');
- assert.equal(h.nodes().filter(n=>n.tag==='tr').some(n=>tree(n).some(c=>c.tag==='button')),false);
- assert.ok(h.find('app.localhost:7271'));
- h.render({status:{connected:true,records:[{...provider,port:8088}]}});assert.ok(h.find('app.localhost:8088'));
-});
-
-for(const count of [1,2])test(`device plus selects the intended service and proposes a free domain (${count} services)`,async()=>{
- const provider={device_id:'linux',hostname:'sandbox',port:7271,group:'g',public_key:'key',publish:true,expires_at:Date.now()/1000+60,services:Array.from({length:count},(_,i)=>({kind:'application',id:`app-${i}`,domain:`app-${i}.localhost`}))};
- const imported={id:'existing',domain:'app-0.localhost',editor:{group:'g',device_id:'linux',service_id:'app-0'}};
- const edits=[];let picker;
- const h=harness({enabled:true,relay_url:'ws://relay.example.test',status:{connected:true,records:[provider]}},{serviceModule:()=>({render(){},edit:route=>edits.push(route),dispose(){}}),showDialog(dialog,options){picker=dialog;dialog.close=()=>options.onClose();return dialog;}},[imported]);
- assert.ok(h.find('Imported'));await click(h.find('Import service from sandbox'));
- if(count===2){assert.equal(edits.length,0);await click(tree(picker).find(n=>n.tag==='button'&&n.textContent==='app-1.localhost:7271'));}
- assert.equal(edits.length,1);assert.equal(edits[0].editor.service_id,count===1?'app-0':'app-1');assert.equal(edits[0].editor.provider_key,'key');assert.equal(edits[0].domain,count===1?'app-0-2.localhost':'app-1.localhost');h.view.dispose();
+test('Import on a shared service opens the import with a free address',async()=>{
+ const provider={device_id:'linux',hostname:'sandbox',port:7271,group:'g',public_key:'key',publish:true,expires_at:Date.now()/1000+60,services:[{kind:'application',id:'app-0',domain:'app-0.localhost'},{kind:'application',id:'app-1',domain:'app-1.localhost'}]};
+ const imported={id:'existing',domain:'app-1.localhost',editor:{group:'g',device_id:'linux',service_id:'app-0'}};
+ const edits=[];
+ const h=harness({enabled:true,relay_url:'ws://relay.example.test',status:{connected:true,records:[provider]}},{serviceModule:()=>({render(){},edit:route=>edits.push(route),dispose(){}})},[imported]);
+ assert.ok(h.find('1 of 2 imported'));await click(h.find('Import app-1 from sandbox'));
+ assert.equal(edits.length,1);assert.equal(edits[0].editor.service_id,'app-1');assert.equal(edits[0].editor.provider_key,'key');assert.equal(edits[0].domain,'app-1-2.localhost');h.view.dispose();
 });
 
 test('Add service lists services shared by other devices and imports the chosen one',async()=>{

@@ -52,6 +52,9 @@ export function mount(ctx){
  error.setAttribute('role','alert');feedback.setAttribute('role','status');
  const save=el('button','primary','Save');save.type='submit';
  const discard=button('Discard',()=>{if(saving)return;syncSettings();validation?.clear();feedback.textContent='';updateControls();});
+ const hostsCount=el('span','ssh-hosts-count'),hostsList=el('div','ssh-hosts');hostsList.setAttribute('role','list');
+ function renderHosts(hosts=[]){ctx.ui.setText(hostsCount,String(hosts.length));hostsList.replaceChildren(...hosts.map(host=>{const chip=el('span','ssh-host-chip',host);chip.setAttribute('role','listitem');return chip;}));}
+ async function loadHosts(){try{const result=await ctx.api(api('hosts'),{method:'GET'});if(!disposed)renderHosts(result.hosts||[]);}catch{if(!disposed)renderHosts([]);}}
  const editWeb=adornmentButton('Edit file','edit',openWebEditor),refresh=adornmentButton('Refresh hosts','rotate',refreshHosts);
  function openSettings(){views.show('configuration');path?.input.focus();}
  function syncSettings(){baseline=savedPath();revision=ctx.ui.state().revision;path.input.value=baseline;dirty=false;}
@@ -66,9 +69,11 @@ export function mount(ctx){
   existence.textContent=current?.data?.config_exists?'':'The file does not exist yet. Edit file creates it.';
  }
  function configure(){
-  form=el('form','ssh-configuration-form');path=adornedField('SSH configuration file',savedPath(),'text',{actions:[editWeb,refresh]});path.input.placeholder='~/.ssh/config';path.input.autocomplete='off';path.input.spellcheck=false;
+  form=el('form','ssh-configuration-form');path=adornedField('SSH config file',savedPath(),'text',{actions:[editWeb,refresh]});ctx.ui.withInfo(path,'Blank uses ~/.ssh/config. Zelport connects with your SSH keys and agent, without password prompts.');path.input.placeholder='~/.ssh/config';path.input.autocomplete='off';path.input.spellcheck=false;
   const actions=el('div','ssh-settings-actions');actions.append(discard,save);
-  form.append(path.wrap,el('p','small muted','Blank uses ~/.ssh/config.'),existence,error,reason,actions,feedback);
+  // Hosts from the SSH config: label + count, then the aliases as chips.
+  const hostsHead=el('div','field-label-row ssh-hosts-head');hostsHead.append(el('span','ssh-hosts-label','Hosts'),hostsCount);
+  form.append(path.wrap,existence,hostsHead,hostsList,error,reason,actions,feedback);loadHosts();
   path.input.addEventListener('input',()=>{dirty=path.input.value!==baseline;feedback.textContent='';updateControls();});
   validation=ctx.ui.formFeedback(form,error,[{input:path.input,matches:/path|file|SSH config/i}]);
   form.addEventListener('submit',saveSettings);configuration.append(form);syncSettings();updateControls();
@@ -90,7 +95,7 @@ export function mount(ctx){
   validation?.clear();feedback.textContent='';
   webEditor=ctx.ui.fileEditor(ctx,{endpoint:api('config-file'),title:'Edit SSH configuration',trigger:editWeb,onClose(){webEditor=null;if(!disposed){updateControls();if(error.textContent)validation.show(error.textContent);}},async onSaved(){
    if(disposed)return;feedback.textContent='File saved.';
-   try{await ctx.api(api('hosts'),{method:'GET'});await ctx.refresh?.(true);}catch(cause){if(!disposed)error.textContent='File saved. SSH hosts could not be refreshed.';}
+   try{const result=await ctx.api(api('hosts'),{method:'GET'});renderHosts(result.hosts||[]);await ctx.refresh?.(true);}catch(cause){if(!disposed)error.textContent='File saved. SSH hosts could not be refreshed.';}
   }});updateControls();
  }
  async function refreshHosts(){
@@ -98,7 +103,7 @@ export function mount(ctx){
   refreshing=true;validation?.clear();feedback.textContent='';updateControls();
   try{
    const result=await ctx.api(api('hosts'),{method:'GET'});await ctx.refresh?.(true);
-   if(!disposed){const count=(result.hosts||[]).length;feedback.textContent=`${count} SSH ${count===1?'host':'hosts'} loaded.`;}
+   if(!disposed)renderHosts(result.hosts||[]);
   }catch(cause){if(!disposed)error.textContent=cause.message;}
   finally{refreshing=false;if(!disposed){updateControls();if(error.textContent)validation.show(error.textContent);}}
  }

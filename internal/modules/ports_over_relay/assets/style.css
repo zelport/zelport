@@ -57,3 +57,38 @@
 @media(max-width:720px){.relay-device-actions{width:100%;justify-content:flex-end}.relay-services-table td{overflow-wrap:anywhere}}
 
 .relay-services-table td[data-label="Status"]{text-align:right}
+/* v2: status line heads the configuration card; no dividers between fields and switches. */
+.relay-status-line{display:flex;align-items:center;min-height:44px;margin:0 0 var(--space-2)}
+.relay-status-line .service-status{gap:var(--space-2)}
+.relay-status-line .service-status-label{color:var(--muted);font-size:14px}
+.relay-status-host{font-weight:600}
+.relay-connection-options{border-top:0;margin-top:var(--space-4);padding-top:0}
+/* Linked Zelports: one card, a row per Zelport, its shared services when expanded. */
+.relay-catalog{margin:0}
+.relay-linked{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel)}
+.relay-linked-device+.relay-linked-device{border-top:1px solid var(--line)}
+.relay-linked-row{display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:52px;margin:0;padding:0 var(--space-4);border:0;border-radius:0;background:transparent;color:var(--ink);font:inherit;font-weight:400;text-align:left}
+button.relay-linked-row:hover{background:color-mix(in srgb,var(--accent-soft) 50%,transparent);filter:none}
+button.relay-linked-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.relay-linked-device:first-child .relay-linked-row{border-radius:var(--radius-panel) var(--radius-panel) 0 0}
+.relay-chevron,.relay-linked-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;flex:none}
+.relay-chevron-icon{width:16px;height:16px;fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.relay-linked-dot::before{content:"";width:8px;height:8px;border-radius:50%;box-sizing:border-box;border:2px solid var(--neutral-mark)}
+.relay-linked-dot[data-tone=ok]::before{border-color:var(--ok);background:var(--ok)}
+.relay-linked-row>strong{font-weight:600}
+div.relay-linked-row>strong{color:var(--muted)}
+.relay-linked-count{color:var(--muted);font-size:14px}
+.relay-linked-services{border-top:1px solid var(--line)}
+.relay-linked-service{display:flex;align-items:center;gap:var(--space-3);min-height:48px;padding:0 var(--space-4) 0 72px}
+.relay-linked-service+.relay-linked-service{border-top:1px solid var(--line)}
+.relay-linked-service-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.relay-linked-import,.relay-linked-import-button{margin-left:auto}
+.relay-linked-import{font-size:14px;white-space:nowrap}
+button.relay-linked-import-button{min-height:36px;padding:0 14px;font-size:14px}
+.relay-linked-empty{margin:0;padding:var(--space-6);text-align:center;color:var(--muted)}
+@media(max-width:480px){.relay-linked-service{padding-left:var(--space-4)}}
+.relay-linked-row{justify-content:flex-start}
+[data-module="ports_over_relay"] .relay-actions{border-top:0;padding-top:0}
+.relay-status-line{gap:var(--space-2)}
+.relay-status-line .service-status-mark{display:none}
+.relay-linked-dot[data-tone=error]::before{border-color:var(--red);background:var(--red)}
