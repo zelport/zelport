@@ -56,15 +56,6 @@ test('polling can hide the current tab and return it when enabled again',()=>{
  s.setState({modules:[m.descriptor],module_availability:{test:{enabled:true}}});s.renderAvailability();s.navigate('test');assert.equal(s.active(),'test');assert.equal(m.panel.hidden,false);
 });
 
-test('hiding a module closes its header popover; re-enabling restores disconnected status',()=>{
- const s=shell();let open=true;
- const indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return open},hidePopover(){open=false}},status:{dataset:{}},settings:{},details:{querySelectorAll(){return []},replaceChildren(){}}};
- s.addModule({descriptor:{id:'client',name:'Client'},headerStatus(){return {status:'Disconnected',tone:'neutral',rows:[]}},indicator});
- s.setState({states:{client:{}},module_availability:{client:{enabled:false}}});s.renderHeaderStatus();
- assert.equal(indicator.wrap.hidden,true);assert.equal(open,false);
- s.setState({states:{client:{}},module_availability:{client:{enabled:true}}});s.renderHeaderStatus();
- assert.equal(indicator.wrap.hidden,false);assert.equal(indicator.status.textContent,'Disconnected');assert.equal(indicator.trigger.dataset.tone,'neutral');
-});
 
 
 test('entering Settings closes accordions before activating sections; staying preserves them',()=>{
@@ -80,13 +71,6 @@ test('entering Settings closes accordions before activating sections; staying pr
  assert.equal(outer.open,false);assert.equal(m.panel.hidden,true);
 });
 
-test('header popover content is retained until its displayed lines change',()=>{
- const s=shell();let draws=0,rows=[{label:'Relay',value:'localhost:8090'}];
- const indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return false}},status:{dataset:{}},settings:{},details:{querySelectorAll(){return []},replaceChildren(){draws++}}};
- s.addModule({descriptor:{id:'client',name:'Client'},headerStatus(){return {status:'Connected',tone:'ok',rows}},indicator});
- s.setState({states:{client:{}}});s.renderHeaderStatus();s.renderHeaderStatus();assert.equal(draws,1);
- rows=[{label:'Relay',value:'localhost:8091'}];s.renderHeaderStatus();assert.equal(draws,2);
-});
 
 test('module status and runtime module popovers share one visual shell',()=>{
  const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8');
@@ -140,12 +124,6 @@ test('changing views closes open dialogs, but polling the same view preserves th
  s.navigate('dashboard',false);assert.equal(closed,0);
  s.navigate('settings',false);assert.equal(closed,1);
 });
-test('enabling a module refreshes the header action label without a reload',()=>{
- const s=shell(),indicator={wrap:{},trigger:{dataset:{},setAttribute(){}},popover:{matches(){return false}},status:{dataset:{}},settings:{textContent:'Open settings'},details:{querySelectorAll(){return []},replaceChildren(){}}};
- s.addModule({descriptor:{id:'local_ports'},headerStatus(){return {status:'Available',tone:'ok',action:'Open module',rows:[]}},indicator});
- s.setState({states:{local_ports:{}},module_availability:{local_ports:{enabled:true}}});s.renderHeaderStatus();
- assert.equal(indicator.settings.textContent,'Open module');
-});
 
 
 test('header Open settings invokes module configuration after navigation',()=>{
@@ -164,4 +142,17 @@ test('Dashboard keeps route-notice discovery active; source pages activate only 
  s.navigate('dashboard');assert.deepEqual(activated,['local']);assert.deepEqual(deactivated,['remote']);
  activated.length=deactivated.length=0;s.navigate('remote');assert.deepEqual(activated,['remote']);assert.deepEqual(deactivated,['local']);
  s.navigate('sources');assert.equal(s.active(),'dashboard','the retired Sources page falls back to Dashboard');
+});
+
+test('the header shows the Zelport switcher instead of per-module connection indicators',async()=>{
+ const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8');
+ assert.match(app,/createSwitcher\(\{host:\$\('connection-status'\),ui\}\)/);
+ assert.doesNotMatch(app,/renderRuntimeHeaderStatus\(\{/);
+ const {switcherModel,localAdministrationURL}=await import('../internal/web/assets/zelport-switcher.js');
+ assert.equal(switcherModel({states:{},runtime:{hostname:'desktop'}}),null,'no relay, no chip');
+ assert.equal(switcherModel({states:{ports_over_relay:{data:{enabled:false}}},runtime:{hostname:'desktop'}}),null);
+ const peers=[{device_id:'b',hostname:'nas',uuid_url:'http://b.zelport.localhost:8080',available:false},{device_id:'a',hostname:'build-server',hostname_url:'http://build-server.zelport.localhost:8080',uuid_url:'http://a.zelport.localhost:8080',available:true}];
+ assert.deepEqual(switcherModel({states:{ports_over_relay:{data:{enabled:true,administration_peers:peers}}},runtime:{hostname:'desktop'}}),{mode:'local',hostname:'desktop',peers:[{hostname:'build-server',url:'http://build-server.zelport.localhost:8080',available:true},{hostname:'nas',url:'http://b.zelport.localhost:8080',available:false}]});
+ assert.deepEqual(switcherModel({states:{},remote_admin:{hostname:'build-server',device_id:'a'}}),{mode:'remote',hostname:'build-server',peers:[]});
+ assert.equal(localAdministrationURL({protocol:'http:',port:'7070'}),'http://localhost:7070/');
 });

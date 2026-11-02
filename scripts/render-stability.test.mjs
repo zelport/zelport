@@ -158,7 +158,7 @@ test('relay configuration retries a conflicted draft with the latest revision',a
 
 test('Dashboard retains rows and runtime nodes across polling and uptime changes',()=>{
  const nodes=new Map(),get=id=>{if(!nodes.has(id))nodes.set(id,new Node('section'));return nodes.get(id)};
- const context={ui,createDashboard,renderRuntimeHeaderStatus,renderRuntimeAvailability,document:{getElementById:get,body:new Node('body'),addEventListener(){},querySelectorAll(){return []}},window:{addEventListener(){},innerHeight:800},history:{replaceState(){}},setTimeout(){},clearTimeout(){},location:{hash:''}};
+ const context={ui,createDashboard,createSwitcher:()=>({render(){}}),renderRemoteBanner(){},renderRuntimeHeaderStatus,renderRuntimeAvailability,document:{getElementById:get,body:new Node('body'),addEventListener(){},querySelectorAll(){return []}},window:{addEventListener(){},innerHeight:800},history:{replaceState(){}},setTimeout(){},clearTimeout(){},location:{hash:''}};
  const source=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace(/^import .*;$/gm,'').replace(/init\(\)\.catch\(e=>\{[^\n]*\}\);/,'');
  runInNewContext(source+`\nglobalThis.update=s=>{state=s;client={state:()=>state};dashboard??=createDashboard({root:$('dashboard-services'),modules,client,navigate,ui});render()};`,context);
  const state={port:8080,modules:[],states:{test:{routes:[{id:'one',module:'test',domain:'test.localhost',summary:{state:'ready',target:'localhost'}},{id:'remote',module:'remote_http',domain:'remote.localhost',summary:{state:'configured',target:'https://example.test',detail:'Certificate verification is disabled'}}]}},runtime:{version:'dev',hostname:'test-host',built_at:'unknown',uptime_seconds:1,listeners:[],config_path:'test'}};

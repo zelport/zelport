@@ -2,13 +2,14 @@ import * as ui from './ui.js';
 import {createClient} from './client.js';
 import {createNavigation} from './navigation.js';
 import {createDashboard} from './dashboard.js';
+import {createSwitcher,renderRemoteBanner} from './zelport-switcher.js';
 import {renderHeaderStatus as renderRuntimeHeaderStatus,renderAvailability as renderRuntimeAvailability} from './runtime.js';
 const $=id=>document.getElementById(id);
 
 let state, active='dashboard', timer, client, composed=false;
 const modules=new Map(),messages=new Map(),refreshErrors=new Map(),availabilityControls=new Map();
 let availabilitySaving=false;
-let navigation,dashboard,runtimeModules,remoteFileAccess,remoteFileAccessSaving=false;
+let navigation,dashboard,switcher,runtimeModules,remoteFileAccess,remoteFileAccessSaving=false;
 const pages=['dashboard','settings'];
 function moduleEnabled(m){return m.descriptor.ui_placement==='settings'||state?.module_availability?.[m.descriptor.id]?.enabled!==false;}
 function renderMessage(){const text=messages.get(active)||refreshErrors.get(active)||'';$('error').hidden=!text;ui.setText($('error'),text);}
@@ -83,12 +84,12 @@ function positionHeaderPopovers(){
 window.addEventListener('resize',positionHeaderPopovers);
 window.addEventListener('scroll',positionHeaderPopovers,true);
 
-function renderHeaderStatus(){renderRuntimeHeaderStatus({state,modules,moduleEnabled,navigate,ui,host:$('connection-status'),positionPopovers:positionHeaderPopovers});}
+// The header names where you are (Zelport switcher); connection details live on the source pages.
+function renderHeaderStatus(){switcher??=createSwitcher({host:$('connection-status'),ui});switcher.render(state);}
 function openAddService(trigger){return dashboard.openAddService(trigger);}
 function render(){
  if(!state)return;renderAvailability();renderRemoteFileAccess();renderHeaderStatus();document.body.dataset.administration=state.remote_admin?'remote':'local';
- const remote=$('remote-administration');remote.hidden=!state.remote_admin;
- if(state.remote_admin)ui.setText(remote,`Remote administration · ${state.remote_admin.hostname} · ${state.remote_admin.device_id}. Actions run on this remote device.`);
+ renderRemoteBanner({banner:$('remote-administration'),state,ui});
  for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
  dashboard.render(state);for(const m of modules.values())m.services?.render(state);
  ui.setText($('footer-version'),footerVersion(state));

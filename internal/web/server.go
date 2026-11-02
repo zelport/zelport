@@ -18,7 +18,7 @@ import (
 //go:embed assets/*
 var assets embed.FS
 var coreAssets = map[string]bool{
-	"/": true, "/app.js": true, "/client.js": true, "/navigation.js": true, "/dashboard.js": true, "/runtime.js": true,
+	"/": true, "/app.js": true, "/client.js": true, "/navigation.js": true, "/dashboard.js": true, "/zelport-switcher.js": true, "/runtime.js": true,
 	"/ui.js": true, "/ui-dom.js": true, "/ui-forms.js": true, "/ui-dialogs.js": true, "/ui-services.js": true, "/ui-module-views.js": true, "/ui-file-editor.js": true,
 	"/app.css": true, "/favicon.svg": true, "/favicon-dark.svg": true,
 }

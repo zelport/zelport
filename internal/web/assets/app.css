@@ -586,3 +586,40 @@ a.resource-menu-item{display:flex;align-items:center;box-sizing:border-box;borde
 /* Empty list: one centred label in the table card. */
 .dashboard-empty,.source-services .dashboard-empty{display:flex;align-items:center;justify-content:center;min-height:112px;padding:var(--space-6);border:1px solid var(--line);border-radius:var(--radius-panel);background:var(--surface);color:var(--muted);text-align:center}
 .dashboard-empty p{margin:0}
+/* Zelport switcher (right end of the header): an icon at home, an accent chip with the name while administering another Zelport. */
+header .connection-status{margin-left:auto;flex:none}
+.zelport-switcher{position:relative;display:flex}
+.zelport-chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 10px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);font-size:14px;font-weight:500}
+.zelport-chip:hover{border-color:var(--accent);filter:none}
+.zelport-chip.remote{gap:8px;padding:0 12px;background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+@media(prefers-color-scheme:dark){.zelport-chip.remote{color:#261b32}}
+.zelport-chip-icon{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.zelport-chip:not(.remote) .zelport-chip-icon{stroke:var(--accent)}
+.zelport-chip-caret{font-size:11px;opacity:.7}
+.zelport-chip-name{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zelport-menu{position:absolute;z-index:30;top:calc(100% + var(--space-2));right:0;min-width:240px;max-width:calc(100vw - 32px);padding:var(--space-1);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);box-shadow:var(--shadow)}
+.zelport-menu-label{margin:var(--space-2) var(--space-3) var(--space-1);font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+.zelport-menu-item{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 var(--space-3);border-radius:var(--radius-control);color:var(--ink);font-size:14px;text-decoration:none;white-space:nowrap}
+a.zelport-menu-item:hover,.zelport-menu-item:focus-visible{background:var(--accent-soft);text-decoration:none;outline:none}
+.zelport-menu-item[aria-current=true]{background:var(--accent-soft)}
+.zelport-menu-item[data-offline]{color:var(--muted);cursor:default}
+.zelport-menu-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;flex:none}
+.zelport-menu-dot::before{content:"";width:8px;height:8px;border-radius:50%;box-sizing:border-box;border:2px solid var(--neutral-mark)}
+.zelport-menu-dot[data-tone=ok]::before{border-color:var(--ok);background:var(--ok)}
+.zelport-menu-dot[data-tone=none]::before{content:none}
+.zelport-menu-check,.zelport-menu-note,.zelport-menu-external{margin-left:auto;padding-left:var(--space-4)}
+.zelport-menu-check{color:var(--accent)}
+.zelport-menu-note{font-size:13px;color:var(--muted)}
+.zelport-menu-external,.service-local-icon{width:13px;height:13px;flex:none;fill:none;stroke:var(--muted);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;box-sizing:content-box}
+/* Remote administration: no page tint; the accent chip and this banner say where actions run. */
+body[data-administration=remote]{background:var(--bg)}
+.remote-administration{display:flex;align-items:center;gap:var(--space-3);min-height:44px;margin-top:var(--space-4);padding:0 var(--space-4);border:0;border-radius:var(--radius-control);background:var(--accent-soft);color:var(--ink);font-size:14px}
+.remote-administration-back{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-weight:600}
+.remote-administration-back .zelport-menu-external{padding:0;stroke:currentColor}
+.dashboard-table th.col-local{width:150px}
+.service-local-link{white-space:nowrap}
+.service-local-link .service-local-icon{display:inline-block;margin-left:4px;vertical-align:-1px;stroke:currentColor}
+@media(max-width:720px){.dashboard-table .service-local:empty{display:none}}
+.dashboard-table th.col-local{width:150px!important}
+/* Phones: the chip keeps only its icon; the banner names the administered Zelport. */
+@media(max-width:480px){.zelport-chip.remote .zelport-chip-name{display:none}.zelport-chip.remote{padding:0 10px;gap:6px}}
