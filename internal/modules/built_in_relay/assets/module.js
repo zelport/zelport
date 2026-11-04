@@ -97,7 +97,7 @@ export function mount(ctx) {
    accessWarning.hidden=requireToken.input.checked;
    if(token.input.value&&secretRevision!==state.revision)clearSecret();
    const s=current.status;
-   ctx.ui.setText(statusLabel,s.state);statusDot.dataset.tone=statusTone(s.state);ctx.ui.setText(statusFacts,[...(s.listeners||[]),`${s.clients} ${s.clients===1?'client':'clients'}`].join(' · '));ctx.ui.setText(overviewError,s.error||'');
+   ctx.ui.setText(statusLabel,s.state);statusDot.dataset.tone=statusTone(s.state);ctx.ui.setText(statusFacts,[...(s.listeners||[]),`${s.clients} ${s.clients===1?'client':'clients'}`].join(' · '));ctx.ui.setText(overviewError,s.error||'');views.overview.hidden=!s.error;
    token.input.placeholder=current.has_token?'Token hidden':'Created when token protection is enabled';updateButtons();
   },
   activate(){active=true;},deactivate(){active=false;clearSecret();dialog?.close();},dispose(){disposed=true;active=false;clearSecret();dialog?.close();views.dispose();}

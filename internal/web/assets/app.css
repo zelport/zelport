@@ -661,3 +661,46 @@ button.info-hint-trigger:hover{color:var(--ink);filter:none}
 .services-menu>.navigation-item>.maturity-experimental{padding:0 6px;font-size:10px;line-height:16px;font-weight:500;letter-spacing:.2px;border-width:1px}
 .remote-file-access-risk{display:flex;align-items:center;gap:var(--space-2);margin:var(--space-2) 0 0}
 .remote-file-access-risk .warning-glyph{width:16px;height:16px}
+/* v2 rhythm (2026-11-04): inside every configuration card rows are 16px apart, the card padding is 16px on
+   every side, a warning sits 8px under its control, and status lines are one 24px text line. */
+:is(.local-configuration-form,.ssh-configuration-form,.remote-configuration-form,.relay-configuration-form,.relay-settings,.relay-connection-options,.relay-credentials,.relay-connection,.relay-header,.settings-accordion-content)>*{margin-top:0;margin-bottom:0}
+:is(.local-configuration-form,.ssh-configuration-form,.remote-configuration-form,.relay-configuration-form,.relay-settings,.relay-connection-options,.relay-credentials,.relay-connection,.relay-header,.settings-accordion-content)>:not([hidden],.visually-hidden)~:not([hidden],.visually-hidden){margin-top:var(--space-4)}
+:is(.local-configuration-form,.ssh-configuration-form,.remote-configuration-form,.relay-configuration-form,.relay-settings,.relay-credentials,.settings-accordion-content)>p:empty{display:none}
+:is(.relay-credentials,.settings-accordion-content)>.switch-field+.field-warning{margin-top:var(--space-2)}
+.ssh-configuration-form>.ssh-hosts-head+.ssh-hosts{margin-top:var(--space-2)}
+.ssh-hosts-head{margin-bottom:0}
+.relay-status-line,.builtin-relay-status{min-height:24px!important;line-height:24px;margin:0!important}
+.relay-settings .relay-connection,.relay-settings .relay-network,.relay-settings .relay-credentials{margin-top:var(--space-4);padding-top:0}
+.relay-settings .relay-actions,.relay-configuration-form .relay-actions,.local-settings-actions,.ssh-settings-actions,.remote-settings-actions{margin-top:var(--space-4)!important;padding-top:0}
+.switch-field label{padding-top:0;padding-bottom:0}
+/* One status-line style everywhere: dot, state in ink, facts muted. */
+.relay-status-line .service-status-label{color:var(--ink);font-weight:600;font-size:var(--text-body)}
+.relay-status-line .relay-status-host{order:3;font-weight:400;color:var(--muted);font-size:14px}
+.relay-status-line .service-status{order:2}
+.relay-status-line .relay-linked-dot{order:1}
+/* Service sources: equal 48px rows whether or not a badge is present. */
+.module-availability-row{display:flex;align-items:center;min-height:48px;padding:0}
+.module-availability-row .module-availability-info{flex:1;min-width:0}
+.settings-accordion-content>.availability-intro{margin-bottom:var(--space-2)}
+.settings-accordion-content>.availability-intro+.module-availability-row{margin-top:0}
+.settings-accordion-content>.module-availability-row+.module-availability-row{margin-top:0}
+.module-inline-toolbar:not(:has(>:not([hidden]))){display:none}
+.relay-settings>.relay-connection,.relay-settings>.relay-header{margin-bottom:0!important}
+.relay-credentials>.switch-field{margin-bottom:0!important}
+.relay-credentials>.relay-access-warning{margin:var(--space-2) 0 0!important}
+.relay-credentials>.form-field{margin-bottom:0!important}
+.module-inline-toolbar:not(:has(button:not([hidden]),a:not([hidden]))){display:none}
+/* Section titles: 32px above, 16px below, everywhere; none above when it is the first thing on the page. */
+.relay-catalog>h2.source-section-title{margin:var(--space-8) 0 var(--space-4)}
+.source-services[hidden]+.relay-catalog[hidden]+h2.source-section-title,.source-services[hidden]+h2.source-section-title{margin-top:0}
+/* Accordion headers keep one height with or without a badge. */
+.settings-accordion>summary{box-sizing:border-box;height:58px;min-height:58px;padding-block:0;align-items:center}
+.settings-accordion>summary .badge{line-height:16px;padding-block:2px}
+/* One form rhythm with the Add service drawer: a labelled field sits 24px from its neighbours; switches and
+   status lines stay 16px apart; label → control is 8px. */
+:is(.local-configuration-form,.ssh-configuration-form,.remote-configuration-form,.relay-configuration-form,.relay-settings,.relay-credentials,.settings-accordion-content)>:is(.form-field,.relay-network):not([hidden])+:not([hidden],.visually-hidden),
+:is(.local-configuration-form,.ssh-configuration-form,.remote-configuration-form,.relay-configuration-form,.relay-settings,.relay-credentials,.settings-accordion-content)>:not([hidden],.visually-hidden)+:is(.form-field,.relay-network,.relay-credentials):not([hidden]),
+.relay-settings>.relay-network+.relay-credentials{margin-top:var(--space-6)}
+.relay-configuration-form>.form-field+.relay-connection-options{margin-top:var(--space-6)}
+:is(.local-configuration-form,.ssh-configuration-form,.remote-configuration-form,.relay-configuration-form,.relay-settings,.relay-credentials,.settings-accordion-content)>:not([hidden],.visually-hidden)~:is(.form-field,.relay-network):not([hidden]){margin-top:var(--space-6)}
+.ssh-configuration-form>.ssh-hosts-head{margin-top:var(--space-6)!important}

@@ -257,6 +257,19 @@ with a 28px title, table header 40px, table rows 56px, controls 40px (44px on
 touch), 24px card padding and grid gaps, 12px radius on surfaces and 8px on
 controls. Do not introduce one-off sizes in modules.
 
+Vertical rhythm inside cards and forms (the same in configuration cards and the
+Add service drawer):
+
+- Card padding is 16px on every side (the drawer uses its 24px dialog padding).
+- A labelled field is 24px from its neighbours; label → control is 8px.
+- Switch rows and status lines are 16px apart. A status line is one 24px line:
+  dot, state in ink, facts muted.
+- A warning sits 8px under the control it belongs to and is one line with ⚠.
+- Actions (Discard / Save) are 16px under the last row, with no divider.
+- Section titles have 32px above and 16px below, and none above when they are the
+  first thing on the page. Cards in a list are 16px apart.
+- Accordion headers are 58px with or without a badge. Service source rows are 48px.
+
 Text buttons start a task, change data or navigate: Add service, Import service, Save,
 Discard, Remove, Cancel. Icon-only buttons are reserved for repeated, universally
 understood actions in tight spaces (row menu, close, field adornments) and always
