@@ -165,7 +165,6 @@ export function mount(ctx) {
   if(heading&&catalog.nextSibling!==heading)ctx.panel.insertBefore(catalog,heading);
   // Until relay is set up the page shows only its configuration.
   const services=[...(ctx.panel.children||[])].find(node=>node.classList?.contains('source-services'));
-  if(services)services.hidden=needsSetup&&!(state.routes||[]).length;
   const imports=state.routes||[],port=ctx.ui.state().port;
   const view=devices.map(device=>{
    const {peer,provider}=device,online=!!status.connected&&(peer?peer.available:provider?.expires_at*1000>Date.now());
@@ -203,5 +202,7 @@ export function mount(ctx) {
   const record=current?.data?.status?.records?.find(r=>r.device_id===route.editor?.device_id),service=record?.services?.find(s=>s.id===route.editor?.service_id);
   const name=service?.domain?.replace(/\.localhost$/,'');return name?`${providerName(route)} · ${name}`:providerName(route);
  }
- return {render,routeTarget,openSettings,edit:routes.edit,remove:routes.remove,activate(){active=true;if(!configurationView.hidden)configuration?.activate();},deactivate(){active=false;configuration?.deactivate();},dispose(){active=false;servicePicker?.close();configuration?.dispose();routes.dispose();views.dispose();}};
+ // Until relay is set up there is nothing to import: the list says so and Add service is not offered.
+ function relayReady(){const connection=connectionStatus(current?.data||{});return connection.status!=='Not configured'&&connection.status!=='Disabled';}
+ return {render,routeTarget,emptyLabel:()=>relayReady()?'':'Configure relay first',canAdd:()=>relayReady(),openSettings,edit:routes.edit,remove:routes.remove,activate(){active=true;if(!configurationView.hidden)configuration?.activate();},deactivate(){active=false;configuration?.deactivate();},dispose(){active=false;servicePicker?.close();configuration?.dispose();routes.dispose();views.dispose();}};
 }

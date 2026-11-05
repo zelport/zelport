@@ -54,7 +54,7 @@ export function createDashboard({root,modules,client,navigate,ui,moduleId=null,r
  }
  // Add service is one drawer; choosing another source swaps its content in place.
  function openAddService(trigger,{sourceId=moduleId,domain,container}={}){
-  const sources=sourceChoices.map(choice=>{const module=modules.get(choice.id);return {...choice,label:module?.descriptor.name||choice.id,available:!!module?.instance&&enabled(module)};}).filter(choice=>choice.available);
+  const sources=sourceChoices.map(choice=>{const module=modules.get(choice.id);return {...choice,label:module?.descriptor.name||choice.id,available:!!module?.instance&&enabled(module)&&module.instance.canAdd?.()!==false};}).filter(choice=>choice.available);
   const selected=sources.find(choice=>choice.id===sourceId)||sources[0];
   if(!selected)return null;
   return modules.get(selected.id).instance.edit(null,null,{sources,sourceId:selected.id,domain,trigger,container,
@@ -99,8 +99,10 @@ export function createDashboard({root,modules,client,navigate,ui,moduleId=null,r
   table.parentElement.hidden=!routes.length;empty.hidden=!!routes.length;
   if(search)search.hidden=!routes.length;
   if(rescan){const local=modules.get('local_ports');rescan.hidden=!(local&&enabled(local)&&routes.some(route=>route.module==='local_ports'));}
-  if(!routes.length)ui.renderChanged(empty,{modules:!!state.modules.length},()=>{
-   empty.replaceChildren(ui.el('p',null,state.modules.length?'No services':'This build contains only the core.'));
+  // A source can name what is missing before it has services (Relay: "Configure relay first").
+  const emptyLabel=moduleId?modules.get(moduleId)?.instance?.emptyLabel?.():'';
+  if(!routes.length)ui.renderChanged(empty,{modules:!!state.modules.length,emptyLabel},()=>{
+   empty.replaceChildren(ui.el('p',null,state.modules.length?emptyLabel||'No services':'This build contains only the core.'));
   });
   const present=new Set(routes.map(route=>route.id));
   for(const [id,item] of rows)if(!present.has(id)){item.menu.dispose();item.row.remove();rows.delete(id);}

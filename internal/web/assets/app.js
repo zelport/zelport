@@ -94,6 +94,7 @@ function render(){
  renderRemoteBanner({banner:$('remote-administration'),state,ui});
  for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
  dashboard.render(state);for(const m of modules.values())m.services?.render(state);
+ for(const m of modules.values())if(m.addService)m.addService.hidden=m.instance?.canAdd?.()===false;
  for(const m of modules.values()){const count=m.tab?.querySelector?.('.services-menu-count');if(count){ui.setText(count,String(state.states[m.descriptor.id]?.routes?.length||0));if(m.tab.lastElementChild!==count)m.tab.append(count);}}
  ui.setText($('footer-version'),footerVersion(state));
  const rt=state.runtime,fields=[['Version',rt.version],['Hostname',rt.hostname],['Configuration',rt.config_display_path||rt.config_path],['Listeners',rt.listeners?.join(', ')],['Modules',state.modules.map(m=>m.name).join(', ')||'Core only']];
@@ -177,7 +178,7 @@ function addSourceServices(m){
  const tools=ui.el('div','table-tools');
  m.services=createDashboard({root:services,modules,client,navigate,ui,moduleId:descriptor.id,returnTo:descriptor.tab_id,tools,onRescan:rescanPorts});
  const add=ui.button('Add service',()=>m.services.openAddService(add),'source-add-service');
- toolbar.append(tools,add);
+ toolbar.append(tools,add);m.addService=add;
 }
 async function init(){
  const bootStatus=showBootStatus();

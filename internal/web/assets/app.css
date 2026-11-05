@@ -704,3 +704,4 @@ button.info-hint-trigger:hover{color:var(--ink);filter:none}
 .relay-configuration-form>.form-field+.relay-connection-options{margin-top:var(--space-6)}
 :is(.local-configuration-form,.ssh-configuration-form,.remote-configuration-form,.relay-configuration-form,.relay-settings,.relay-credentials,.settings-accordion-content)>:not([hidden],.visually-hidden)~:is(.form-field,.relay-network):not([hidden]){margin-top:var(--space-6)}
 .ssh-configuration-form>.ssh-hosts-head{margin-top:var(--space-6)!important}
+.relay-status-line .service-status .service-status-label{color:var(--ink)!important;font-weight:600!important}
