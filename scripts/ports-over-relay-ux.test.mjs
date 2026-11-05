@@ -303,3 +303,13 @@ test('Use built-in relay is not offered in a remote administration session',()=>
  const base=h.ctx.ui.state;h.ctx.ui.state=()=>({...base(),remote_admin:{hostname:'build-server'},states:{built_in_relay:{data:{enabled:true,port:8070}}}});h.render();
  assert.equal(h.nodes().find(n=>n.textContent==='Use built-in relay').hidden,true);
 });
+
+test('remote file access is locked in a remote session and its hint says where to change it',()=>{
+ const h=harness({has_identity:true});h.view.openSettings();
+ const base=h.ctx.ui.state,tip=()=>h.nodes().find(n=>String(n.className).includes('info-hint-tooltip')&&/SSH config and CA/.test(n.textContent));
+ assert.doesNotMatch(tip().textContent,/computer itself/,'at home the hint only explains');
+ h.ctx.ui.state=()=>({...base(),remote_admin:{hostname:'build-server'}});h.render();
+ assert.match(tip().textContent,/Change this on the computer itself\.$/);
+ assert.equal(h.nodes().some(n=>n.tag==='p'&&/computer itself/.test(n.textContent)),false,'no line under the switch');
+ const box=h.nodes().filter(n=>n.tag==='input'&&n.type==='checkbox').find(n=>tree(n.parentElement).some(x=>x.textContent==='Allow remote file access'));assert.equal(box.disabled,true);
+});

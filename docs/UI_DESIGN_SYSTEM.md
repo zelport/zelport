@@ -171,7 +171,9 @@ access (off by default) sits in the Relay page Configuration, under Share my
 services, because remote administration exists only between linked Zelports. It
 is saved with that form and is read-only in a remote session. Its info hint says
 what it allows and that this lets remote Zelports run commands on this computer.
-There is no separate warning line (Zdeněk, 2026-11-05: no ⓘ plus ⚠ pairs). While it is off, remote
+There is no separate warning line (Zdeněk, 2026-11-05: no ⓘ plus ⚠ pairs). In a remote
+session the switch is locked and its hint ends with "Change this on the computer itself."
+There is no line under it. While it is off, remote
 sessions show the SSH and CA path fields and Edit file disabled with a one-line reason. Service
 sources controls visibility in the Services menu and Add service only; hidden sources keep
 their services running.
