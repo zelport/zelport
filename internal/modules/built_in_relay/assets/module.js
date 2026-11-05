@@ -14,8 +14,7 @@ export function mount(ctx) {
  const form=el('form','relay-settings'),enabled=field('Enable relay',false,'checkbox');
  const requireToken=field('Require access token',false,'checkbox');
  // Explanations live in info hints; only the open-access risk stays visible, as one warning line.
- ctx.ui.withInfo(enabled,'Lets other Zelport apps connect through this computer.');ctx.ui.withInfo(requireToken,'Changing this disconnects current clients.');
- const accessWarning=el('p','field-hint field-warning relay-access-warning');accessWarning.append(ctx.ui.icon('warning',{className:'warning-glyph'}),el('span',null,'Anyone who can reach this relay can use it.'));
+ ctx.ui.withInfo(enabled,'Lets other Zelport apps connect through this computer.');ctx.ui.withInfo(requireToken,'Without a token, anyone who can reach this relay can use it.');
  const port=adornedField('Port',8070,'number'),bind=adornedField('Bind address','');
  const network=el('div','relay-network'),error=el('p','route-error'),actions=el('div','relay-actions');
  let current,revision,dirty=false,saving=false,dialog,active=false,disposed=false,generation=0,secretRevision;
@@ -67,10 +66,10 @@ export function mount(ctx) {
   d.addEventListener('cancel',e=>{if(saving)e.preventDefault();});
   showDialog(d,{signal:ctx.signal,onClose(){mode.dispose();replacement.input.value='';if(dialog===d)dialog=null;}});
  }
- requireToken.input.addEventListener('change',()=>{accessWarning.hidden=requireToken.input.checked;clearSecret();});
+ requireToken.input.addEventListener('change',()=>{clearSecret();});
  network.append(bind.wrap,port.wrap);
  const save=el('button','primary','Save');save.type='submit';
- function sync(){enabled.input.checked=!!current.enabled;port.input.value=String(current.port);bind.input.value=current.bind_address||'';requireToken.input.checked=current.require_access_token===true;revision=ctx.ui.state().revision;dirty=false;accessWarning.hidden=requireToken.input.checked;}
+ function sync(){enabled.input.checked=!!current.enabled;port.input.value=String(current.port);bind.input.value=current.bind_address||'';requireToken.input.checked=current.require_access_token===true;revision=ctx.ui.state().revision;dirty=false;}
  function changed(){saveConfirmation.clear();dirty=enabled.input.checked!==!!current.enabled||Number(port.input.value)!==current.port||bind.input.value!==(current.bind_address||'')||requireToken.input.checked!==(current.require_access_token===true);updateButtons();}
  const reload=button('Discard',()=>{if(saving)return;sync();validation.clear();clearSecret();updateButtons();enabled.input.focus();});
  function updateButtons(){save.disabled=reload.disabled=saving||!dirty;reveal.disabled=copy.disabled=saving||!current?.has_token;rotate.disabled=saving||!current?.has_token;ctx.ui.busyButton(save,saving);form.setAttribute('aria-busy',String(saving));}
@@ -78,7 +77,7 @@ export function mount(ctx) {
  const header=el('div','relay-header'),title=el('div'),connection=el('div','relay-connection'),credentials=el('div','relay-credentials');
  // Status line: dot, state, then listeners and clients as values.
  const statusDot=el('span','builtin-relay-dot'),statusLabel=el('strong',null,''),statusFacts=el('span','builtin-relay-facts');title.className='builtin-relay-status';title.append(statusDot,statusLabel,statusFacts);header.append(title);
- connection.append(enabled.wrap);token.wrap.append(copyConfirmation.root);credentials.append(requireToken.wrap,accessWarning,token.wrap,feedback);
+ connection.append(enabled.wrap);token.wrap.append(copyConfirmation.root);credentials.append(requireToken.wrap,token.wrap,feedback);
  actions.append(saveConfirmation.attach(save).root,reload,save);form.append(header,connection,network,credentials,error,actions);
  const validation=ctx.ui.formFeedback(form,error,[{input:port.input,matches:/port/i},{input:bind.input,matches:/bind|address/i}]);
  form.addEventListener('input',e=>{if(e.target===token.input)return;changed();},{signal:ctx.signal});
@@ -94,7 +93,6 @@ export function mount(ctx) {
  return {
   openSettings(){views.show('configuration');},
   render(state){current=state.data;if(!dirty&&!saving){revision=state.revision;enabled.input.checked=current.enabled;if(port.input.value!==String(current.port))port.input.value=current.port;if(bind.input.value!==current.bind_address)bind.input.value=current.bind_address;requireToken.input.checked=current.require_access_token===true;}
-   accessWarning.hidden=requireToken.input.checked;
    if(token.input.value&&secretRevision!==state.revision)clearSecret();
    const s=current.status;
    ctx.ui.setText(statusLabel,s.state);statusDot.dataset.tone=statusTone(s.state);ctx.ui.setText(statusFacts,[...(s.listeners||[]),`${s.clients} ${s.clients===1?'client':'clients'}`].join(' · '));ctx.ui.setText(overviewError,s.error||'');views.overview.hidden=!s.error;

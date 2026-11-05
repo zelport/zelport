@@ -398,7 +398,7 @@ header .connection-status{margin-left:auto}
 /* Every page uses the full content width, so cards line up with the header, footer and Dashboard table. Inside cards, fields and prose keep a readable measure; switches and actions stay on the card edge. */
 :root{--form-measure:640px}
 #panels>section[data-module],#panel-settings>.settings-accordion{max-width:none}
-:is(#panels>section[data-module],#panel-settings) :is(.form-field,p.small,p.muted,p.route-error,.relay-access-warning){max-width:var(--form-measure)}
+:is(#panels>section[data-module],#panel-settings) :is(.form-field,p.small,p.muted,p.route-error){max-width:var(--form-measure)}
 @media(min-width:481px){#panel-settings .relay-network{grid-template-columns:minmax(0,calc(var(--form-measure) - 120px - var(--space-4))) 120px}}
 @media(max-width:720px){.dashboard-table .service-status-label{flex:none}}
 @media(max-width:480px){header{gap:var(--space-4)}header .brand{flex:none;width:32px;overflow:hidden}header .brand-logo{flex:none;width:117.333px;height:32px;max-width:none}header .primary-navigation{gap:var(--space-4)}}
@@ -687,7 +687,6 @@ button.info-hint-trigger:hover{color:var(--ink);filter:none}
 .module-inline-toolbar:not(:has(>:not([hidden]))){display:none}
 .relay-settings>.relay-connection,.relay-settings>.relay-header{margin-bottom:0!important}
 .relay-credentials>.switch-field{margin-bottom:0!important}
-.relay-credentials>.relay-access-warning{margin:var(--space-2) 0 0!important}
 .relay-credentials>.form-field{margin-bottom:0!important}
 .module-inline-toolbar:not(:has(button:not([hidden]),a:not([hidden]))){display:none}
 /* Section titles: 32px above, 16px below, everywhere; none above when it is the first thing on the page. */

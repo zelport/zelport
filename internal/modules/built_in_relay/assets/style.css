@@ -10,7 +10,6 @@
 .relay-credentials .form-field{margin:0 0 var(--space-2)}
 .relay-credentials input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--text-body)}
 .relay-credentials [role=status]:empty{display:none}
-.relay-access-warning{padding:12px 14px;border-left:3px solid var(--danger);color:var(--danger);background:var(--bg)}
 .relay-actions{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-2);flex-wrap:wrap;padding-top:var(--space-4);border-top:1px solid var(--line)}
 .relay-settings>.route-error:empty{display:none}
 .relay-token-dialog{width:min(520px,calc(100vw - 32px))}
@@ -35,6 +34,4 @@
 .relay-network,.relay-credentials{border-top:0}
 .relay-credentials{margin-top:var(--space-4)}
 .relay-connection{margin-bottom:var(--space-4)}
-.relay-access-warning{display:flex;align-items:center;gap:var(--space-2);margin:0 0 var(--space-3);padding:0;border:0;background:transparent}
-.relay-access-warning .warning-glyph{width:16px;height:16px}
 .relay-settings .relay-actions{border-top:0;padding-top:0;margin-top:var(--space-4)}

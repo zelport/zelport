@@ -174,6 +174,10 @@ warning line says remote devices can run commands on this computer. While it is 
 sessions show the SSH and CA path fields and Edit file disabled with a one-line reason. Service
 sources controls visibility in the Services menu and Add service only; hidden sources keep
 their services running.
+
+Built-in Relay's Require access token has no visible warning. Its info hint says
+"Without a token, anyone who can reach this relay can use it." (Zdeněk, 2026-11-05:
+the effect of changing it is self-evident, the open-access risk is the useful hint.)
 About keeps Version, Hostname, Configuration, Listeners and Modules in one row.
 Modules uses a compact count button whose non-modal popover lists the included
 module names and maturity. Build time and uptime are not shown. The footer shows the running version (`Zelport <version>`) on
