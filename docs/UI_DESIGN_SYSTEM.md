@@ -179,6 +179,14 @@ Both relay forms open the same way: the status line, then the master switch
 ("Enable relay client" on the Relay page, "Enable built-in relay" in Settings),
 then the fields. Options of what is shared stay at the end, above Discard / Save.
 
+While this computer runs the built-in relay, Relay URL offers "Use built-in relay"
+(8px under the field, the address in its tooltip). It fills only the draft: the
+URL (`ws://localhost:<port>`, or the bind address when it is a specific one) and
+Relay access with the built-in token when one is required. The E2E secret is left
+alone and Save stays explicit. It is hidden once the URL matches and in remote
+administration. The Relay URL hint says `ws://` is enough, because the link to the
+relay (Noise with an admission PSK) and peer traffic are encrypted by Zelport.
+
 Built-in Relay's Require access token has no visible warning. Its info hint says
 "Without a token, anyone who can reach this relay can use it. Shared services still
 need the E2E secret, and the relay cannot read their traffic." (Zdeněk, 2026-11-05:

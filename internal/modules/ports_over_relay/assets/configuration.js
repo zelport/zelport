@@ -66,11 +66,26 @@ export function mountConfiguration(ctx) {
  // The connection state heads the card: dot, relay host, state (details in its tooltip).
  const status=el('div','relay-status-line');
  actions.append(saveConfirmation.attach(save).root,discard,save);form.append(status,enabled.wrap,url.wrap,modeWrap,access.wrap,group.wrap,switches,error,actions);
- url.input.placeholder='ws://relay.example.com:8070';access.input.autocomplete=group.input.autocomplete='off';group.input.spellcheck=false;
+ url.input.placeholder='ws://relay.example.com:8070';ctx.ui.withInfo(url,'ws:// is enough. Zelport encrypts the link to the relay and the traffic between Zelports end to end.');
+ // When this computer runs the built-in relay, one click points the client at it (URL and access token).
+ // It only fills the draft. Save stays explicit and the E2E secret is left alone.
+ function builtInRelay(){
+  const data=ctx.ui.state()?.states?.built_in_relay?.data;if(remoteSession()||data?.enabled!==true||!data.port)return null;
+  const bind=String(data.bind_address||'').trim(),host=!bind||['0.0.0.0','::','[::]'].includes(bind)?'localhost':bind.includes(':')&&!bind.startsWith('[')?`[${bind}]`:bind;
+  return {url:`ws://${host}:${data.port}`,token:data.require_access_token===true};
+ }
+ const useBuiltIn=button('Use built-in relay',()=>applyBuiltIn(),'relay-use-builtin');useBuiltIn.type='button';url.wrap.append(useBuiltIn);
+ async function applyBuiltIn(){
+  const target=builtInRelay();if(!target||saving)return;let token='';
+  if(target.token){try{token=(await ctx.api('/api/modules/built_in_relay/credentials',{method:'POST',body:JSON.stringify({revision:ctx.ui.state().revision,action:'reveal'})}))?.access_token||'';}catch(cause){validation.show(cause.message,url.input);return;}}
+  if(disposed||saving)return;
+  url.input.value=target.url;mode.value=target.token?'token':'none';access.input.value=token;changed();url.input.focus();
+ }access.input.autocomplete=group.input.autocomplete='off';group.input.spellcheck=false;
  const validation=ctx.ui.formFeedback(form,error,[{input:url.input,matches:/url|scheme|wss?:/i},{input:access.input,matches:/access token/i},{get input(){return secretInput();},matches:/E2E|group token/i}]);
  function mask(){generation++;const value=editing?secret():'';group.input.type='password';setSecret(value);feedback.textContent='';update();}
  function setRevealLabel(){const label=group.input.type==='text'?'Hide E2E secret':'Reveal E2E secret';reveal.setAttribute('aria-label',label);setTooltip(reveal,label);}
  function update(){
+  const builtIn=builtInRelay();useBuiltIn.hidden=!builtIn||url.input.value.trim()===builtIn.url;useBuiltIn.disabled=saving;if(builtIn&&useBuiltIn.dataset.target!==builtIn.url){useBuiltIn.dataset.target=builtIn.url;setTooltip(useBuiltIn,builtIn.url);}
   for(const input of [url.input,mode,access.input,group.input,multiline,enabled.input,publish.input])input.disabled=saving;
   fileAccess.input.disabled=saving||remoteSession();fileNote.hidden=!remoteSession();fileRisk.hidden=!fileAccess.input.checked;
   group.input.disabled=saving||!multiline.hidden;multiline.disabled=saving||multiline.hidden;

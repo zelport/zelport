@@ -95,3 +95,7 @@ button.relay-linked-import-button{min-height:36px;padding:0 14px;font-size:14px}
 /* Add service → Relay: group header names the Zelport as-is with "imported of shared"; imported rows show their local address. */
 .relay-group-count{margin-left:auto;color:var(--muted);font-size:13px;font-weight:400;text-transform:none;letter-spacing:0}
 .relay-imported-as{margin-left:auto;color:var(--muted);font-size:13px;white-space:nowrap}
+/* "Use built-in relay": a quiet action 8px under Relay URL. */
+.relay-configuration-form .relay-use-builtin{display:inline-flex;align-self:flex-start;margin-top:var(--space-2);min-height:0;height:auto;padding:0;border:0;background:none;color:var(--accent);font-size:var(--text-help);font-weight:600;line-height:20px;cursor:pointer}
+.relay-configuration-form .relay-use-builtin:hover{text-decoration:underline}
+.relay-configuration-form .relay-use-builtin[hidden]{display:none}

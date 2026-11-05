@@ -281,3 +281,26 @@ test('remote file access lives in the Relay form and saves on its own endpoint',
  await form.events.submit({preventDefault(){}});
  assert.deepEqual(h.requests.map(r=>r.path),['/api/remote-file-access'],'only the changed setting is saved');assert.equal(h.requests[0].enabled,true);
 });
+
+test('Use built-in relay fills the relay client draft from this computer without saving',async()=>{
+ const h=harness({has_identity:true});h.view.openSettings();
+ const base=h.ctx.ui.state;let builtIn={enabled:false,port:8071,bind_address:'',require_access_token:true};
+ h.ctx.ui.state=()=>({...base(),states:{built_in_relay:{data:builtIn}}});h.render();
+ const action=h.nodes().find(n=>n.textContent==='Use built-in relay');assert.equal(action.hidden,true,'hidden while the built-in relay is off');
+ builtIn={...builtIn,enabled:true};h.render();assert.equal(action.hidden,false);
+ h.ctx.api=async(path,options)=>{h.requests.push({path,...JSON.parse(options.body)});return {access_token:'test-only-relay-token'};};
+ await action.events.click({preventDefault(){}});
+ const url=h.nodes().find(n=>n.tag==='input'&&n.placeholder==='ws://relay.example.com:8070'),select=h.nodes().find(n=>n.tag==='select');
+ assert.equal(url.value,'ws://localhost:8071');assert.equal(select.value,'token');
+ assert.ok(h.nodes().some(n=>n.tag==='input'&&n.value==='test-only-relay-token'),'the access token comes from the built-in relay');
+ assert.deepEqual(h.requests.map(r=>[r.path,r.action]),[['/api/modules/built_in_relay/credentials','reveal']],'nothing is saved');
+ assert.equal(h.find('Save').disabled,false,'the draft waits for Save');assert.equal(action.hidden,true,'done once the URL matches');
+ builtIn={...builtIn,bind_address:'192.0.2.10',require_access_token:false};h.render();assert.equal(action.hidden,false);
+ await action.events.click({preventDefault(){}});assert.equal(url.value,'ws://192.0.2.10:8071');assert.equal(select.value,'none');
+});
+
+test('Use built-in relay is not offered in a remote administration session',()=>{
+ const h=harness({has_identity:true});h.view.openSettings();
+ const base=h.ctx.ui.state;h.ctx.ui.state=()=>({...base(),remote_admin:{hostname:'build-server'},states:{built_in_relay:{data:{enabled:true,port:8070}}}});h.render();
+ assert.equal(h.nodes().find(n=>n.textContent==='Use built-in relay').hidden,true);
+});
