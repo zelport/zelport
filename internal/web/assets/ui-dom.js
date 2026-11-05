@@ -14,7 +14,8 @@ export function withInfo(control,text){
  const caption=control.caption||[...(control.wrap.children||[])].find(node=>node.tagName==='LABEL');if(!caption)return control;
  const hint=infoHint(text,`About ${caption.textContent}`);
  const row=el(control.wrap.className?.includes?.('switch-field')?'span':'div',control.wrap.className?.includes?.('switch-field')?'switch-label-row':'field-label-row'),rest=[...control.wrap.children].filter(node=>node!==caption);
- row.append(caption,hint.root);control.wrap.replaceChildren(row,...rest);
+ // In a switch row the label wraps as text and a no-break space glues the ⓘ to its last word.
+ if(row.className==='switch-label-row')row.append(caption,el('span','info-glue','\u00a0'),hint.root);else row.append(caption,hint.root);control.wrap.replaceChildren(row,...rest);
  control.hint=hint;return control;
 }
 export function setText(node,value){const text=String(value??'');if(node.textContent!==text)node.textContent=text;}

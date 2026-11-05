@@ -659,8 +659,6 @@ button.info-hint-trigger:hover{color:var(--ink);filter:none}
 .service-options{border-top:0!important;padding-top:0!important}
 /* Services menu: a compact Experimental tag that does not compete with the source name. */
 .services-menu>.navigation-item>.maturity-experimental{padding:0 6px;font-size:10px;line-height:16px;font-weight:500;letter-spacing:.2px;border-width:1px}
-.remote-file-access-risk{display:flex;align-items:center;gap:var(--space-2);margin:var(--space-2) 0 0}
-.remote-file-access-risk .warning-glyph{width:16px;height:16px}
 /* v2 rhythm (2026-11-04): inside every configuration card rows are 16px apart, the card padding is 16px on
    every side, a warning sits 8px under its control, and status lines are one 24px text line. */
 :is(.local-configuration-form,.ssh-configuration-form,.remote-configuration-form,.relay-configuration-form,.relay-settings,.relay-connection-options,.relay-credentials,.relay-connection,.relay-header,.settings-accordion-content)>*{margin-top:0;margin-bottom:0}
@@ -705,7 +703,6 @@ button.info-hint-trigger:hover{color:var(--ink);filter:none}
 .ssh-configuration-form>.ssh-hosts-head{margin-top:var(--space-6)!important}
 .relay-status-line .service-status .service-status-label{color:var(--ink)!important;font-weight:600!important}
 .relay-connection-options>.switch-field+.field-warning,.relay-connection-options>.field-warning+.remote-file-access-note,.relay-connection-options>.switch-field+.remote-file-access-note{margin-top:var(--space-2)}
-.remote-file-access-risk{display:flex;align-items:center;gap:var(--space-2)}
 /* Action confirmation: beside the trigger, muted, gone after 3 s. */
 .relay-actions,.local-settings-actions,.ssh-settings-actions,.remote-settings-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--space-2)}
 .action-confirmation{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:var(--text-help);line-height:20px;margin:0 var(--space-2) 0 0!important;animation:action-confirmation-in .15s ease-out}
@@ -736,3 +733,8 @@ button[data-saved=true]::after{border-color:var(--ok-strong-ink)!important}
 /* The intro label wraps on narrow screens, so its ⓘ follows the last word instead of the right edge. */
 .settings-accordion-content>.availability-intro{display:block;height:auto;line-height:20px}
 .availability-intro-tail{white-space:nowrap}.availability-intro-tail>.info-hint{display:inline-flex;vertical-align:-3px;margin-left:var(--space-1)}
+/* Switch labels wrap as text, so their ⓘ stays after the last word instead of at the edge. */
+.switch-field>.switch-label-row{display:block;flex:1;min-width:0;line-height:20px}
+.switch-field>.switch-label-row>label{display:inline;flex:none}
+.switch-field>.switch-label-row>.info-glue{white-space:pre}
+.switch-field>.switch-label-row>.info-hint{display:inline-flex;vertical-align:-3px;margin-left:0}

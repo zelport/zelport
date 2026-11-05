@@ -56,11 +56,10 @@ export function mountConfiguration(ctx) {
  const enabled=field('Enable relay client',false,'checkbox'),publish=field('Share my services',false,'checkbox');ctx.ui.withInfo(publish,'Linked Zelports can import all services of this Zelport.');
  // Remote file access belongs with the other choices about linked Zelports. It is saved with this form,
  // and only on this computer: a remote administration session sees it read-only.
- const fileAccess=field('Allow remote file access',false,'checkbox');ctx.ui.withInfo(fileAccess,'Lets Zelports that administer this one remotely change the SSH config and CA file paths and edit those files.');
- const fileRisk=el('p','field-hint field-warning remote-file-access-risk');fileRisk.append(ctx.ui.icon?.('warning',{className:'warning-glyph'})||el('span'),el('span',null,'Remote devices can run commands on this computer.'));fileRisk.hidden=true;
+ const fileAccess=field('Allow remote file access',false,'checkbox');ctx.ui.withInfo(fileAccess,'Zelports that administer this one remotely can change the SSH config and CA file paths and edit those files. That lets them run commands on this computer.');
  const fileNote=el('p','small muted remote-file-access-note','Change this on the computer itself.');fileNote.hidden=true;
  const savedFileAccess=()=>!!ctx.ui.state()?.remote_file_access,remoteSession=()=>!!ctx.ui.state()?.remote_admin;
- const switches=el('div','relay-connection-options');switches.append(publish.wrap,fileAccess.wrap,fileRisk,fileNote);
+ const switches=el('div','relay-connection-options');switches.append(publish.wrap,fileAccess.wrap,fileNote);
  const error=el('p','route-error'),actions=el('div','relay-actions'),save=el('button','primary','Save');save.type='submit';
  const discard=button('Discard',()=>{if(saving)return;sync();validation.clear();url.input.focus();});
  // The connection state heads the card: dot, relay host, state (details in its tooltip).
@@ -87,7 +86,7 @@ export function mountConfiguration(ctx) {
  function update(){
   const builtIn=builtInRelay();useBuiltIn.hidden=!builtIn||url.input.value.trim()===builtIn.url;useBuiltIn.disabled=saving;if(builtIn&&useBuiltIn.dataset.target!==builtIn.url){useBuiltIn.dataset.target=builtIn.url;setTooltip(useBuiltIn,builtIn.url);}
   for(const input of [url.input,mode,access.input,group.input,multiline,enabled.input,publish.input])input.disabled=saving;
-  fileAccess.input.disabled=saving||remoteSession();fileNote.hidden=!remoteSession();fileRisk.hidden=!fileAccess.input.checked;
+  fileAccess.input.disabled=saving||remoteSession();fileNote.hidden=!remoteSession();
   group.input.disabled=saving||!multiline.hidden;multiline.disabled=saving||multiline.hidden;
   access.wrap.hidden=mode.value!=='token';access.input.disabled=saving||mode.value!=='token';access.input.required=mode.value==='token'&&!saved.has_access_token;
   access.input.placeholder=saved.has_access_token?'Stored · leave blank to keep':'Paste relay access token';

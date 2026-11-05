@@ -169,8 +169,9 @@ actions stay on the card edge. Source pages never repeat the service list.
 Settings contains Built-in Relay, Service sources and About. Allow remote file
 access (off by default) sits in the Relay page Configuration, under Share my
 services, because remote administration exists only between linked Zelports. It
-is saved with that form and is read-only in a remote session; while it is on, one
-warning line says remote devices can run commands on this computer. While it is off, remote
+is saved with that form and is read-only in a remote session. Its info hint says
+what it allows and that this lets remote Zelports run commands on this computer.
+There is no separate warning line (Zdeněk, 2026-11-05: no ⓘ plus ⚠ pairs). While it is off, remote
 sessions show the SSH and CA path fields and Edit file disabled with a one-line reason. Service
 sources controls visibility in the Services menu and Add service only; hidden sources keep
 their services running.
@@ -186,6 +187,8 @@ Relay access with the built-in token when one is required. The E2E secret is lef
 alone and Save stays explicit. It is hidden once the URL matches and in remote
 administration. The Relay URL hint says TLS (`wss://`) is optional, because the link to the
 relay (Noise with an admission PSK) and peer traffic are encrypted by Zelport.
+
+Rule: one control gets one hint. Explanation and risk share the ⓘ. No ⓘ plus ⚠ pair.
 
 Built-in Relay's Require access token has no visible warning. Its info hint says
 "Without a token, anyone who can reach this relay can use it. Shared services still

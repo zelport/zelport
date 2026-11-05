@@ -277,7 +277,6 @@ test('remote file access lives in the Relay form and saves on its own endpoint',
  const fileAccess=boxes.find(n=>tree(n.parentElement).some(x=>x.textContent==='Allow remote file access'))||boxes.at(-1);
  assert.equal(fileAccess.checked,false);assert.equal(h.find('Save').disabled,true);
  fileAccess.checked=true;form.events.change({});assert.equal(h.find('Save').disabled,false);
- assert.equal(h.nodes().find(n=>String(n.className).includes('remote-file-access-risk')).hidden,false,'the risk shows while it is on');
  await form.events.submit({preventDefault(){}});
  assert.deepEqual(h.requests.map(r=>r.path),['/api/remote-file-access'],'only the changed setting is saved');assert.equal(h.requests[0].enabled,true);
 });
