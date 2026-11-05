@@ -24,3 +24,16 @@ test('client rejects paths outside the same origin API',async()=>{
  await assert.rejects(client.api('https://example.test/api/state'),/Invalid API path/);
  await assert.rejects(client.api('/app.js'),/Invalid API path/);
 });
+
+test('an unreachable linked Zelport is named and an HTML status page is never shown as the error',async t=>{
+ globalThis.document={body:{setAttribute(){},removeAttribute(){}}};
+ let next={ok:true,status:200,async text(){return JSON.stringify({csrf:'token',revision:1,remote_admin:{hostname:'build-server'}});}};const requests=[];
+ t.mock.method(globalThis,'fetch',async(path,options={})=>{requests.push(options);return next;});
+ const client=createClient();await client.refresh();
+ assert.equal(requests[0].headers.Accept,'application/json','status pages answer in JSON when asked');
+ next=response(503,{error:'Administration unavailable',detail:'Relay is disconnected.',status:503});
+ await assert.rejects(client.api('/api/state'),{message:'build-server is unreachable. Relay is disconnected.'});
+ next={ok:false,status:503,async text(){return '<!doctype html><html><title>Administration unavailable</title></html>';}};
+ await assert.rejects(client.api('/api/state'),error=>!/<|doctype/i.test(error.message)&&/503/.test(error.message));
+ client.dispose();
+});

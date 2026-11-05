@@ -1,12 +1,19 @@
 export function createClient({onState=()=>{},onError=()=>{},owner=()=>''}={}){
  let current,pending,busy=false,disposed=false;
+ // While administering a linked Zelport, a failed tunnel names that Zelport and keeps the reason.
+ function errorMessage(data,status){
+  const remote=current?.remote_admin,name=remote?.hostname||remote?.device_id;
+  if(remote&&data.error==='Administration unavailable')return `${name} is unreachable.${data.detail?` ${data.detail}`:''}`;
+  return data.error||`Request failed (${status})`;
+ }
  async function api(path,options={}){
   if(!path.startsWith('/api/')||path.includes('://'))throw Error('Invalid API path');
-  const method=options.method||'GET',headers={...options.headers};
+  const method=options.method||'GET',headers={Accept:'application/json',...options.headers};
   if(!['GET','HEAD'].includes(method)){headers['X-CSRF-Token']=current?.csrf;headers['Content-Type']='application/json';}
   const response=await fetch(path,{...options,headers}),text=await response.text();let data;
-  try{data=JSON.parse(text);}catch{data={error:text};}
-  if(!response.ok){const error=Error(data.error||`Request failed (${response.status})`);error.status=response.status;throw error;}
+  // A body that is not JSON (an HTML status page from a proxy or tunnel) is never shown as the message.
+  try{data=JSON.parse(text);}catch{data={};}
+  if(!response.ok){const error=Error(errorMessage(data,response.status));error.status=response.status;throw error;}
   return data;
  }
  async function refresh(force=false){if(disposed)return current;if(pending){if(!force)return pending;await pending.catch(()=>{});}pending=(async()=>{const next=await api('/api/state');if(!disposed){current=next;onState(next);}return next;})().finally(()=>pending=null);return pending;}
