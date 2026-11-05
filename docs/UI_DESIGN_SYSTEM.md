@@ -201,7 +201,9 @@ A finished action confirms itself at the control that started it, never in a
 line of its own under the form and never in a toast.
 
 - Form Save: while saving, the button shows a spinner instead of its label. On
-  success it shows a check (✓) for 3 seconds, then "Save" again. The button never
+  success it turns green (`--ok-strong`) with a white check (✓) for 3 seconds,
+  then returns to the disabled "Save". The fill must not stay accent purple,
+  which reads as an enabled button. The button never
   changes width, so neither state uses text.
 - Field actions (Copy, Edit file, Reload certificates): `✓ Copied`, `✓ File saved`,
   `✓ Reloaded` sit directly under that field, muted at help size.
