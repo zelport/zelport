@@ -66,7 +66,7 @@ export function mountConfiguration(ctx) {
  // The connection state heads the card: dot, relay host, state (details in its tooltip).
  const status=el('div','relay-status-line');
  actions.append(saveConfirmation.attach(save).root,discard,save);form.append(status,enabled.wrap,url.wrap,modeWrap,access.wrap,group.wrap,switches,error,actions);
- url.input.placeholder='ws://relay.example.com:8070';ctx.ui.withInfo(url,'TLS (wss://) is optional. Zelport encrypts the link to the relay and the traffic between Zelports end to end.');
+ url.input.placeholder='ws://relay.example.com:8070';ctx.ui.withInfo(url,'TLS (wss://) is optional. Zelport always encrypts the link to the relay and the traffic between Zelports end to end.');
  // When this computer runs the built-in relay, one click points the client at it (URL and access token).
  // It only fills the draft. Save stays explicit and the E2E secret is left alone.
  function builtInRelay(){
