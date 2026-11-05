@@ -175,6 +175,10 @@ sessions show the SSH and CA path fields and Edit file disabled with a one-line 
 sources controls visibility in the Services menu and Add service only; hidden sources keep
 their services running.
 
+Both relay forms open the same way: the status line, then the master switch
+("Enable relay client" on the Relay page, "Enable built-in relay" in Settings),
+then the fields. Options of what is shared stay at the end, above Discard / Save.
+
 Built-in Relay's Require access token has no visible warning. Its info hint says
 "Without a token, anyone who can reach this relay can use it. Shared services still
 need the E2E secret, and the relay cannot read their traffic." (Zdeněk, 2026-11-05:

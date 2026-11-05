@@ -11,7 +11,7 @@ export function headerStatus(state) {
 }
 export function mount(ctx) {
  const {el,field,button,adornedField,adornmentButton,dialogHeader,showDialog,statusTone,picker}=ctx.ui;
- const form=el('form','relay-settings'),enabled=field('Enable relay',false,'checkbox');
+ const form=el('form','relay-settings'),enabled=field('Enable built-in relay',false,'checkbox');
  const requireToken=field('Require access token',false,'checkbox');
  // Explanations live in info hints; only the open-access risk stays visible, as one warning line.
  ctx.ui.withInfo(requireToken,'Without a token, anyone who can reach this relay can use it. Shared services still need the E2E secret, and the relay cannot read their traffic.');

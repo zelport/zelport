@@ -53,19 +53,19 @@ export function mountConfiguration(ctx) {
   event.preventDefault();
  });
  ctx.ui.withInfo(group,'At least 32 characters. The same secret links your Zelports, and they can administer each other.');group.wrap.append(feedback,copyConfirmation.root);
- const enabled=field('Enabled',false,'checkbox'),publish=field('Share my services',false,'checkbox');ctx.ui.withInfo(publish,'Linked Zelports can import all services of this Zelport.');
+ const enabled=field('Enable relay client',false,'checkbox'),publish=field('Share my services',false,'checkbox');ctx.ui.withInfo(publish,'Linked Zelports can import all services of this Zelport.');
  // Remote file access belongs with the other choices about linked Zelports. It is saved with this form,
  // and only on this computer: a remote administration session sees it read-only.
  const fileAccess=field('Allow remote file access',false,'checkbox');ctx.ui.withInfo(fileAccess,'Lets Zelports that administer this one remotely change the SSH config and CA file paths and edit those files.');
  const fileRisk=el('p','field-hint field-warning remote-file-access-risk');fileRisk.append(ctx.ui.icon?.('warning',{className:'warning-glyph'})||el('span'),el('span',null,'Remote devices can run commands on this computer.'));fileRisk.hidden=true;
  const fileNote=el('p','small muted remote-file-access-note','Change this on the computer itself.');fileNote.hidden=true;
  const savedFileAccess=()=>!!ctx.ui.state()?.remote_file_access,remoteSession=()=>!!ctx.ui.state()?.remote_admin;
- const switches=el('div','relay-connection-options');switches.append(enabled.wrap,publish.wrap,fileAccess.wrap,fileRisk,fileNote);
+ const switches=el('div','relay-connection-options');switches.append(publish.wrap,fileAccess.wrap,fileRisk,fileNote);
  const error=el('p','route-error'),actions=el('div','relay-actions'),save=el('button','primary','Save');save.type='submit';
  const discard=button('Discard',()=>{if(saving)return;sync();validation.clear();url.input.focus();});
  // The connection state heads the card: dot, relay host, state (details in its tooltip).
  const status=el('div','relay-status-line');
- actions.append(saveConfirmation.attach(save).root,discard,save);form.append(status,url.wrap,modeWrap,access.wrap,group.wrap,switches,error,actions);
+ actions.append(saveConfirmation.attach(save).root,discard,save);form.append(status,enabled.wrap,url.wrap,modeWrap,access.wrap,group.wrap,switches,error,actions);
  url.input.placeholder='ws://relay.example.com:8070';access.input.autocomplete=group.input.autocomplete='off';group.input.spellcheck=false;
  const validation=ctx.ui.formFeedback(form,error,[{input:url.input,matches:/url|scheme|wss?:/i},{input:access.input,matches:/access token/i},{get input(){return secretInput();},matches:/E2E|group token/i}]);
  function mask(){generation++;const value=editing?secret():'';group.input.type='password';setSecret(value);feedback.textContent='';update();}

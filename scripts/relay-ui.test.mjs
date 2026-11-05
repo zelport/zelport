@@ -113,8 +113,8 @@ test('access protection and network settings are visible without an Advanced dis
 });
 
 test('configuration keeps live relay status in Overview and aligns form actions with other settings',()=>{
- const h=harness(),connection=h.form.children.find(node=>node.children?.includes(h.fields['Enable relay'].wrap));
- assert.deepEqual(connection.children,[h.fields['Enable relay'].wrap]);
+ const h=harness(),connection=h.form.children.find(node=>node.children?.includes(h.fields['Enable built-in relay'].wrap));
+ assert.deepEqual(connection.children,[h.fields['Enable built-in relay'].wrap]);
  const css=readFileSync(new URL('../internal/modules/built_in_relay/assets/style.css',import.meta.url),'utf8').replace(/\s+/g,'');
  assert.match(css,/\.relay-actions\{[^}]*justify-content:flex-end/);
 });

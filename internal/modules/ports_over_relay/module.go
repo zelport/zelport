@@ -180,7 +180,7 @@ func (m *Module) UnavailableReason(raw json.RawMessage) string {
 		return "Cannot read relay connection settings."
 	}
 	if s.Enabled {
-		return "Turn off Enabled on the Relay page to hide this source."
+		return "Turn off Enable relay client on the Relay page to hide this source."
 	}
 	return ""
 }
