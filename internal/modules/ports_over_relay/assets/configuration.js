@@ -65,7 +65,7 @@ export function mountConfiguration(ctx) {
  const discard=button('Discard',()=>{if(saving)return;sync();validation.clear();url.input.focus();});
  // The connection state heads the card: dot, relay host, state (details in its tooltip).
  const status=el('div','relay-status-line');
- actions.append(saveConfirmation.root,discard,save);form.append(status,url.wrap,modeWrap,access.wrap,group.wrap,switches,error,actions);
+ actions.append(saveConfirmation.attach(save).root,discard,save);form.append(status,url.wrap,modeWrap,access.wrap,group.wrap,switches,error,actions);
  url.input.placeholder='ws://relay.example.com:8070';access.input.autocomplete=group.input.autocomplete='off';group.input.spellcheck=false;
  const validation=ctx.ui.formFeedback(form,error,[{input:url.input,matches:/url|scheme|wss?:/i},{input:access.input,matches:/access token/i},{get input(){return secretInput();},matches:/E2E|group token/i}]);
  function mask(){generation++;const value=editing?secret():'';group.input.type='password';setSecret(value);feedback.textContent='';update();}

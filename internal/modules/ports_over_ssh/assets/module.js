@@ -70,7 +70,7 @@ export function mount(ctx){
  }
  function configure(){
   form=el('form','ssh-configuration-form');path=adornedField('SSH config file',savedPath(),'text',{actions:[editWeb,refresh]});ctx.ui.withInfo(path,'Blank uses ~/.ssh/config. Zelport connects with your SSH keys and agent, without password prompts.');path.input.placeholder='~/.ssh/config';path.input.autocomplete='off';path.input.spellcheck=false;
-  const actions=el('div','ssh-settings-actions');actions.append(feedback.root,discard,save);path.wrap.append(fileFeedback.root);
+  const actions=el('div','ssh-settings-actions');actions.append(feedback.attach(save).root,discard,save);path.wrap.append(fileFeedback.root);
   // Hosts from the SSH config: label + count, then the aliases as chips.
   const hostsHead=el('div','field-label-row ssh-hosts-head');hostsHead.append(el('span','ssh-hosts-label','Hosts'),hostsCount);
   form.append(path.wrap,existence,hostsHead,hostsList,error,reason,actions);loadHosts();

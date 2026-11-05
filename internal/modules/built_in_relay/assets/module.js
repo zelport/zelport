@@ -79,7 +79,7 @@ export function mount(ctx) {
  // Status line: dot, state, then listeners and clients as values.
  const statusDot=el('span','builtin-relay-dot'),statusLabel=el('strong',null,''),statusFacts=el('span','builtin-relay-facts');title.className='builtin-relay-status';title.append(statusDot,statusLabel,statusFacts);header.append(title);
  connection.append(enabled.wrap);token.wrap.append(copyConfirmation.root);credentials.append(requireToken.wrap,accessWarning,token.wrap,feedback);
- actions.append(saveConfirmation.root,reload,save);form.append(header,connection,network,credentials,error,actions);
+ actions.append(saveConfirmation.attach(save).root,reload,save);form.append(header,connection,network,credentials,error,actions);
  const validation=ctx.ui.formFeedback(form,error,[{input:port.input,matches:/port/i},{input:bind.input,matches:/bind|address/i}]);
  form.addEventListener('input',e=>{if(e.target===token.input)return;changed();},{signal:ctx.signal});
  form.addEventListener('submit',async e=>{

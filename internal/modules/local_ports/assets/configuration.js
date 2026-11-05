@@ -19,7 +19,7 @@ export function mountConfiguration(ctx,panel){
  let validation,current={},form,enabled,ports,processes,baseline='',revision,dirty=false,saving=false,disposed=false;
  const error=el('p','route-error'),feedback=ctx.ui.confirmation(),actions=el('div','local-settings-actions');error.setAttribute('role','alert');
  const save=el('button','primary','Save');save.type='submit';
- const discard=button('Discard',()=>{if(saving)return;sync();validation?.clear();feedback.clear();update();});actions.append(feedback.root,discard,save);
+ const discard=button('Discard',()=>{if(saving)return;sync();validation?.clear();feedback.clear();update();});actions.append(feedback.attach(save).root,discard,save);
  const signature=()=>JSON.stringify([current.discovery_enabled!==false,current.ignored_ports||[],current.ignored_processes||[]]);
  function sync(){enabled.input.checked=current.discovery_enabled!==false;ports.input.value=(current.ignored_ports||[]).join(', ');processes.input.value=formatNames(current.ignored_processes||[]);baseline=signature();revision=ctx.ui.state().revision;dirty=false;}
  function update(){if(!form)return;for(const control of [enabled,ports,processes])control.input.disabled=saving;save.disabled=discard.disabled=saving||!dirty;ctx.ui.busyButton(save,saving);form.setAttribute('aria-busy',String(saving));}

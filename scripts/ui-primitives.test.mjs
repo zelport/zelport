@@ -251,3 +251,14 @@ test('form feedback places field errors next to the input and focuses them after
  assert.equal(error.parentElement,wrap);assert.equal(input.getAttribute('aria-invalid'),'true');assert.equal(document.activeElement,input);assert.equal(input.scrolled,true);
  feedback.clear();assert.equal(error.parentElement,form);assert.equal(input.getAttribute('aria-invalid'),undefined);assert.equal(error.textContent,'');
 });
+test('an open disclosure menu stays inside the window horizontally and follows resizes',()=>{
+ setup();let resize;globalThis.window={innerWidth:500,innerHeight:800,addEventListener:(k,fn)=>{if(k==='resize')resize=fn;},removeEventListener:k=>{if(k==='resize')resize=null;}};
+ document.documentElement={clientWidth:500};
+ const root=new Node(),trigger=new Node('button'),menu=new Node(),item=new Node('button');root.append(trigger,menu);menu.append(item);
+ menu.classList={remove(){},add(){}};let left=300;menu.getBoundingClientRect=()=>({left,right:left+260,top:60,bottom:200,height:140});trigger.getBoundingClientRect=()=>({top:20});
+ const control=ui.disclosureMenu(root,trigger,menu);trigger.events.click({detail:1,preventDefault(){}});
+ assert.equal(menu.style.translate,'-76px 0','the right edge moves to 16px inside the window');
+ document.documentElement.clientWidth=1200;resize();assert.equal(menu.style.translate,'','a wide window needs no shift');
+ control.close();assert.equal(resize,null,'closing releases the resize listener');
+ delete globalThis.window;delete document.documentElement;
+});

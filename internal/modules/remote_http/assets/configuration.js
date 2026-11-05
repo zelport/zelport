@@ -31,7 +31,7 @@ export function mountConfiguration(ctx,panel){
    form=el('form','remote-configuration-form');ca=adornedField('Additional CA certificate file','','text',{actions:[editWeb,reloadCA]});proxy=field('Proxy URL','','url');username=field('Proxy username');password=field('Proxy password','','password');clear=field('Clear stored password',false,'checkbox');
    proxy.input.placeholder='http://proxy.example.com:8080';
    ca.input.spellcheck=proxy.input.spellcheck=username.input.spellcheck=false;ca.input.autocomplete=proxy.input.autocomplete=username.input.autocomplete='off';password.input.autocomplete='new-password';
-   const auth=el('details','remote-proxy-auth'),actions=el('div','remote-settings-actions');auth.append(el('summary',null,'Authentication'),username.wrap,password.wrap,clear.wrap);actions.append(feedback.root,discard,save);ca.wrap.append(fileFeedback.root);
+   const auth=el('details','remote-proxy-auth'),actions=el('div','remote-settings-actions');auth.append(el('summary',null,'Authentication'),username.wrap,password.wrap,clear.wrap);actions.append(feedback.attach(save).root,discard,save);ca.wrap.append(fileFeedback.root);
    ctx.ui.withInfo(ca,'Trusted in addition to system certificates.');ctx.ui.withInfo(proxy,'HTTP(S) or SOCKS5. Blank connects directly.');
    form.append(ca.wrap,editorReason,runtime,proxy.wrap,auth,error,actions);
    form.addEventListener('input',()=>{dirty=ca.input.value!==(current.ca_cert_path||'')||proxy.input.value!==(current.proxy_url||'')||username.input.value!==(current.proxy_username||'')||!!password.input.value||clear.input.checked;feedback.clear();fileFeedback.clear();update();});

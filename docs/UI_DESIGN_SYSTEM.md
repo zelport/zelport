@@ -197,21 +197,33 @@ with an explanation where it has no useful action.
 
 ### Success confirmation
 
-A finished action confirms itself beside the control that started it, never in a
+A finished action confirms itself at the control that started it, never in a
 line of its own under the form and never in a toast.
 
-- Form Save: `✓ Saved` sits in the actions row, right-aligned, directly left of
-  Discard. Muted text at help size with a green check, no box.
+- Form Save: while saving, the button shows a spinner instead of its label. On
+  success it shows a check (✓) for 3 seconds, then "Save" again. The button never
+  changes width, so neither state uses text.
 - Field actions (Copy, Edit file, Reload certificates): `✓ Copied`, `✓ File saved`,
-  `✓ Reloaded` sit directly under that field.
-- One or two words, no sentence and no period. The context says what was saved.
-- It leaves after 3 seconds or at the next edit of the form, whichever comes first.
-  It is announced through `role="status"` with `aria-live="polite"`.
-- While a save runs, the Save button keeps its width and shows a spinner instead of
-  its label (`aria-busy`). Controls stay disabled until it finishes.
+  `✓ Reloaded` sit directly under that field, muted at help size.
+- The confirmation leaves after 3 seconds or at the next edit of the form. A
+  visually hidden `role="status"` / `aria-live="polite"` region still says the
+  word ("Saved"), so screen readers hear it.
 - Errors and instructions that need action (for example "Select and copy the
   secret.") do not auto-hide. They follow the error rules below.
-- Use the shared `ui.confirmation()` and `ui.busyButton()` helpers.
+- Use the shared `ui.confirmation()` (with `.attach(saveButton)` for Save) and
+  `ui.busyButton()` helpers.
+
+### Menus and narrow windows
+
+Disclosure menus (Services, Zelport switcher) stay at least 16px inside the
+window horizontally, also after a resize. Opening or focusing a menu must never
+scroll the page sideways. Check every width from 320 to 1280 in 10px steps with
+menus open, and resize a loaded page, not only fresh loads.
+
+### Experimental tag
+
+One compact pill everywhere (Services menu, Service sources, Settings headers):
+10px text, 16px line, 6px side padding, muted ink on the page background.
 
 User-facing errors state the problem first and put recovery guidance in a
 separate sentence. Do not use semicolons, en dashes or em dashes as sentence
@@ -286,7 +298,7 @@ Add service drawer):
   dot, state in ink, facts muted.
 - A warning sits 8px under the control it belongs to and is one line with ⚠.
 - Actions (Discard / Save) are 16px under the last row, with no divider. The
-  success confirmation sits in the same row, so nothing follows the actions.
+  success confirmation is the Save button itself, so nothing follows the actions.
 - Section titles have 32px above and 16px below, and none above when they are the
   first thing on the page. Cards in a list are 16px apart.
 - Accordion headers are 58px with or without a badge. Service source rows are 48px.
@@ -304,7 +316,7 @@ revision handling and secret lifecycle in their owning modules.
 
 - `icon` owns SVG paths and decorative accessibility attributes;
   `adornmentButton`, `refreshControl` and `experimentalIcon` use it.
-- `confirmation` owns the transient success line (check, text, 3 s timer,
+- `confirmation` owns the transient success state (check on the attached Save button or a line under a field, 3 s timer,
   polite live region). `busyButton` shows a submit button's pending spinner
   at a fixed width.
 - `disclosureMenu` owns pointer versus keyboard opening, current-item focus,

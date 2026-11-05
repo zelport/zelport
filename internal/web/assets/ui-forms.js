@@ -53,12 +53,16 @@ export function serviceOptions(){return el('div','service-options');}
 // Option help is an info hint next to the switch label, not a sentence under it.
 export function optionSwitch(label,checked=false,help=''){const row=el('div','option-row'),control=switchField(label,checked);if(help)withInfo(control,help);row.append(control.wrap);return {...control,row};}
 
-// A finished action confirms itself beside its trigger ("✓ Saved" left of Discard,
-// "✓ Copied" under a field). It leaves after 3 s or at the next edit. Errors stay.
+// A finished action confirms itself at its trigger. A Save button swaps its label
+// for a check ("✓" at the same width), a field action shows "✓ Copied" under its
+// field. It leaves after 3 s or at the next edit. Errors stay.
 export function confirmation(){
- const root=el('span','action-confirmation');root.setAttribute('role','status');root.setAttribute('aria-live','polite');root.hidden=true;let timer=null;
- const clear=()=>{if(timer)clearTimeout(timer);timer=null;root.replaceChildren();root.hidden=true;};
- return {root,clear,show(text='Saved'){if(timer)clearTimeout(timer);root.replaceChildren(icon('check',{className:'action-confirmation-glyph'}),el('span',null,text));root.hidden=false;timer=setTimeout(clear,3000);timer?.unref?.();}};
+ const root=el('span','action-confirmation');root.setAttribute('role','status');root.setAttribute('aria-live','polite');root.hidden=true;let timer=null,target=null;
+ const clear=()=>{if(timer)clearTimeout(timer);timer=null;root.replaceChildren();root.hidden=true;if(target)delete target.dataset.saved;};
+ return {root,clear,
+  // The button shows the check, the hidden live region still says the word.
+  attach(button){target=button;root.className='action-confirmation action-confirmation-hidden';return this;},
+  show(text='Saved'){if(timer)clearTimeout(timer);root.replaceChildren(...(target?[]:[icon('check',{className:'action-confirmation-glyph'})]),el('span',null,text));root.hidden=false;if(target)target.dataset.saved='true';timer=setTimeout(clear,3000);timer?.unref?.();}};
 }
 // While a submit runs, its button keeps its width and shows a spinner instead of the label.
-export function busyButton(button,busy){button.setAttribute('aria-busy',String(!!busy));if(busy)button.dataset.busy='true';else delete button.dataset.busy;}
+export function busyButton(button,busy){button.setAttribute('aria-busy',String(!!busy));if(busy){button.dataset.busy='true';delete button.dataset.saved;}else delete button.dataset.busy;}

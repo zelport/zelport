@@ -19,7 +19,7 @@ class El {
 function harness(initialData={},renderInitially=true){
  const all=[],fields={};
  let latest={revision:1,data:{enabled:true,port:8090,bind_address:'',has_token:true,status:{state:'Listening',clients:0,listeners:[]},...initialData}};
- const ui={setTooltip(){},withInfo:control=>control,confirmation(){const root=new El('span');root.hidden=true;return {root,show(text){root.textContent=text;root.hidden=false;},clear(){root.textContent='';root.hidden=true;}};},busyButton(){},icon:()=>new El('svg'),setText,renderChanged,statusTone,showDialog,moduleViews,formFeedback,dialogHeader:(title)=>new El('h2',title),
+ const ui={setTooltip(){},withInfo:control=>control,confirmation(){const root=new El('span');root.hidden=true;return {root,attach(){return this;},show(text){root.textContent=text;root.hidden=false;},clear(){root.textContent='';root.hidden=true;}};},busyButton(){},icon:()=>new El('svg'),setText,renderChanged,statusTone,showDialog,moduleViews,formFeedback,dialogHeader:(title)=>new El('h2',title),
   el:(tag,cls,text)=>{const e=new El(tag,text);all.push(e);return e;},
   field:(label,value,type)=>{const wrap=new El('label'),input=new El('input');input.value=value;input.checked=value;wrap.append(input);return fields[label]={wrap,input};},
   button:(text,cb)=>{const e=new El('button',text);e.click=cb;all.push(e);return e;},

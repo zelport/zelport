@@ -711,6 +711,9 @@ button.info-hint-trigger:hover{color:var(--ink);filter:none}
 .relay-actions,.local-settings-actions,.ssh-settings-actions,.remote-settings-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--space-2)}
 .action-confirmation{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:var(--text-help);line-height:20px;margin:0 var(--space-2) 0 0!important;animation:action-confirmation-in .15s ease-out}
 .action-confirmation[hidden]{display:none}
+.action-confirmation.action-confirmation-hidden{position:absolute!important;width:1px;height:1px;margin:-1px!important;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+button[data-saved=true]{position:relative;color:transparent!important;opacity:1}
+button[data-saved=true]::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:12px;margin:-8px 0 0 -3px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg);animation:action-confirmation-in .15s ease-out}
 .action-confirmation-glyph{width:16px;height:16px;flex:none;stroke:var(--ok,#2f7d4f);stroke-width:2;fill:none}
 .form-field>.action-confirmation{margin:var(--space-2) 0 0!important}
 @keyframes action-confirmation-in{from{opacity:0}to{opacity:1}}
@@ -719,3 +722,5 @@ button[data-busy=true]::after{content:"";position:absolute;inset:0;margin:auto;w
 button:not(.primary)[data-busy=true]::after{border-color:color-mix(in srgb,var(--ink) 30%,transparent);border-top-color:var(--ink)}
 @keyframes button-busy{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.action-confirmation{animation:none}button[data-busy=true]::after{animation-duration:2s}}
+/* One compact Experimental tag everywhere (menu, Service sources, Settings headers). */
+.maturity-experimental{display:inline-flex;align-items:center;padding:0 6px!important;font-size:10px!important;line-height:16px!important;font-weight:500!important;letter-spacing:.2px;border-width:1px;border-radius:999px;height:auto!important;min-height:0!important;vertical-align:middle}
