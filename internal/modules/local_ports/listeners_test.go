@@ -31,6 +31,10 @@ func TestDiscoverListenersNormalizesScopeProcessesAndOrder(t *testing.T) {
 		{Address: netip.MustParseAddr("192.168.1.20"), Port: 5000, PID: 50, Process: "mixed"},
 		{Address: netip.MustParseAddr("192.168.1.20"), Port: 6000, PID: 60, Process: "lan-only"},
 		{Address: netip.MustParseAddr("127.0.0.1"), Port: 9090, PID: 90, Process: "zelport"},
+		// A container proxy on all interfaces and a sandbox on loopback share 5173.
+		{Address: netip.IPv6Unspecified(), Port: 5173, PID: 4, Process: "gvproxy"},
+		{Address: netip.MustParseAddr("127.0.0.1"), Port: 5173, PID: 7, Process: "sbx"},
+		{Address: netip.MustParseAddr("::1"), Port: 5173, PID: 7, Process: "sbx"},
 	}}
 
 	got, err := discoverListeners(context.Background(), scanner, 9090)
@@ -38,9 +42,10 @@ func TestDiscoverListenersNormalizesScopeProcessesAndOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Listener{
-		{Port: 3000, Processes: []ProcessIdentity{{PID: 30, Name: "server"}}, ListensBeyondLoopback: true},
+		{Port: 3000, Processes: []ProcessIdentity{{PID: 30, Name: "server", ListensBeyondLoopback: true}}, ListensBeyondLoopback: true},
 		{Port: 4000, Processes: []ProcessIdentity{}, unknownOwner: true},
-		{Port: 5000, Processes: []ProcessIdentity{{PID: 50, Name: "mixed"}}, ListensBeyondLoopback: true},
+		{Port: 5000, Processes: []ProcessIdentity{{PID: 50, Name: "mixed", ListensBeyondLoopback: true}}, ListensBeyondLoopback: true},
+		{Port: 5173, Processes: []ProcessIdentity{{PID: 7, Name: "sbx"}, {PID: 4, Name: "gvproxy", Shadowed: true, ListensBeyondLoopback: true}}, ListensBeyondLoopback: true},
 		{Port: 8080, Processes: []ProcessIdentity{{PID: 10, Name: "alpha"}, {PID: 20, Name: "zeta"}}},
 	}
 	if !reflect.DeepEqual(got, want) {

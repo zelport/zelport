@@ -4,7 +4,20 @@ const discoveryFailure="Listening ports couldn't be detected. Enter the service 
 const discoverySignature=(data={})=>JSON.stringify([data.discovery_enabled!==false,data.ignored_ports||[],data.ignored_processes||[]]);
 const nonLoopbackWarning='This port also listens on non-loopback interfaces.';
 
-function processLabels(processes=[]){
+// Connections to localhost reach a process bound to the loopback address itself.
+// A process that holds the same port only on a wildcard address is shadowed.
+const reached=(processes=[])=>{const front=processes.filter(process=>!process.shadowed);return front.length?front:processes;};
+const shadowed=(processes=[])=>reached(processes).length<processes.length?processes.filter(process=>process.shadowed):[];
+function processName(process){const workload=process.sandbox||process.container;return workload?`${process.name||'Unknown process'} · ${workload}`:process.name||'Unknown process';}
+// The warning names the process that exposes the port when it is not the one Zelport reaches.
+function exposureWarning(listener){
+ const others=shadowed(listener?.processes).filter(process=>process.listens_beyond_loopback);
+ const own=reached(listener?.processes).some(process=>process.listens_beyond_loopback);
+ return others.length&&!own?`${others.map(processName).join(', ')} also listens on this port on non-loopback interfaces.`:nonLoopbackWarning;
+}
+
+function processLabels(all=[]){
+ const processes=reached(all);
  if(!processes.length)return {text:'Unknown process',full:'Unknown process',truncated:false};
  let truncated=false;
  const labels=processes.map(process=>{
@@ -17,7 +30,11 @@ function processLabels(processes=[]){
  return {text:labels.map(label=>label.text).join(', '),full:labels.map(label=>label.full).join(', '),truncated};
 }
 
-function localPortDescription(processes=[]){
+function localPortDescription(all=[]){
+ const others=shadowed(all),also=others.length?`\nAlso on this port: ${others.map(processName).join(', ')}`:'';
+ return describeProcesses(reached(all))+also;
+}
+function describeProcesses(processes=[]){
  const pid=()=>processes.map(process=>process.pid).filter(Boolean).join(', ')||'Unknown';
  for(const [key,kind,one,many] of [['sandbox','Docker Sandbox','Sandbox','Sandboxes'],['container','Container','Container','Containers']]){
   const names=[...new Set(processes.map(process=>process[key]).filter(Boolean))];
@@ -61,7 +78,7 @@ export function listenerPicker(ctx,port,{container=port.wrap,address=null}={}){
  }
  function usePort(value){
   query='';filling=true;port.input.value=String(value);port.input.dispatchEvent(new Event('input',{bubbles:true}));filling=false;
-  const listener=listeners.find(item=>Number(item.port)===Number(value)),name=listener?freeName(listener.processes?.[0]?.sandbox||listener.processes?.[0]?.container||listener.processes?.[0]?.name):'';
+  const listener=listeners.find(item=>Number(item.port)===Number(value)),name=listener?freeName(reached(listener.processes)[0]?.sandbox||reached(listener.processes)[0]?.container||reached(listener.processes)[0]?.name):'';
   if(address&&name&&address.value===suggestedName){suggestedName=name;address.value=name;address.dispatchEvent(new Event('input',{bubbles:true}));}
   render();port.input.focus();
  }
@@ -77,7 +94,7 @@ export function listenerPicker(ctx,port,{container=port.wrap,address=null}={}){
   else if(!rows.length)state('No listening ports found.');
   else if(!filtered.length&&!/^\d+$/.test(query))state('No detected port matches.');
   for(const listener of enabled?filtered:[]){
-   const process=processLabels(listener.processes).full,owner=used.get(Number(listener.port)),trailing=[...(listener.listens_beyond_loopback?[warningIndicator(nonLoopbackWarning).root]:[]),...(owner?[el('span','listener-used-by',owner)]:[])];
+   const process=processLabels(listener.processes).full,owner=used.get(Number(listener.port)),trailing=[...(listener.listens_beyond_loopback?[warningIndicator(exposureWarning(listener)).root]:[]),...(owner?[el('span','listener-used-by',owner)]:[])];
    const choice=choiceRow({primary:String(listener.port),secondary:process,label:`Use port ${listener.port}: ${process}${owner?`, used by ${owner}`:''}`,onSelect:()=>usePort(listener.port),trailing});if(owner)choice.row.dataset.used='true';
    choice.row.className+=' listener-option';choice.row.dataset.port=String(listener.port);choice.row.setAttribute('role','listitem');choice.main.className+=' listener-use-port';choice.main.children[0].className+=' listener-port';if(choice.main.children[1])choice.main.children[1].className+=' listener-process';
    menu.append(choice.row);options.push({...choice,value:Number(listener.port)});
@@ -145,7 +162,7 @@ export function mount(ctx){
    const port=Number(route.editor?.aux_port),listener=inventory.byPort.get(port);
    if(!listener)return inventory.health==='ready'&&port>0?[noListenerIndicator(`No listener currently detected on port ${port}.`).root]:[];
    const indicators=[];
-   if(listener.listens_beyond_loopback)indicators.push(warningIndicator(nonLoopbackWarning).root);
+   if(listener.listens_beyond_loopback)indicators.push(warningIndicator(exposureWarning(listener)).root);
    const source=processIndicator(ctx.ui,listener);if(source)indicators.push(source);
    return indicators;
   },
@@ -190,7 +207,7 @@ export function mount(ctx){
    const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return '';
    const listener=inventory.byPort.get(port);if(!listener?.listens_beyond_loopback)return '';
    const checked=inventory.checkedAt?` Checked at ${inventory.checkedAt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}.`:'';
-   return `${nonLoopbackWarning}${checked}`;
+   return `${exposureWarning(listener)}${checked}`;
   },
   routeNotice(route){
    const port=Number(route.editor?.aux_port);if(inventory.health!=='ready'||port<=0)return '';

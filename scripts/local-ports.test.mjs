@@ -195,6 +195,22 @@ test('sandbox and container ports name their workload and filter by it',async()=
  }finally{picker.dispose();}
 });
 
+test('a port shared with a wildcard proxy shows the process that localhost reaches and names the exposed one',async()=>{
+ const address={value:'service-1',dispatchEvent(){}};
+ setup();const port=ui.field('Aux port',3000,'number'),controller=new AbortController();
+ const picker=listenerPicker({moduleId:'local_ports',api:async()=>({listeners:[{port:5173,listens_beyond_loopback:true,processes:[
+  {pid:7,name:'sbx',sandbox:'demo-web'},
+  {pid:4,name:'gvproxy',container:'demo-ingress',shadowed:true,listens_beyond_loopback:true}
+ ]}]}),signal:controller.signal,ui},port,{address});
+ await flush();
+ try{
+  const row=byClass(picker.menu,'listener-option');
+  assert.equal(byClass(row,'listener-process').textContent,'sbx · demo-web');
+  assert.equal(byClass(row,'warning-tooltip').textContent,'gvproxy · demo-ingress also listens on this port on non-loopback interfaces.');
+  fire(byClass(row,'listener-use-port'),'click');assert.equal(address.value,'demo-web');
+ }finally{picker.dispose();}
+});
+
 test('background refresh preserves rows and selection until the completed snapshot replaces them',async()=>{
  let finishRefresh;
  const refreshPending=new Promise(resolve=>{finishRefresh=resolve;});

@@ -165,6 +165,11 @@ from such a port takes the workload name. Ports that no workload publishes keep
 the process name, and `ignored_processes` still matches the process name.
 Containers with host networking or Docker on Linux without the userland proxy
 show their own process or no listener at all.
+
+When two processes hold one port, for example a sandbox on `127.0.0.1` and a
+container proxy on all interfaces, connections to `localhost` reach the process
+bound to the loopback address itself. Zelport labels the port with that process,
+and the non-loopback warning names the other one.
 Disabling discovery stops OS scanning entirely and withholds listener indicators.
 Filters stay saved while disabled. Open port pickers update after settings change
 without replacing the manual port, search text or accepting stale scan results.
