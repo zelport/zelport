@@ -109,11 +109,11 @@ test('Status sorting puts problems first and Source uses the short connection na
  assert.deepEqual(JSON.parse(localStorage.store['zelport.sort.dashboard']),{column:'Status',direction:1});
 });
 
-test('a source can name what is missing in its empty list and withhold Add service',()=>{
+test('a source can name what is missing in its empty list and still offer its tile in Add service',()=>{
  setup();
  const state={port:7070,module_availability:{},modules:[{}],states:{ports_over_relay:{routes:[]}}};
  const calls=[],modules=new Map([['ports_over_relay',{descriptor:{id:'ports_over_relay',name:'Relay'},instance:{emptyLabel:()=>'Configure relay first',canAdd:()=>false,edit:(r,g,o)=>{calls.push(o);return {};}}}],['local_ports',{descriptor:{id:'local_ports',name:'Local'},instance:{edit:(r,g,o)=>{calls.push(o);return {};}}}]]);
  const root=new Node(),page=createDashboard({root,modules,client:{state:()=>state},navigate(){},ui,moduleId:'ports_over_relay',returnTo:'relay'});
  page.render(state);assert.equal(find(root,'dashboard-empty').children[0].textContent,'Configure relay first');
- page.openAddService({focus(){}});assert.deepEqual(calls[0].sources.map(s=>s.id),['local_ports'],'Add service offers no Relay tile until relay is set up');
+ page.openAddService({focus(){}});assert.deepEqual(calls[0].sources.map(s=>s.id).sort(),['local_ports','ports_over_relay'],'the Relay tile stays and explains that relay needs setting up');
 });

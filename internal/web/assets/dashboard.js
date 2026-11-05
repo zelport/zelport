@@ -54,7 +54,7 @@ export function createDashboard({root,modules,client,navigate,ui,moduleId=null,r
  }
  // Add service is one drawer; choosing another source swaps its content in place.
  function openAddService(trigger,{sourceId=moduleId,domain,container}={}){
-  const sources=sourceChoices.map(choice=>{const module=modules.get(choice.id);return {...choice,label:module?.descriptor.name||choice.id,available:!!module?.instance&&enabled(module)&&module.instance.canAdd?.()!==false};}).filter(choice=>choice.available);
+  const sources=sourceChoices.map(choice=>{const module=modules.get(choice.id);return {...choice,label:module?.descriptor.name||choice.id,available:!!module?.instance&&enabled(module)};}).filter(choice=>choice.available);
   const selected=sources.find(choice=>choice.id===sourceId)||sources[0];
   if(!selected)return null;
   return modules.get(selected.id).instance.edit(null,null,{sources,sourceId:selected.id,domain,trigger,container,
