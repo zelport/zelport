@@ -176,8 +176,10 @@ sources controls visibility in the Services menu and Add service only; hidden so
 their services running.
 
 Built-in Relay's Require access token has no visible warning. Its info hint says
-"Without a token, anyone who can reach this relay can use it." (Zdeněk, 2026-11-05:
-the effect of changing it is self-evident, the open-access risk is the useful hint.)
+"Without a token, anyone who can reach this relay can use it. Shared services still
+need the E2E secret, and the relay cannot read their traffic." (Zdeněk, 2026-11-05:
+the effect of changing it is self-evident. The hint states the open-access risk and
+its limit: the E2E secret derives the peer PSK and signs the catalog.)
 About keeps Version, Hostname, Configuration, Listeners and Modules in one row.
 Modules uses a compact count button whose non-modal popover lists the included
 module names and maturity. Build time and uptime are not shown. The footer shows the running version (`Zelport <version>`) on

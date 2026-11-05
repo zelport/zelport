@@ -14,7 +14,7 @@ export function mount(ctx) {
  const form=el('form','relay-settings'),enabled=field('Enable relay',false,'checkbox');
  const requireToken=field('Require access token',false,'checkbox');
  // Explanations live in info hints; only the open-access risk stays visible, as one warning line.
- ctx.ui.withInfo(enabled,'Lets other Zelport apps connect through this computer.');ctx.ui.withInfo(requireToken,'Without a token, anyone who can reach this relay can use it.');
+ ctx.ui.withInfo(enabled,'Lets other Zelport apps connect through this computer.');ctx.ui.withInfo(requireToken,'Without a token, anyone who can reach this relay can use it. Shared services still need the E2E secret, and the relay cannot read their traffic.');
  const port=adornedField('Port',8070,'number'),bind=adornedField('Bind address','');
  const network=el('div','relay-network'),error=el('p','route-error'),actions=el('div','relay-actions');
  let current,revision,dirty=false,saving=false,dialog,active=false,disposed=false,generation=0,secretRevision;
