@@ -24,11 +24,11 @@ export function createSwitcher({host,ui,location=globalThis.location}){
  const disclosure=ui.disclosureMenu(root,trigger,menu);let drawn='';
  function label(text){const node=ui.el('p','zelport-menu-label',text);node.disabled=true;node.setAttribute('role','presentation');return node;}
  function dot(tone){const slot=ui.el('span','zelport-menu-dot');slot.dataset.tone=tone;return slot;}
- function current(text){const row=ui.el('div','zelport-menu-item');row.setAttribute('role','menuitem');row.setAttribute('aria-current','true');row.tabIndex=-1;row.append(dot('ok'),ui.el('strong',null,text),ui.el('span','zelport-menu-check','✓'));return row;}
+ function current(text,unreachable=false){const row=ui.el('div','zelport-menu-item');row.setAttribute('role','menuitem');row.setAttribute('aria-current','true');row.tabIndex=-1;row.append(dot(unreachable?'off':'ok'),ui.el('strong',null,text),...(unreachable?[ui.el('span','zelport-menu-note','Unreachable')]:[]),ui.el('span','zelport-menu-check','✓'));return row;}
  function link(text,href,name){const row=ui.el('a','zelport-menu-item');row.setAttribute('role','menuitem');row.href=href;row.target='_blank';row.rel='noopener';row.setAttribute('aria-label',`${name}, opens in a new tab`);row.title=name;row.append(dot('ok'),ui.el('span',null,text),svg(external,'zelport-menu-external'));row.addEventListener('click',()=>disclosure.close());return row;}
- function render(state){
+ function render(state,health={}){
   const model=switcherModel(state);root.hidden=!model;if(!model){disclosure.close();return;}
-  const key=JSON.stringify(model);if(key===drawn)return;drawn=key;
+  const unreachable=model.mode==='remote'&&!!health.unreachable,key=JSON.stringify([model,unreachable]);if(key===drawn)return;drawn=key;
   trigger.classList.toggle('remote',model.mode==='remote');
   if(model.mode==='remote'){
    trigger.replaceChildren(svg(linked,'zelport-chip-icon'),ui.el('span','zelport-chip-name',model.hostname),ui.el('span','zelport-chip-caret','▾'));
@@ -36,7 +36,7 @@ export function createSwitcher({host,ui,location=globalThis.location}){
    // Leaving returns this tab to this computer's own administration. The remote page is only loaded through the relay.
    const exit=ui.el('button','zelport-menu-item zelport-menu-exit','Exit remote administration');exit.type='button';exit.setAttribute('role','menuitem');
    exit.addEventListener('click',()=>{disclosure.close();location.assign(localAdministrationURL(location));});
-   menu.replaceChildren(label('Administering'),current(model.hostname),ui.el('div','zelport-menu-separator'),exit);
+   menu.replaceChildren(label('Administering'),current(model.hostname,unreachable),ui.el('div','zelport-menu-separator'),exit);
   }else{
    trigger.replaceChildren(svg(laptop,'zelport-chip-icon'),ui.el('span','zelport-chip-caret','▾'));
    trigger.setAttribute('aria-label',`Zelport: this Zelport, ${model.hostname}`);trigger.title=`This Zelport · ${model.hostname}`;

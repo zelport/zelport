@@ -18,7 +18,7 @@ function renderMessage(){const text=messages.get(active)||refreshErrors.get(acti
 function message(text,owner=active){if(text)messages.set(owner,text);else messages.delete(owner);renderMessage();}
 // Read failures expire on recovery; mutation failures remain owned by their form/tab.
 function clearRefreshErrors(){refreshErrors.clear();renderMessage();}
-async function refreshVisible(){const owner=active;try{await refresh();clearRefreshErrors();}catch(e){refreshErrors.set(owner,e.message);renderMessage();}}
+async function refreshVisible(){const owner=active;try{await refresh();clearRefreshErrors();}catch(e){if(client.health?.().unreachable){clearRefreshErrors();return;}refreshErrors.set(owner,e.message);renderMessage();}}
 function api(path,options={}){return client.api(path,options);}
 function refresh(force=false){return client.refresh(force);}
 function mutate(work,options={}){return client.mutate(work,options);}
@@ -62,7 +62,7 @@ function schedule(){
  const intervals=descriptors.map(d=>d.poll_interval/1e6).filter(v=>v>0);
  if([...modules.values()].some(m=>m.headerStatus))intervals.push(5000);
  // Service lists follow changes made elsewhere (another tab, an agent over the API) without a click.
- if(active==='dashboard'||sourcePage(active))intervals.push(5000);
+ if(active==='dashboard'||sourcePage(active)||client.health?.().unreachable)intervals.push(5000);
  const interval=intervals.length?Math.min(...intervals):0;
  if(interval)timer=setTimeout(async()=>{await refreshVisible();schedule();},interval);
 }
@@ -87,13 +87,28 @@ window.addEventListener('resize',positionHeaderPopovers);
 window.addEventListener('scroll',positionHeaderPopovers,true);
 
 // The header names where you are (Zelport switcher); connection details live on the source pages.
-function renderHeaderStatus(){switcher??=createSwitcher({host:$('connection-status'),ui});switcher.render(state);}
+function renderHeaderStatus(){switcher??=createSwitcher({host:$('connection-status'),ui});switcher.render(state,client.health?.()||{});}
+// An unreachable linked Zelport: one line under the banner, its last list dimmed and actions locked
+// (they would only fail). Drafts stay. Polling continues and everything returns when it answers.
+let unreachableNotice;
+function renderUnreachable(){
+ const health=client.health?.()||{},on=!!(state?.remote_admin&&health.unreachable),name=state?.remote_admin?.hostname||state?.remote_admin?.device_id||'';
+ if(on)document.body.dataset.unreachable='true';else delete document.body.dataset.unreachable;
+ if(!unreachableNotice){unreachableNotice=ui.el('p','remote-unreachable');unreachableNotice.setAttribute('role','status');const banner=$('remote-administration');if(typeof banner.after==='function')banner.after(unreachableNotice);}
+ unreachableNotice.hidden=!on;
+ ui.renderChanged(unreachableNotice,[on,name,health.reason],()=>{if(!on){unreachableNotice.replaceChildren();return;}
+  const dot=ui.el('span','remote-unreachable-dot'),text=ui.el('span','remote-unreachable-text');text.append(ui.el('strong',null,name),' is unreachable. Retrying…');
+  unreachableNotice.replaceChildren(dot,text,...(health.reason?[ui.infoHint(health.reason,'Why it is unreachable').root]:[]));});
+ const locked=[$('add-service'),...[...modules.values()].map(m=>m.addService),...document.querySelectorAll('#dashboard-services,.source-services,.relay-actions,.local-settings-actions,.ssh-settings-actions,.remote-settings-actions')].filter(Boolean);
+ for(const node of locked)node.inert=on;
+}
 function openAddService(trigger){return dashboard.openAddService(trigger);}
 function render(){
  if(!state)return;renderAvailability();renderHeaderStatus();document.body.dataset.administration=state.remote_admin?'remote':'local';
  renderRemoteBanner({banner:$('remote-administration'),state,ui});
  for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
  dashboard.render(state);for(const m of modules.values())m.services?.render(state);
+ renderUnreachable();
  for(const m of modules.values())if(m.addService)m.addService.hidden=m.instance?.canAdd?.()===false;
  for(const m of modules.values()){const count=m.tab?.querySelector?.('.services-menu-count');if(count){ui.setText(count,String(state.states[m.descriptor.id]?.routes?.length||0));if(m.tab.lastElementChild!==count)m.tab.append(count);}}
  ui.setText($('footer-version'),footerVersion(state));
@@ -163,7 +178,7 @@ function addSourceServices(m){
 async function init(){
  const bootStatus=showBootStatus();
  for(const link of document.querySelectorAll('[data-tooltip]'))ui.setTooltip(link,link.dataset.tooltip);
- client=createClient({owner:()=>active,onError:message,onState(next){state=next;clearRefreshErrors();if(composed)render();}});
+ client=createClient({owner:()=>active,onError:message,onHealth(){if(composed){render();schedule();}},onState(next){state=next;clearRefreshErrors();if(composed)render();}});
  state=await client.refresh();tab('dashboard','Dashboard');
  // Sources are named by connection everywhere in the UI: Local, SSH, HTTP, Relay.
  for(const d of state.modules)if(d.ui_placement!=='settings')d.name=sourceLabel(d.id,d.name);

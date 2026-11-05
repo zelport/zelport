@@ -272,6 +272,15 @@ while administering a linked Zelport: the column of local imports is named after
 the administering Zelport, and the Local tile shows the administered hostname.
 Below 640px a header with the switcher takes two rows: logo and chip, then tabs.
 
+When the administered Zelport stops answering (tunnel, relay or the Zelport itself),
+one line under the banner says "<name> is unreachable. Retrying…" with the reason in
+its ⓘ. The last known lists stay, dimmed, with every status "Unknown" (tooltip: last
+check time). Add service, row menus and form actions are inert. Drafts stay. The
+switcher marks the row Unreachable and Exit keeps working. Polling continues every
+5 s and the page recovers without a reload. Rescan ports acts as an immediate retry.
+This UI comes from the administered Zelport's build. The administering Zelport
+answers /api/ with JSON titled "<name> is unreachable", so older builds stay readable.
+
 Unchanged polling retains DOM nodes, selection, focus, scroll and drafts. Current
 revision/state updates independently of rendering. A display redesign must not
 weaken mutation protection, expose secrets, or change module availability rules.

@@ -751,3 +751,11 @@ button[data-saved=true]::after{border-color:var(--ok-strong-ink)!important}
 /* Remote administration: one way out at the end of the switcher menu. */
 .zelport-menu-separator{height:1px;margin:var(--space-1) var(--space-2);background:var(--line)}
 .zelport-menu .zelport-menu-exit{width:100%;height:auto;justify-content:flex-start;padding-left:calc(var(--space-3) + 26px);border:0;background:transparent;color:var(--accent);font-weight:600;text-align:left;cursor:pointer;filter:none}
+/* Unreachable linked Zelport: one line under the banner, the last known lists dimmed and locked. */
+.remote-unreachable{display:flex;align-items:center;gap:var(--space-2);min-height:24px;margin:var(--space-4) 0 0;font-size:var(--text-help);color:var(--ink)}
+.remote-unreachable[hidden]{display:none}
+.remote-unreachable-dot{width:8px;height:8px;flex:none;border-radius:50%;background:var(--amber)}
+.remote-unreachable>.info-hint{display:inline-flex}
+body[data-unreachable] :is(#dashboard-services,.source-services){opacity:.55;transition:opacity .2s}
+body[data-unreachable] :is(#add-service,.module-actions button){opacity:.5}
+body[data-unreachable] :is(.relay-actions,.local-settings-actions,.ssh-settings-actions,.remote-settings-actions){opacity:.5}

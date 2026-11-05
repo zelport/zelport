@@ -135,7 +135,9 @@ export function createDashboard({root,modules,client,navigate,ui,moduleId=null,r
    item.remove.hidden=!instance?.remove;
    const label=sourceLabel(route.module,modules.get(route.module)?.descriptor.name);ui.setText(item.source,label);item.targetText.parentElement.dataset.source=label;
    ui.setText(item.targetText,instance?.routeTarget?.(route)||route.summary.target||'');const warning=instance?.routeWarning?.(route)||'';item.warning.update(warning);ui.setText(item.targetDetail,warning);item.targetDetail.hidden=!warning;
-   const status={...(instance?.routeStatus?.(route)||defaultRouteStatus(route))};
+   // An unreachable linked Zelport keeps its last list, but no status is current any more.
+   const health=client.health?.(),lastSeen=health?.since?` Last checked ${health.since.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}.`:'';
+   const status=health?.unreachable?{tone:'neutral',label:'Unknown',detail:`No answer from this Zelport.${lastSeen}`}:{...(instance?.routeStatus?.(route)||defaultRouteStatus(route))};
    item.tone=status.tone;item.indicator.update(status);
   }
   applyView();

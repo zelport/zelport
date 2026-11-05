@@ -37,3 +37,18 @@ test('a status error reads title then reason and an HTML status page is never sh
  await assert.rejects(client.api('/api/state'),error=>!/<|doctype/i.test(error.message)&&/503/.test(error.message));
  client.dispose();
 });
+
+test('a linked Zelport that stops answering is unreachable until the next good state',async t=>{
+ globalThis.document={body:{setAttribute(){},removeAttribute(){}}};
+ const ok={ok:true,status:200,async text(){return JSON.stringify({csrf:'token',revision:1,remote_admin:{hostname:'build-server'}});}};let next=ok;const seen=[];
+ t.mock.method(globalThis,'fetch',async()=>next);
+ const client=createClient({onHealth:h=>seen.push({...h})});await client.refresh();
+ assert.equal(client.health().unreachable,false);
+ next=response(503,{error:'build-server is unreachable',detail:'Relay is disconnected.',status:503});
+ await assert.rejects(client.refresh(true));
+ assert.equal(client.health().unreachable,true);assert.equal(client.health().reason,'Relay is disconnected.');assert.ok(client.health().since instanceof Date,'the last good read is kept for "Last checked"');
+ await assert.rejects(client.refresh(true));assert.equal(seen.length,1,'repeated failures do not re-announce');
+ next=ok;await client.refresh(true);assert.equal(client.health().unreachable,false);assert.equal(seen.length,2);
+ next=response(409,{error:'Conflict'});await assert.rejects(client.refresh(true));assert.equal(client.health().unreachable,false,'a client error is not unreachability');
+ client.dispose();
+});
