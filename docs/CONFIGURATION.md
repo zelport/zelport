@@ -148,6 +148,12 @@ when all its reported owners are ignored; unknown or mixed owners remain visible
 
 These settings affect suggestions, never configured services or manual ports.
 Ignored listeners still supply status/exposure metadata for configured services.
+
+Docker Sandboxes publish all sandbox ports from one `sbx` daemon process. When a
+listener belongs to `sbx`, Zelport runs `sbx ls --json` once (1 s timeout,
+cached for 10 s, cleared by Rescan) and shows the port as `sbx · <sandbox>`. A new
+service picked from such a port takes the sandbox name. Ports that no sandbox
+publishes stay labelled `sbx`. `ignored_processes` still matches `sbx`.
 Disabling discovery stops OS scanning entirely and withholds listener indicators.
 Filters stay saved while disabled. Open port pickers update after settings change
 without replacing the manual port, search text or accepting stale scan results.

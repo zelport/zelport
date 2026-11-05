@@ -9,6 +9,8 @@ import (
 type ProcessIdentity struct {
 	PID  int    `json:"pid,omitempty"`
 	Name string `json:"name,omitempty"`
+	// Sandbox names the Docker Sandbox behind an sbx listener.
+	Sandbox string `json:"sandbox,omitempty"`
 }
 
 type Listener struct {

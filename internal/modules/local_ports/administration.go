@@ -31,6 +31,7 @@ func (m *Module) Admin() http.Handler {
 				http.Error(w, "method not allowed", 405)
 				return
 			}
+			m.sandboxes.Invalidate()
 			modulekit.JSON(w, map[string]any{})
 		case "/listeners":
 			if r.Method != "GET" {
@@ -58,6 +59,7 @@ func (m *Module) Admin() http.Handler {
 					localAPIError(w, 503, errors.New("Listening ports couldn't be detected. Enter the service port manually."))
 					return
 				}
+				labelSandboxes(ctx, m.sandboxes, all)
 				configured := map[int]bool{}
 				if m.Host != nil {
 					for _, route := range m.Host.Snapshot().Routes {

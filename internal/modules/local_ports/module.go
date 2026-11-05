@@ -21,8 +21,9 @@ type Settings struct {
 }
 type Module struct {
 	modulekit.Base
-	scanner  listenerScanner
-	configMu sync.RWMutex
+	scanner   listenerScanner
+	sandboxes *sandboxResolver
+	configMu  sync.RWMutex
 }
 
 func New() feature.Module {
@@ -31,7 +32,7 @@ func New() feature.Module {
 
 func newModule(scanner listenerScanner) *Module {
 	files, _ := fs.Sub(assets, "assets")
-	m := &Module{scanner: scanner}
+	m := &Module{scanner: scanner, sandboxes: newSandboxResolver()}
 	m.Desc = feature.Descriptor{Maturity: feature.Stable, ID: "local_ports", Name: "Local Ports", TabID: "local", Order: 30, Exportable: true, Assets: files}
 	m.Summary = func(r feature.Route) feature.Summary {
 		var s Settings

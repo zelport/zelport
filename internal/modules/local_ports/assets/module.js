@@ -10,12 +10,15 @@ function processLabels(processes=[]){
  const labels=processes.map(process=>{
   const name=process.name||'Unknown process',characters=Array.from(name),shortened=characters.length>20,shortName=shortened?`${characters.slice(0,20).join('')}…`:name;
   truncated ||= shortened;
-  return {text:shortName,full:name};
+  // A Docker Sandbox port reads "sbx · <sandbox>".
+  return process.sandbox?{text:`${shortName} · ${process.sandbox}`,full:`${name} · ${process.sandbox}`}:{text:shortName,full:name};
  });
  return {text:labels.map(label=>label.text).join(', '),full:labels.map(label=>label.full).join(', '),truncated};
 }
 
 function localPortDescription(processes=[]){
+ const sandboxes=[...new Set(processes.map(process=>process.sandbox).filter(Boolean))];
+ if(sandboxes.length)return `Kind: Docker Sandbox\n${sandboxes.length>1?'Sandboxes':'Sandbox'}: ${sandboxes.join(', ')}\nPID: ${processes.map(process=>process.pid).filter(Boolean).join(', ')||'Unknown'}`;
  const plural=processes.length>1,names=processes.length?processes.map(process=>process.name||'Unknown process').join(', '):'Unknown process',pids=processes.map(process=>process.pid).filter(Boolean);
  return `Kind: Generic process\n${plural?'Names':'Name'}: ${names}\n${pids.length>1?'PIDs':'PID'}: ${pids.length?pids.join(', '):'Unknown'}`;
 }
@@ -54,7 +57,7 @@ export function listenerPicker(ctx,port,{container=port.wrap,address=null}={}){
  }
  function usePort(value){
   query='';filling=true;port.input.value=String(value);port.input.dispatchEvent(new Event('input',{bubbles:true}));filling=false;
-  const listener=listeners.find(item=>Number(item.port)===Number(value)),name=listener?freeName(listener.processes?.[0]?.name):'';
+  const listener=listeners.find(item=>Number(item.port)===Number(value)),name=listener?freeName(listener.processes?.[0]?.sandbox||listener.processes?.[0]?.name):'';
   if(address&&name&&address.value===suggestedName){suggestedName=name;address.value=name;address.dispatchEvent(new Event('input',{bubbles:true}));}
   render();port.input.focus();
  }

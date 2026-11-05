@@ -179,6 +179,19 @@ test('a port with several processes lists all of their names',async()=>{
  picker.dispose();
 });
 
+test('a Docker Sandbox port names its sandbox and filters by it',async()=>{
+ const {port,picker}=createPicker(async()=>({listeners:[
+  {port:5173,processes:[{pid:7,name:'sbx',sandbox:'demo-web'}],listens_beyond_loopback:false},
+  {port:5411,processes:[{pid:7,name:'sbx'}],listens_beyond_loopback:false}
+ ]}));
+ await flush();
+ try{
+  assert.deepEqual(allByClass(picker.menu,'listener-process').map(node=>node.textContent),['sbx · demo-web','sbx']);
+  port.input.value='demo-web';fire(port.input,'input');
+  assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['5173']);
+ }finally{picker.dispose();}
+});
+
 test('background refresh preserves rows and selection until the completed snapshot replaces them',async()=>{
  let finishRefresh;
  const refreshPending=new Promise(resolve=>{finishRefresh=resolve;});
