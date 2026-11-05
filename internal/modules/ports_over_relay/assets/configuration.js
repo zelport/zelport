@@ -54,7 +54,13 @@ export function mountConfiguration(ctx) {
  });
  ctx.ui.withInfo(group,'At least 32 characters. The same secret links your Zelports, and they can administer each other.');group.wrap.append(feedback);
  const enabled=field('Enabled',false,'checkbox'),publish=field('Share my services',false,'checkbox');ctx.ui.withInfo(publish,'Linked Zelports can import all services of this Zelport.');
- const switches=el('div','relay-connection-options');switches.append(enabled.wrap,publish.wrap);
+ // Remote file access belongs with the other choices about linked Zelports. It is saved with this form,
+ // and only on this computer: a remote administration session sees it read-only.
+ const fileAccess=field('Allow remote file access',false,'checkbox');ctx.ui.withInfo(fileAccess,'Lets Zelports that administer this one remotely change the SSH config and CA file paths and edit those files.');
+ const fileRisk=el('p','field-hint field-warning remote-file-access-risk');fileRisk.append(ctx.ui.icon?.('warning',{className:'warning-glyph'})||el('span'),el('span',null,'Remote devices can run commands on this computer.'));fileRisk.hidden=true;
+ const fileNote=el('p','small muted remote-file-access-note','Change this on the computer itself.');fileNote.hidden=true;
+ const savedFileAccess=()=>!!ctx.ui.state()?.remote_file_access,remoteSession=()=>!!ctx.ui.state()?.remote_admin;
+ const switches=el('div','relay-connection-options');switches.append(enabled.wrap,publish.wrap,fileAccess.wrap,fileRisk,fileNote);
  const error=el('p','route-error'),actions=el('div','relay-actions'),save=el('button','primary','Save');save.type='submit';
  const discard=button('Discard',()=>{if(saving)return;sync();validation.clear();url.input.focus();});
  // The connection state heads the card: dot, relay host, state (details in its tooltip).
@@ -66,6 +72,7 @@ export function mountConfiguration(ctx) {
  function setRevealLabel(){const label=group.input.type==='text'?'Hide E2E secret':'Reveal E2E secret';reveal.setAttribute('aria-label',label);setTooltip(reveal,label);}
  function update(){
   for(const input of [url.input,mode,access.input,group.input,multiline,enabled.input,publish.input])input.disabled=saving;
+  fileAccess.input.disabled=saving||remoteSession();fileNote.hidden=!remoteSession();fileRisk.hidden=!fileAccess.input.checked;
   group.input.disabled=saving||!multiline.hidden;multiline.disabled=saving||multiline.hidden;
   access.wrap.hidden=mode.value!=='token';access.input.disabled=saving||mode.value!=='token';access.input.required=mode.value==='token'&&!saved.has_access_token;
   access.input.placeholder=saved.has_access_token?'Stored · leave blank to keep':'Paste relay access token';
@@ -76,11 +83,11 @@ export function mountConfiguration(ctx) {
  }
  function changed(){
   generation++;
-  dirty=url.input.value!==(saved.relay_url||'')||mode.value!==(saved.has_access_token?'token':'none')||!!access.input.value||enabled.input.checked!==!!saved.enabled||publish.input.checked!==!!saved.publish||(editing&&(saved.has_identity||!!secret()));
+  dirty=url.input.value!==(saved.relay_url||'')||mode.value!==(saved.has_access_token?'token':'none')||!!access.input.value||enabled.input.checked!==!!saved.enabled||publish.input.checked!==!!saved.publish||fileAccess.input.checked!==savedFileAccess()||(editing&&(saved.has_identity||!!secret()));
   feedback.textContent='';update();
  }
  function sync(){
-  generation++;dirty=false;editing=!saved.has_identity;url.input.value=saved.relay_url||'';mode.value=saved.has_access_token?'token':'none';access.input.value='';group.input.type='password';setSecret('');enabled.input.checked=!!saved.enabled;publish.input.checked=!!saved.publish;feedback.textContent='';revision=ctx.ui.state().revision;update();
+  generation++;dirty=false;editing=!saved.has_identity;url.input.value=saved.relay_url||'';mode.value=saved.has_access_token?'token':'none';access.input.value='';group.input.type='password';setSecret('');enabled.input.checked=!!saved.enabled;publish.input.checked=!!saved.publish;fileAccess.input.checked=savedFileAccess();feedback.textContent='';revision=ctx.ui.state().revision;update();
  }
  async function storedSecret(){
   const request=++generation,requestedRevision=ctx.ui.state().revision;
@@ -112,7 +119,10 @@ export function mountConfiguration(ctx) {
   const body={revision,relay_url:url.input.value.trim(),enabled:enabled.input.checked,publish:publish.input.checked,access_token:mode.value==='token'?access.input.value.trim():'',clear_access_token:mode.value==='none',group_token:editing?secret():''};
   saving=true;generation++;update();let failure;
   try{
-   await ctx.mutate(()=>ctx.api(`/api/modules/${ctx.moduleId}/settings`,{method:'PUT',body:JSON.stringify(body)}),{reportError:false});
+   const relayChanged=url.input.value!==(saved.relay_url||'')||mode.value!==(saved.has_access_token?'token':'none')||!!access.input.value||enabled.input.checked!==!!saved.enabled||publish.input.checked!==!!saved.publish||editing;
+   const fileChanged=fileAccess.input.checked!==savedFileAccess();
+   if(relayChanged||!fileChanged)await ctx.mutate(()=>ctx.api(`/api/modules/${ctx.moduleId}/settings`,{method:'PUT',body:JSON.stringify(body)}),{reportError:false});
+   if(fileChanged)await ctx.mutate(()=>ctx.api('/api/remote-file-access',{method:'PUT',body:JSON.stringify({revision:relayChanged?ctx.ui.state().revision:revision,enabled:fileAccess.input.checked})}),{reportError:false});
    saved={...saved,relay_url:body.relay_url,enabled:body.enabled,publish:body.publish,has_identity:true,has_access_token:mode.value==='token'};sync();
   }catch(cause){if(cause.status===409){revision=ctx.ui.state().revision;failure='Changed elsewhere. Your draft is kept. Save again or discard.';}else failure=cause.message.replace(/^ports_over_relay settings: /,'');}
   finally{saving=false;update();if(failure)validation.show(failure);}
@@ -120,7 +130,8 @@ export function mountConfiguration(ctx) {
  return {element:form,status,render(state){
   const next=state.data||{},before=JSON.stringify([saved.enabled,saved.publish,saved.relay_url,saved.has_access_token,saved.has_identity]),after=JSON.stringify([next.enabled,next.publish,next.relay_url,next.has_access_token,next.has_identity]);
   saved=next;
-  if(!dirty&&!saving){if(before!==after||!revision)sync();else revision=ctx.ui.state().revision;}
+  if(!dirty&&!saving){if(before!==after||!revision||fileAccess.input.checked!==savedFileAccess())sync();else revision=ctx.ui.state().revision;}
+  update();
   if(!editing&&secret()&&revealedRevision!==state.revision)mask();
  },focus(){url.input.focus();},activate(){active=true;},deactivate(){active=false;mask();},dispose(){disposed=true;active=false;generation++;access.input.value='';setSecret('');}};
 }

@@ -39,7 +39,7 @@ not enable its connections, sharing or listeners.
 `remote_file_access` is `false` unless set. While false, remote administration
 cannot change the Ports over SSH configuration path or the Remote HTTP CA path and
 cannot read or edit those files; it still manages services and other settings.
-Only local administration can change it, under Settings → Remote administration.
+Only local administration can change it, on the Relay page under Configuration → Allow remote file access.
 
 ## Built-in Relay
 

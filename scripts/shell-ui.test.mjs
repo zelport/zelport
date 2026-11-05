@@ -87,8 +87,8 @@ test('remote administration uses a distinct page canvas in light and dark themes
  const app=readFileSync(new URL('../internal/web/assets/app.js',import.meta.url),'utf8').replace(/\s+/g,'');
  const css=readFileSync(new URL('../internal/web/assets/app.css',import.meta.url),'utf8').replace(/\s+/g,'');
  assert.match(app,/document\.body\.dataset\.administration=state\.remote_admin\?'remote':'local'/);
- assert.match(css,/body\[data-administration=remote\]\{background:#fff4f4\}/);
- assert.match(css,/body\[data-administration=remote\]\{background:#211719\}/);
+ // The page keeps its normal canvas while administering; the chip and banner mark the context.
+ assert.match(css,/body\[data-administration=remote\]\{background:var\(--bg\)\}/);
 });
 
 test('Settings keeps the concise module availability label without explanatory filler',()=>{

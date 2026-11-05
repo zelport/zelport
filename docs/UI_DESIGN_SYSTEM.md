@@ -166,9 +166,11 @@ card, fields, help text and callouts keep a readable measure
 (`--form-measure`, 640px); switches, badges, dividers and the Save/Discard
 actions stay on the card edge. Source pages never repeat the service list.
 
-Settings contains Built-in Relay, Service sources, Remote administration and
-About. Remote administration has one switch, Allow remote file access (off by
-default), which is read-only in a remote session. While it is off, remote
+Settings contains Built-in Relay, Service sources and About. Allow remote file
+access (off by default) sits in the Relay page Configuration, under Share my
+services, because remote administration exists only between linked Zelports. It
+is saved with that form and is read-only in a remote session; while it is on, one
+warning line says remote devices can run commands on this computer. While it is off, remote
 sessions show the SSH and CA path fields and Edit file disabled with a one-line reason. Service
 sources controls visibility in the Services menu and Add service only; hidden sources keep
 their services running.
@@ -204,9 +206,9 @@ plain-language heading, a restrained amber marker, and technical identifiers in
 monospace. They remain distinct from red operational errors and purple remote
 administration context.
 
-Remote administration uses a pale red page canvas (`#fff4f4` in light mode and
-`#211719` in dark mode). Cards, forms and controls keep the shared neutral
-surface palette so the context remains visible without reducing readability.
+Remote administration keeps the normal page canvas. The accent Zelport chip in
+the header and the banner "Administering <name>" (with a link back to this
+computer) say where actions run.
 
 Unchanged polling retains DOM nodes, selection, focus, scroll and drafts. Current
 revision/state updates independently of rendering. A display redesign must not

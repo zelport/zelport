@@ -90,7 +90,7 @@ window.addEventListener('scroll',positionHeaderPopovers,true);
 function renderHeaderStatus(){switcher??=createSwitcher({host:$('connection-status'),ui});switcher.render(state);}
 function openAddService(trigger){return dashboard.openAddService(trigger);}
 function render(){
- if(!state)return;renderAvailability();renderRemoteFileAccess();renderHeaderStatus();document.body.dataset.administration=state.remote_admin?'remote':'local';
+ if(!state)return;renderAvailability();renderHeaderStatus();document.body.dataset.administration=state.remote_admin?'remote':'local';
  renderRemoteBanner({banner:$('remote-administration'),state,ui});
  for(const [id,m]of modules){try{m.instance?.render({...state.states[id],revision:state.revision});}catch(e){m.panel.replaceChildren(ui.el('p','route-error',e.message));}}
  dashboard.render(state);for(const m of modules.values())m.services?.render(state);
@@ -141,27 +141,6 @@ function addAvailability(settings){
  if(!availabilityControls.size)section.content.append(ui.el('p','muted','No sources are included in this build.'));
  settings.append(section.root);
 }
-// Remote file access is changed only on this computer; remote sessions see it read-only.
-function addRemoteFileAccess(settings){
- const section=ui.accordion('Remote administration'),control=ui.switchField('Allow remote file access'),help=ui.el('p','visually-hidden','Lets devices that administer this Zelport remotely change the SSH configuration and CA file paths and edit those files.'),note=ui.el('p','small muted');
- ui.withInfo(control,'Lets devices that administer this Zelport remotely change the SSH configuration and CA file paths and edit those files.');
- // The risk stays visible while the switch is on.
- const risk=ui.el('p','field-hint field-warning remote-file-access-risk');risk.append(ui.icon('warning',{className:'warning-glyph'}),ui.el('span',null,'Remote devices can run commands on this computer.'));risk.hidden=true;
- help.id='remote-file-access-help';note.id='remote-file-access-note';control.input.setAttribute('aria-describedby','remote-file-access-help remote-file-access-note');
- section.content.append(control.wrap,risk,help,note);settings.append(section.root);remoteFileAccess={input:control.input,note,risk};
- control.input.addEventListener('change',async()=>{
-  if(remoteFileAccessSaving)return;remoteFileAccessSaving=true;renderRemoteFileAccess();
-  try{await mutate(()=>api('/api/remote-file-access',{method:'PUT',body:JSON.stringify({revision:state.revision,enabled:control.input.checked})}));}
-  catch{/* The shell displays this Settings error. */}
-  finally{remoteFileAccessSaving=false;renderRemoteFileAccess();}
- });
-}
-function renderRemoteFileAccess(){
- if(!remoteFileAccess||!state)return;const remote=!!state.remote_admin;
- if(!remoteFileAccessSaving)remoteFileAccess.input.checked=!!state.remote_file_access;
- remoteFileAccess.input.disabled=remote||remoteFileAccessSaving;if(remoteFileAccess.risk)remoteFileAccess.risk.hidden=!remoteFileAccess.input.checked;
- ui.setText(remoteFileAccess.note,remote?'Change this on the computer itself.':'');remoteFileAccess.note.hidden=!remote;
-}
 function addAbout(settings){const section=ui.accordion('About'),facts=ui.el('dl','runtime-facts');facts.id='runtime-info';section.content.append(facts);settings.append(section.root);}
 function tab(id,label){const b=ui.button(label,()=>{navigate(id);refreshVisible();},'');b.id=`tab-${id}`;b.dataset.navigationLabel=label;b.className='navigation-item';b.setAttribute('aria-controls',`panel-${id}`);$('tabs').append(b);return b;}
 function showBootStatus(){
@@ -207,7 +186,7 @@ async function init(){
   catch(e){panel.append(ui.el('p','route-error',`Module interface unavailable: ${e.message}`));}
   if(!inSettings&&m.instance)addSourceServices(m);
  }
- addAvailability(settings);addRemoteFileAccess(settings);addAbout(settings);
+ addAvailability(settings);addAbout(settings);
  tab('settings','Settings');composed=true;render();navigate(location.hash.slice(1),false);
  navigation=createNavigation({tabs:$('tabs'),onNavigate:navigate});navigation.sync(active);if(bootStatus){document.body.dataset.view='ready';document.body.setAttribute('aria-busy','false');bootStatus.remove();}
 }

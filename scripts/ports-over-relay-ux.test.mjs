@@ -270,3 +270,14 @@ test('Add service explains an unconfigured relay inside the list and links to it
  assert.equal(nodes.find(n=>n.className==='service-options').hidden,true,'options wait until there is something to import');
  assert.equal(nodes.find(n=>n.tag==='button'&&n.type==='submit').disabled,true,'there is nothing to import');
 });
+
+test('remote file access lives in the Relay form and saves on its own endpoint',async()=>{
+ const h=harness({has_identity:true,enabled:true,relay_url:'wss://relay.example.test'});h.view.openSettings();
+ const form=h.nodes().find(n=>n.tag==='form'),boxes=h.nodes().filter(n=>n.tag==='input'&&n.type==='checkbox');
+ const fileAccess=boxes.find(n=>tree(n.parentElement).some(x=>x.textContent==='Allow remote file access'))||boxes.at(-1);
+ assert.equal(fileAccess.checked,false);assert.equal(h.find('Save').disabled,true);
+ fileAccess.checked=true;form.events.change({});assert.equal(h.find('Save').disabled,false);
+ assert.equal(h.nodes().find(n=>String(n.className).includes('remote-file-access-risk')).hidden,false,'the risk shows while it is on');
+ await form.events.submit({preventDefault(){}});
+ assert.deepEqual(h.requests.map(r=>r.path),['/api/remote-file-access'],'only the changed setting is saved');assert.equal(h.requests[0].enabled,true);
+});
