@@ -122,7 +122,8 @@ function renderAvailability(){
 }
 function addAvailability(settings){
  const section=ui.accordion('Service sources');
- const intro=ui.el('div','field-label-row availability-intro');intro.append(ui.el('span','availability-intro-label','Shown in Services and Add service'),ui.infoHint('Hidden sources leave the Services menu and Add service. Their services keep running.','About hidden sources').root);section.content.append(intro);
+ const intro=ui.el('div','field-label-row availability-intro');// The ⓘ is tied to the last word so a wrapped label never leaves it alone at the edge or on its own line.
+ const introLabel=ui.el('span','availability-intro-label','Shown in Services and Add '),introTail=ui.el('span','availability-intro-tail');introTail.append(ui.el('span','availability-intro-label','service'),ui.infoHint('Hidden sources leave the Services menu and Add service. Their services keep running.','About hidden sources').root);intro.append(introLabel,introTail);section.content.append(intro);
  for(const d of state.modules.filter(d=>d.ui_placement!=='settings').sort((a,b)=>sourceOrder.indexOf(a.id)-sourceOrder.indexOf(b.id))){
   const control=ui.switchField(d.name),row=ui.el('div','module-availability-row'),info=ui.el('div','module-availability-info'),count=ui.el('span','module-availability-count');
   // Why a switch is locked stays in its accessible description and in an info hint, not as a sentence.

@@ -733,3 +733,6 @@ button[data-saved=true]::after{border-color:var(--ok-strong-ink)!important}
 .module-availability-row .switch-field>.info-hint[hidden]{display:inline-flex!important;visibility:hidden}
 .module-availability-row .switch-field>input{margin-left:var(--space-6)!important}
 @media(max-width:360px){.module-availability-row .switch-field>input{margin-left:var(--space-2)!important}.module-availability-row .switch-field>.module-availability-count{min-width:2ch}.module-availability-row .switch-field .maturity-experimental{margin-left:6px}.module-availability-row .switch-field>.info-hint{margin-left:2px}}
+/* The intro label wraps on narrow screens, so its ⓘ follows the last word instead of the right edge. */
+.settings-accordion-content>.availability-intro{display:block;height:auto;line-height:20px}
+.availability-intro-tail{white-space:nowrap}.availability-intro-tail>.info-hint{display:inline-flex;vertical-align:-3px;margin-left:var(--space-1)}
