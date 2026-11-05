@@ -31,7 +31,7 @@ func (m *Module) Admin() http.Handler {
 				http.Error(w, "method not allowed", 405)
 				return
 			}
-			m.sandboxes.Invalidate()
+			m.workloads.Invalidate()
 			modulekit.JSON(w, map[string]any{})
 		case "/listeners":
 			if r.Method != "GET" {
@@ -59,7 +59,10 @@ func (m *Module) Admin() http.Handler {
 					localAPIError(w, 503, errors.New("Listening ports couldn't be detected. Enter the service port manually."))
 					return
 				}
-				labelSandboxes(ctx, m.sandboxes, all)
+				// The runtimes get their own short deadline after the scan.
+				labelCtx, cancelLabel := context.WithTimeout(r.Context(), 2*time.Second)
+				m.workloads.label(labelCtx, all)
+				cancelLabel()
 				configured := map[int]bool{}
 				if m.Host != nil {
 					for _, route := range m.Host.Snapshot().Routes {

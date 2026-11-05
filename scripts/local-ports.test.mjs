@@ -179,14 +179,17 @@ test('a port with several processes lists all of their names',async()=>{
  picker.dispose();
 });
 
-test('a Docker Sandbox port names its sandbox and filters by it',async()=>{
+test('sandbox and container ports name their workload and filter by it',async()=>{
  const {port,picker}=createPicker(async()=>({listeners:[
   {port:5173,processes:[{pid:7,name:'sbx',sandbox:'demo-web'}],listens_beyond_loopback:false},
-  {port:5411,processes:[{pid:7,name:'sbx'}],listens_beyond_loopback:false}
+  {port:5411,processes:[{pid:7,name:'sbx'}],listens_beyond_loopback:false},
+  {port:6379,processes:[{pid:4,name:'gvproxy',container:'demo-cache'}],listens_beyond_loopback:false}
  ]}));
  await flush();
  try{
-  assert.deepEqual(allByClass(picker.menu,'listener-process').map(node=>node.textContent),['sbx · demo-web','sbx']);
+  assert.deepEqual(allByClass(picker.menu,'listener-process').map(node=>node.textContent),['sbx · demo-web','sbx','gvproxy · demo-cache']);
+  port.input.value='demo-cache';fire(port.input,'input');
+  assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['6379']);
   port.input.value='demo-web';fire(port.input,'input');
   assert.deepEqual(allByClass(picker.menu,'listener-option').map(row=>row.dataset.port),['5173']);
  }finally{picker.dispose();}

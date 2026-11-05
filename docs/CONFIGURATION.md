@@ -149,11 +149,22 @@ when all its reported owners are ignored; unknown or mixed owners remain visible
 These settings affect suggestions, never configured services or manual ports.
 Ignored listeners still supply status/exposure metadata for configured services.
 
-Docker Sandboxes publish all sandbox ports from one `sbx` daemon process. When a
-listener belongs to `sbx`, Zelport runs `sbx ls --json` once (1 s timeout,
-cached for 10 s, cleared by Rescan) and shows the port as `sbx · <sandbox>`. A new
-service picked from such a port takes the sandbox name. Ports that no sandbox
-publishes stay labelled `sbx`. `ignored_processes` still matches `sbx`.
+Sandbox and container runtimes publish many ports from one proxy process. When a
+listener belongs to such a process, Zelport asks that runtime once and shows the
+port as `<process> · <workload>`:
+
+| Process | Runtime call |
+|---|---|
+| `sbx` | `sbx ls --json` (Docker Sandboxes) |
+| `gvproxy`, `rootlessport`, `pasta`, `slirp4netns` | `podman ps` |
+| `com.docker.*`, `docker-proxy`, `vpnkit-bridge`, `OrbStack Helper`, `limactl` | `docker ps` |
+
+Each call has a 1.5 s timeout and is cached for 10 s, and Rescan clears the cache.
+No call is made when no listener belongs to these processes. A new service picked
+from such a port takes the workload name. Ports that no workload publishes keep
+the process name, and `ignored_processes` still matches the process name.
+Containers with host networking or Docker on Linux without the userland proxy
+show their own process or no listener at all.
 Disabling discovery stops OS scanning entirely and withholds listener indicators.
 Filters stay saved while disabled. Open port pickers update after settings change
 without replacing the manual port, search text or accepting stale scan results.

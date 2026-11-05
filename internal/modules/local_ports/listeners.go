@@ -11,6 +11,8 @@ type ProcessIdentity struct {
 	Name string `json:"name,omitempty"`
 	// Sandbox names the Docker Sandbox behind an sbx listener.
 	Sandbox string `json:"sandbox,omitempty"`
+	// Container names the Docker or Podman container behind a proxy listener.
+	Container string `json:"container,omitempty"`
 }
 
 type Listener struct {
