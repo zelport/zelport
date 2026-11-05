@@ -48,10 +48,10 @@ export function mount(ctx){
  const {overview,configuration,actions:routeToolbar}=views;
  const api=name=>`/api/modules/${ctx.moduleId}/${name}`;
  const savedPath=()=>current?.data?.ssh_config_path||'';
- const existence=el('p','small muted'),reason=el('p','small muted'),error=el('p','route-error'),feedback=el('p','small muted');
- error.setAttribute('role','alert');feedback.setAttribute('role','status');
+ const existence=el('p','small muted'),reason=el('p','small muted'),error=el('p','route-error'),feedback=ctx.ui.confirmation(),fileFeedback=ctx.ui.confirmation();
+ error.setAttribute('role','alert');
  const save=el('button','primary','Save');save.type='submit';
- const discard=button('Discard',()=>{if(saving)return;syncSettings();validation?.clear();feedback.textContent='';updateControls();});
+ const discard=button('Discard',()=>{if(saving)return;syncSettings();validation?.clear();feedback.clear();fileFeedback.clear();updateControls();});
  const hostsCount=el('span','ssh-hosts-count'),hostsList=el('div','ssh-hosts');hostsList.setAttribute('role','list');
  function renderHosts(hosts=[]){ctx.ui.setText(hostsCount,String(hosts.length));hostsList.replaceChildren(...hosts.map(host=>{const chip=el('span','ssh-host-chip',host);chip.setAttribute('role','listitem');return chip;}));}
  async function loadHosts(){try{const result=await ctx.api(api('hosts'),{method:'GET'});if(!disposed)renderHosts(result.hosts||[]);}catch{if(!disposed)renderHosts([]);}}
@@ -62,7 +62,7 @@ export function mount(ctx){
   if(!form)return;
   const busy=saving||!!webEditor,state=ctx.ui.state(),locked=!!state?.remote_admin&&!state?.remote_file_access;
   editWeb.disabled=busy||dirty||locked;
-  path.input.disabled=busy||locked;save.disabled=busy||!dirty;discard.disabled=busy||!dirty;
+  path.input.disabled=busy||locked;save.disabled=busy||!dirty;ctx.ui.busyButton(save,saving);discard.disabled=busy||!dirty;
   reason.textContent=locked?'Remote administration cannot change files on this computer.':dirty?'Save or discard changes before editing.':'';
   refresh.disabled=busy||refreshing;
   form.setAttribute('aria-busy',String(busy));
@@ -70,20 +70,20 @@ export function mount(ctx){
  }
  function configure(){
   form=el('form','ssh-configuration-form');path=adornedField('SSH config file',savedPath(),'text',{actions:[editWeb,refresh]});ctx.ui.withInfo(path,'Blank uses ~/.ssh/config. Zelport connects with your SSH keys and agent, without password prompts.');path.input.placeholder='~/.ssh/config';path.input.autocomplete='off';path.input.spellcheck=false;
-  const actions=el('div','ssh-settings-actions');actions.append(discard,save);
+  const actions=el('div','ssh-settings-actions');actions.append(feedback.root,discard,save);path.wrap.append(fileFeedback.root);
   // Hosts from the SSH config: label + count, then the aliases as chips.
   const hostsHead=el('div','field-label-row ssh-hosts-head');hostsHead.append(el('span','ssh-hosts-label','Hosts'),hostsCount);
-  form.append(path.wrap,existence,hostsHead,hostsList,error,reason,actions,feedback);loadHosts();
-  path.input.addEventListener('input',()=>{dirty=path.input.value!==baseline;feedback.textContent='';updateControls();});
+  form.append(path.wrap,existence,hostsHead,hostsList,error,reason,actions);loadHosts();
+  path.input.addEventListener('input',()=>{dirty=path.input.value!==baseline;feedback.clear();fileFeedback.clear();updateControls();});
   validation=ctx.ui.formFeedback(form,error,[{input:path.input,matches:/path|file|SSH config/i}]);
   form.addEventListener('submit',saveSettings);configuration.append(form);syncSettings();updateControls();
  }
  async function saveSettings(event){
   event.preventDefault();if(saving||!dirty||disposed)return;
-  saving=true;validation?.clear();feedback.textContent='';updateControls();
+  saving=true;validation?.clear();feedback.clear();fileFeedback.clear();updateControls();
   try{
    await ctx.mutate(()=>ctx.api(api('settings'),{method:'PUT',body:JSON.stringify({revision,ssh_config_path:path.input.value})}),{reportError:false});
-   if(disposed)return;syncSettings();feedback.textContent='Settings saved.';
+   if(disposed)return;syncSettings();feedback.show('Saved');
   }catch(cause){
    if(disposed)return;
    if(cause.status===409){revision=ctx.ui.state().revision;error.textContent='Changed elsewhere. Your draft is kept. Save again or discard.';}
@@ -92,15 +92,15 @@ export function mount(ctx){
  }
  function openWebEditor(){
   if(disposed||editWeb.disabled||webEditor)return;
-  validation?.clear();feedback.textContent='';
+  validation?.clear();feedback.clear();fileFeedback.clear();
   webEditor=ctx.ui.fileEditor(ctx,{endpoint:api('config-file'),title:'Edit SSH configuration',trigger:editWeb,onClose(){webEditor=null;if(!disposed){updateControls();if(error.textContent)validation.show(error.textContent);}},async onSaved(){
-   if(disposed)return;feedback.textContent='File saved.';
+   if(disposed)return;fileFeedback.show('File saved');
    try{const result=await ctx.api(api('hosts'),{method:'GET'});renderHosts(result.hosts||[]);await ctx.refresh?.(true);}catch(cause){if(!disposed)error.textContent='File saved. SSH hosts could not be refreshed.';}
   }});updateControls();
  }
  async function refreshHosts(){
   if(disposed||saving||refreshing)return;
-  refreshing=true;validation?.clear();feedback.textContent='';updateControls();
+  refreshing=true;validation?.clear();feedback.clear();fileFeedback.clear();updateControls();
   try{
    const result=await ctx.api(api('hosts'),{method:'GET'});await ctx.refresh?.(true);
    if(!disposed)renderHosts(result.hosts||[]);

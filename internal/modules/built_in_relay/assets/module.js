@@ -20,14 +20,14 @@ export function mount(ctx) {
  const network=el('div','relay-network'),error=el('p','route-error'),actions=el('div','relay-actions');
  let current,revision,dirty=false,saving=false,dialog,active=false,disposed=false,generation=0,secretRevision;
  port.input.min='1';port.input.max='65535';port.input.required=true;bind.input.placeholder='All interfaces';ctx.ui.withInfo(bind,'Blank listens on all interfaces, including VPN and public ones.');
- const feedback=el('p','small muted');feedback.setAttribute('role','status');
+ const feedback=el('p','small muted');feedback.setAttribute('role','status');const saveConfirmation=ctx.ui.confirmation(),copyConfirmation=ctx.ui.confirmation();
  const reveal=adornmentButton('Reveal access token','eye',async()=>{
   if(token.input.value){clearSecret();return;}
   await readToken();
  });
  const copy=adornmentButton('Copy access token','copy',async()=>{
   const value=await readToken();if(!value)return;
-  try{await navigator.clipboard.writeText(value);if(active&&!disposed)feedback.textContent='Copied to clipboard';}
+  try{await navigator.clipboard.writeText(value);if(active&&!disposed)copyConfirmation.show('Copied');}
   catch{if(active&&!disposed){token.input.focus();token.input.select();feedback.textContent='Copy the selected token manually.';}}
  });
  const rotate=adornmentButton('Change access token','edit',openRotation);
@@ -71,20 +71,20 @@ export function mount(ctx) {
  network.append(bind.wrap,port.wrap);
  const save=el('button','primary','Save');save.type='submit';
  function sync(){enabled.input.checked=!!current.enabled;port.input.value=String(current.port);bind.input.value=current.bind_address||'';requireToken.input.checked=current.require_access_token===true;revision=ctx.ui.state().revision;dirty=false;accessWarning.hidden=requireToken.input.checked;}
- function changed(){dirty=enabled.input.checked!==!!current.enabled||Number(port.input.value)!==current.port||bind.input.value!==(current.bind_address||'')||requireToken.input.checked!==(current.require_access_token===true);updateButtons();}
+ function changed(){saveConfirmation.clear();dirty=enabled.input.checked!==!!current.enabled||Number(port.input.value)!==current.port||bind.input.value!==(current.bind_address||'')||requireToken.input.checked!==(current.require_access_token===true);updateButtons();}
  const reload=button('Discard',()=>{if(saving)return;sync();validation.clear();clearSecret();updateButtons();enabled.input.focus();});
- function updateButtons(){save.disabled=reload.disabled=saving||!dirty;reveal.disabled=copy.disabled=saving||!current?.has_token;rotate.disabled=saving||!current?.has_token;form.setAttribute('aria-busy',String(saving));}
+ function updateButtons(){save.disabled=reload.disabled=saving||!dirty;reveal.disabled=copy.disabled=saving||!current?.has_token;rotate.disabled=saving||!current?.has_token;ctx.ui.busyButton(save,saving);form.setAttribute('aria-busy',String(saving));}
 
  const header=el('div','relay-header'),title=el('div'),connection=el('div','relay-connection'),credentials=el('div','relay-credentials');
  // Status line: dot, state, then listeners and clients as values.
  const statusDot=el('span','builtin-relay-dot'),statusLabel=el('strong',null,''),statusFacts=el('span','builtin-relay-facts');title.className='builtin-relay-status';title.append(statusDot,statusLabel,statusFacts);header.append(title);
- connection.append(enabled.wrap);credentials.append(requireToken.wrap,accessWarning,token.wrap,feedback);
- actions.append(reload,save);form.append(header,connection,network,credentials,error,actions);
+ connection.append(enabled.wrap);token.wrap.append(copyConfirmation.root);credentials.append(requireToken.wrap,accessWarning,token.wrap,feedback);
+ actions.append(saveConfirmation.root,reload,save);form.append(header,connection,network,credentials,error,actions);
  const validation=ctx.ui.formFeedback(form,error,[{input:port.input,matches:/port/i},{input:bind.input,matches:/bind|address/i}]);
  form.addEventListener('input',e=>{if(e.target===token.input)return;changed();},{signal:ctx.signal});
  form.addEventListener('submit',async e=>{
   e.preventDefault();if(saving||!dirty)return;saving=true;updateButtons();validation.clear();let failure;
-  try{await ctx.mutate(()=>ctx.api(`/api/modules/${ctx.moduleId}/settings`,{method:'PUT',body:JSON.stringify({revision,enabled:enabled.input.checked,port:Number(port.input.value),bind_address:bind.input.value.trim(),require_access_token:requireToken.input.checked})}),{reportError:false});revision=ctx.ui.state().revision;changed();}
+  try{await ctx.mutate(()=>ctx.api(`/api/modules/${ctx.moduleId}/settings`,{method:'PUT',body:JSON.stringify({revision,enabled:enabled.input.checked,port:Number(port.input.value),bind_address:bind.input.value.trim(),require_access_token:requireToken.input.checked})}),{reportError:false});revision=ctx.ui.state().revision;changed();saveConfirmation.show('Saved');}
   catch(cause){if(cause.status===409){revision=ctx.ui.state().revision;failure='Changed elsewhere. Your draft is kept. Save again or discard.';}else failure=cause.message;}
   finally{saving=false;updateButtons();if(failure)validation.show(failure);}
  },{signal:ctx.signal});

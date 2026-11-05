@@ -45,3 +45,16 @@ test('live picker settings changes abort stale scans without changing the typed 
 test('saving an unrelated toggle preserves exact process names containing commas and quotes',async()=>{
  const h=harness({ignored_processes:['api,worker','name"quoted']});h.view.openSettings();edit(h,'Automatic port detection',false);fire(h.form(),'submit');await tick();assert.deepEqual(h.requests[0].body.ignored_processes,['api,worker','name"quoted']);h.view.dispose();
 });
+test('a successful save confirms itself beside Discard and leaves at the next edit',async()=>{
+ const h=harness();h.view.openSettings();edit(h,'Ignored ports','22');
+ let finish;h.ctx.mutate=work=>new Promise(resolve=>{finish=async()=>{await work();h.render({ignored_ports:['22']},2);resolve();};});
+ fire(h.form(),'submit');await tick();
+ const save=h.find('Save');assert.equal(save.dataset.busy,'true','Save shows a spinner while saving');assert.equal(save.getAttribute('aria-busy'),'true');
+ await finish();await tick();
+ const status=h.all().find(n=>n.className==='action-confirmation');
+ assert.equal(status.hidden,false);assert.equal(status.getAttribute('aria-live'),'polite');
+ assert.deepEqual(status.parentElement.children.map(n=>n.textContent||n.className),['action-confirmation','Discard','Save'],'the confirmation sits first in the actions row');
+ assert.equal(status.children[1].textContent,'Saved');assert.equal(save.dataset.busy,undefined);
+ edit(h,'Ignored ports','23');assert.equal(status.hidden,true);
+ h.view.dispose();
+});

@@ -195,6 +195,24 @@ focusing and scrolling to the error. Unmapped errors receive focus themselves.
 Pending controls prevent duplicate submission. Refresh stays in the same navigation position across tabs, disabled
 with an explanation where it has no useful action.
 
+### Success confirmation
+
+A finished action confirms itself beside the control that started it, never in a
+line of its own under the form and never in a toast.
+
+- Form Save: `✓ Saved` sits in the actions row, right-aligned, directly left of
+  Discard. Muted text at help size with a green check, no box.
+- Field actions (Copy, Edit file, Reload certificates): `✓ Copied`, `✓ File saved`,
+  `✓ Reloaded` sit directly under that field.
+- One or two words, no sentence and no period. The context says what was saved.
+- It leaves after 3 seconds or at the next edit of the form, whichever comes first.
+  It is announced through `role="status"` with `aria-live="polite"`.
+- While a save runs, the Save button keeps its width and shows a spinner instead of
+  its label (`aria-busy`). Controls stay disabled until it finishes.
+- Errors and instructions that need action (for example "Select and copy the
+  secret.") do not auto-hide. They follow the error rules below.
+- Use the shared `ui.confirmation()` and `ui.busyButton()` helpers.
+
 User-facing errors state the problem first and put recovery guidance in a
 separate sentence. Do not use semicolons, en dashes or em dashes as sentence
 separators. Hyphens remain appropriate inside compound terms, command-line flags
@@ -267,7 +285,8 @@ Add service drawer):
 - Switch rows and status lines are 16px apart. A status line is one 24px line:
   dot, state in ink, facts muted.
 - A warning sits 8px under the control it belongs to and is one line with ⚠.
-- Actions (Discard / Save) are 16px under the last row, with no divider.
+- Actions (Discard / Save) are 16px under the last row, with no divider. The
+  success confirmation sits in the same row, so nothing follows the actions.
 - Section titles have 32px above and 16px below, and none above when they are the
   first thing on the page. Cards in a list are 16px apart.
 - Accordion headers are 58px with or without a badge. Service source rows are 48px.
@@ -285,6 +304,9 @@ revision handling and secret lifecycle in their owning modules.
 
 - `icon` owns SVG paths and decorative accessibility attributes;
   `adornmentButton`, `refreshControl` and `experimentalIcon` use it.
+- `confirmation` owns the transient success line (check, text, 3 s timer,
+  polite live region). `busyButton` shows a submit button's pending spinner
+  at a fixed width.
 - `disclosureMenu` owns pointer versus keyboard opening, current-item focus,
   arrows, Home/End, Escape, outside dismissal and listener cleanup. Services
   navigation and port mapping pickers use it with their own semantics. Open

@@ -79,7 +79,7 @@ test('SSH picker help follows the configured file; the host field filters and Us
 
 test('SSH file editor works remotely when this computer allows it and refreshes saved hosts after save',async()=>{
  const h=harness();h.render({},1,{remote_admin:{hostname:'remote-test'},remote_file_access:true});h.view.openSettings();const browser=h.find('Edit file');assert.equal(browser.disabled,false);
- const calls=[];h.ctx.ui.fileEditor=(_ctx,options)=>{calls.push(options);return {dispose(){}};};fire(browser,'click');assert.equal(calls[0].endpoint,'/api/modules/ports_over_ssh/config-file');assert.equal(browser.disabled,true);calls[0].onClose();await calls[0].onSaved();assert.equal(h.requests.at(-1).path,'/api/modules/ports_over_ssh/hosts');assert.ok(h.find('File saved.'));h.view.dispose();
+ const calls=[];h.ctx.ui.fileEditor=(_ctx,options)=>{calls.push(options);return {dispose(){}};};fire(browser,'click');assert.equal(calls[0].endpoint,'/api/modules/ports_over_ssh/config-file');assert.equal(browser.disabled,true);calls[0].onClose();await calls[0].onSaved();assert.equal(h.requests.at(-1).path,'/api/modules/ports_over_ssh/hosts');assert.ok(h.find('File saved'));h.view.dispose();
 });
 
 
