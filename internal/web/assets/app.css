@@ -728,3 +728,8 @@ button:not(.primary)[data-busy=true]::after{border-color:color-mix(in srgb,var(-
 :root{--ok-strong:#2f7a4a;--ok-strong-ink:#fff}
 @media(prefers-color-scheme:dark){:root{--ok-strong:#3f9a64;--ok-strong-ink:#fff}}
 button[data-saved=true]::after{border-color:var(--ok-strong-ink)!important}
+/* Service sources: counts form a right-aligned column next to the switch, like the Services menu. */
+.module-availability-row .switch-field>.module-availability-count{margin-left:auto!important;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
+.module-availability-row .switch-field>.info-hint[hidden]{display:inline-flex!important;visibility:hidden}
+.module-availability-row .switch-field>input{margin-left:var(--space-6)!important}
+@media(max-width:360px){.module-availability-row .switch-field>input{margin-left:var(--space-2)!important}.module-availability-row .switch-field>.module-availability-count{min-width:2ch}.module-availability-row .switch-field .maturity-experimental{margin-left:6px}.module-availability-row .switch-field>.info-hint{margin-left:2px}}

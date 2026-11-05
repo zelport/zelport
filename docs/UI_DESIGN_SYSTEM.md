@@ -244,6 +244,9 @@ menus open, and resize a loaded page, not only fresh loads.
 
 One compact pill everywhere (Services menu, Service sources, Settings headers):
 10px text, 16px line, 6px side padding, muted ink on the page background.
+It sits right after the source name. Counts form a right-aligned column at the
+right edge (Services menu) or just before the switch (Service sources), so they
+line up whatever the name or tag. The lock ⓘ keeps its slot even when hidden.
 
 User-facing errors state the problem first and put recovery guidance in a
 separate sentence. Do not use semicolons, en dashes or em dashes as sentence
