@@ -33,8 +33,10 @@ export function createSwitcher({host,ui,location=globalThis.location}){
   if(model.mode==='remote'){
    trigger.replaceChildren(svg(linked,'zelport-chip-icon'),ui.el('span','zelport-chip-name',model.hostname),ui.el('span','zelport-chip-caret','▾'));
    trigger.setAttribute('aria-label',`Zelport: administering ${model.hostname}`);trigger.removeAttribute('title');
-   const back=link('This computer',localAdministrationURL(location),'Open this computer’s Zelport');back.querySelector('.zelport-menu-dot').dataset.tone='none';
-   menu.replaceChildren(label('Administering'),current(model.hostname),back);
+   // Leaving returns this tab to this computer's own administration. The remote page is only loaded through the relay.
+   const exit=ui.el('button','zelport-menu-item zelport-menu-exit','Exit remote administration');exit.type='button';exit.setAttribute('role','menuitem');
+   exit.addEventListener('click',()=>{disclosure.close();location.assign(localAdministrationURL(location));});
+   menu.replaceChildren(label('Administering'),current(model.hostname),ui.el('div','zelport-menu-separator'),exit);
   }else{
    trigger.replaceChildren(svg(laptop,'zelport-chip-icon'),ui.el('span','zelport-chip-caret','▾'));
    trigger.setAttribute('aria-label',`Zelport: this Zelport, ${model.hostname}`);trigger.title=`This Zelport · ${model.hostname}`;
@@ -50,13 +52,12 @@ export function createSwitcher({host,ui,location=globalThis.location}){
  }
  return {render,dispose(){disclosure.dispose();root.remove();}};
 }
-// Remote administration banner: where the actions run, and the way back.
-export function renderRemoteBanner({banner,state,ui,location=globalThis.location}){
+// Remote administration banner: where the actions run. Leaving is in the Zelport switcher.
+export function renderRemoteBanner({banner,state,ui}){
  banner.hidden=!state.remote_admin;if(!state.remote_admin)return;
  const name=state.remote_admin.hostname||state.remote_admin.device_id;
- ui.renderChanged(banner,[name,location.port],()=>{
+ ui.renderChanged(banner,[name],()=>{
   const text=ui.el('span','remote-administration-text');text.append('Administering ',ui.el('strong',null,name));
-  const back=ui.el('a','remote-administration-back','This computer');back.href=localAdministrationURL(location);back.target='_blank';back.rel='noopener';back.setAttribute('aria-label','This computer’s Zelport, opens in a new tab');back.append(svg(external,'zelport-menu-external'));
-  banner.replaceChildren(text,back);
+  banner.replaceChildren(text);
  });
 }

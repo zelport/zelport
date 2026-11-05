@@ -29,11 +29,13 @@ export function addressMatches(query,domain,address){
 }
 function storedSort(key){try{const value=JSON.parse(localStorage.getItem(key)||'null');if(value&&sortable.has(value.column)&&(value.direction===1||value.direction===-1))return value;}catch{}return {column:'Address',direction:1};}
 function storeSort(key,value){try{localStorage.setItem(key,JSON.stringify(value));}catch{}}
+// The Zelport whose browser administers a linked one, by name. "This computer" would be ambiguous there.
+export function remoteConsumerName(state){return state?.remote_admin?.consumer_hostname||'Your Zelport';}
 export function createDashboard({root,modules,client,navigate,ui,moduleId=null,returnTo='dashboard',tools=null,onRescan=null}){
  // While administering a linked Zelport its addresses are plain text (*.localhost always opens this computer);
- // "This computer" links to the local imports of those services.
- const remote=!!client.state()?.remote_admin;
- const rows=new Map(),columns=[...(moduleId?['Address','Target','Status']:['Address','Source','Target','Status']),...(remote?['This computer']:[]),'Actions'];let table,body,empty,noMatches;
+ // A column named after the administering Zelport links to its local imports of those services.
+ const remote=!!client.state()?.remote_admin,localColumn=remoteConsumerName(client.state());
+ const rows=new Map(),columns=[...(moduleId?['Address','Target','Status']:['Address','Source','Target','Status']),...(remote?[localColumn]:[]),'Actions'];let table,body,empty,noMatches;
  const sortKey=`zelport.sort.${moduleId||'dashboard'}`,headers=new Map();let sort=storedSort(sortKey),query='',order='';
  const enabled=module=>module?.descriptor.ui_placement==='settings'||client.state()?.module_availability?.[module?.descriptor.id]?.enabled!==false;
  // Search and Rescan ports live in the page heading next to Add service.
@@ -54,7 +56,7 @@ export function createDashboard({root,modules,client,navigate,ui,moduleId=null,r
  }
  // Add service is one drawer; choosing another source swaps its content in place.
  function openAddService(trigger,{sourceId=moduleId,domain,container}={}){
-  const sources=sourceChoices.map(choice=>{const module=modules.get(choice.id);return {...choice,label:module?.descriptor.name||choice.id,available:!!module?.instance&&enabled(module)};}).filter(choice=>choice.available);
+  const sources=sourceChoices.map(choice=>{const module=modules.get(choice.id);return {...choice,...(choice.id==='local_ports'&&client.state()?.remote_admin?{description:client.state().remote_admin.hostname||choice.description}:{}),label:module?.descriptor.name||choice.id,available:!!module?.instance&&enabled(module)};}).filter(choice=>choice.available);
   const selected=sources.find(choice=>choice.id===sourceId)||sources[0];
   if(!selected)return null;
   return modules.get(selected.id).instance.edit(null,null,{sources,sourceId:selected.id,domain,trigger,container,
@@ -65,7 +67,7 @@ export function createDashboard({root,modules,client,navigate,ui,moduleId=null,r
  function headerCell(name){
   const cell=ui.el('th');cell.scope='col';
   if(name==='Actions'){cell.className='visually-hidden-label';cell.textContent=name;return cell;}
-  if(name==='This computer')cell.className='col-local';
+  if(remote&&name===localColumn)cell.className='col-local';
   if(!sortable.has(name)){cell.textContent=name;return cell;}
   const control=ui.el('button','sort-button',name);control.type='button';
   const arrow=ui.el('span','sort-arrow');arrow.setAttribute('aria-hidden','true');control.append(arrow);
@@ -110,7 +112,7 @@ export function createDashboard({root,modules,client,navigate,ui,moduleId=null,r
    let item=rows.get(route.id);
    if(!item){
     const row=ui.el('tr'),local=ui.el('td','service-local'),domain=ui.el('td','service-address'),source=ui.el('td','service-source'),target=ui.el('td','service-target'),status=ui.el('td','service-status-cell'),action=ui.el('td','service-actions-cell');
-    for(const [cell,label]of [[domain,'Address'],[source,'Source'],[target,'Target'],[status,'Status'],[local,'This computer'],[action,'Actions']])cell.dataset.label=label;
+    for(const [cell,label]of [[domain,'Address'],[source,'Source'],[target,'Target'],[status,'Status'],[local,localColumn],[action,'Actions']])cell.dataset.label=label;
     const indicator=ui.serviceStatus(),actionRoot=ui.el('div','resource-actions dashboard-actions'),trigger=ui.el('button','resource-menu-trigger','⋮'),menu=ui.el('div','resource-menu');
     trigger.setAttribute('aria-haspopup','menu');menu.setAttribute('role','menu');actionRoot.append(trigger,menu);action.append(actionRoot);status.append(indicator.root);
     // A security property of the target (for example unencrypted) is a warning after the target text, so targets stay aligned; Status stays the service state.

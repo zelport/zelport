@@ -614,8 +614,6 @@ a.zelport-menu-item:hover,.zelport-menu-item:focus-visible{background:var(--acce
 /* Remote administration: no page tint; the accent chip and this banner say where actions run. */
 body[data-administration=remote]{background:var(--bg)}
 .remote-administration{display:flex;align-items:center;gap:var(--space-3);min-height:44px;margin-top:var(--space-4);padding:0 var(--space-4);border:0;border-radius:var(--radius-control);background:var(--accent-soft);color:var(--ink);font-size:14px}
-.remote-administration-back{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-weight:600}
-.remote-administration-back .zelport-menu-external{padding:0;stroke:currentColor}
 .dashboard-table th.col-local{width:150px}
 .service-local-link{white-space:nowrap}
 .service-local-link .service-local-icon{display:inline-block;margin-left:4px;vertical-align:-1px;stroke:currentColor}
@@ -738,3 +736,19 @@ button[data-saved=true]::after{border-color:var(--ok-strong-ink)!important}
 .switch-field>.switch-label-row>label{display:inline;flex:none}
 .switch-field>.switch-label-row>.info-glue{white-space:pre}
 .switch-field>.switch-label-row>.info-hint{display:inline-flex;vertical-align:-3px;margin-left:0}
+/* Narrow header with the Zelport switcher: logo and switcher on top, navigation below.
+   One row cannot hold logo, three tabs and the chip under ~640px. */
+@media(max-width:640px){
+ header:has(.zelport-switcher:not([hidden])){flex-wrap:wrap;height:auto;row-gap:var(--space-2);padding-top:var(--space-3)}
+ header:has(.zelport-switcher:not([hidden])) .brand{order:1;height:36px}
+ header:has(.zelport-switcher:not([hidden])) .connection-status{order:2;margin-left:auto}
+ header:has(.zelport-switcher:not([hidden])) .tabs-toolbar{order:3;flex:1 0 100%;height:48px}
+ header:has(.zelport-switcher:not([hidden])) .services-menu{top:100%}
+ header:has(.zelport-switcher:not([hidden])) .zelport-chip.remote .zelport-chip-name{display:inline;max-width:min(200px,50vw)}
+}
+/* Remote banner: names break between words, never inside one, and the way back wraps as a whole. */
+.remote-administration{flex-wrap:wrap;row-gap:var(--space-1);overflow-wrap:break-word;padding-top:var(--space-2);padding-bottom:var(--space-2)}
+.remote-administration-text{min-width:0}
+/* Remote administration: one way out at the end of the switcher menu. */
+.zelport-menu-separator{height:1px;margin:var(--space-1) var(--space-2);background:var(--line)}
+.zelport-menu .zelport-menu-exit{width:100%;height:auto;justify-content:flex-start;padding-left:calc(var(--space-3) + 26px);border:0;background:transparent;color:var(--accent);font-weight:600;text-align:left;cursor:pointer;filter:none}

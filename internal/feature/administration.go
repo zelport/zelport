@@ -9,11 +9,13 @@ import (
 
 // RemoteAdminContext is supplied by an authenticated built-in transport, never HTTP headers.
 type RemoteAdminContext struct {
-	ConsumerID   string            `json:"-"`
-	ProviderID   string            `json:"device_id"`
-	Hostname     string            `json:"hostname"`
-	Authority    string            `json:"authority"`
-	ServiceLinks map[string]string `json:"service_links"`
+	ConsumerID string `json:"-"`
+	ProviderID string `json:"device_id"`
+	Hostname   string `json:"hostname"`
+	// ConsumerHostname names the Zelport whose browser administers this one, so its UI can say where "back" is.
+	ConsumerHostname string            `json:"consumer_hostname,omitempty"`
+	Authority        string            `json:"authority"`
+	ServiceLinks     map[string]string `json:"service_links"`
 }
 type AdministrationProvider interface {
 	ServeAdministration(http.ResponseWriter, *http.Request) bool

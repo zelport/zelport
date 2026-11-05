@@ -263,8 +263,12 @@ monospace. They remain distinct from red operational errors and purple remote
 administration context.
 
 Remote administration keeps the normal page canvas. The accent Zelport chip in
-the header and the banner "Administering <name>" (with a link back to this
-computer) say where actions run.
+the header and the banner "Administering <name>" say where actions run. The way
+out is "Exit remote administration" at the end of the switcher menu, which returns
+the same tab to this computer's administration. The UI never says "This computer"
+while administering a linked Zelport: the column of local imports is named after
+the administering Zelport, and the Local tile shows the administered hostname.
+Below 640px a header with the switcher takes two rows: logo and chip, then tabs.
 
 Unchanged polling retains DOM nodes, selection, focus, scroll and drafts. Current
 revision/state updates independently of rendering. A display redesign must not

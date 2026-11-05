@@ -189,6 +189,9 @@ func (m *Module) openAdministrationAttempt(ctx context.Context, peer protocol.Pe
 	for _, l := range o.Admin.ServiceLinks {
 		contextData.ServiceLinks[l.ServiceID] = l.URL
 	}
+	if consumer, ok := s.Peers[peer.Group+"/"+peer.Consumer]; ok {
+		contextData.ConsumerHostname = consumer.Hostname
+	}
 	streamCtx, cancel := context.WithCancel(ctx)
 	a, b := net.Pipe()
 	pair := &adminPipe{Conn: a, other: b, cancel: cancel}
