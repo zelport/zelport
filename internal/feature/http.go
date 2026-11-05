@@ -65,7 +65,8 @@ func StatusDiagnostic(w http.ResponseWriter, r *http.Request, code int, title, m
 
 func status(w http.ResponseWriter, r *http.Request, code int, title, message, technical string) {
 	w.Header().Set("Cache-Control", "no-store")
-	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+	// API callers always get JSON, also older clients that do not ask for it, so a status page is never shown as text.
+	if strings.Contains(r.Header.Get("Accept"), "application/json") || strings.HasPrefix(r.URL.Path, "/api/") {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
 		detail := message

@@ -1,9 +1,8 @@
 export function createClient({onState=()=>{},onError=()=>{},owner=()=>''}={}){
  let current,pending,busy=false,disposed=false;
- // While administering a linked Zelport, a failed tunnel names that Zelport and keeps the reason.
+ // Status errors carry a title and a reason ("build-server is unreachable" + "Relay is disconnected.").
  function errorMessage(data,status){
-  const remote=current?.remote_admin,name=remote?.hostname||remote?.device_id;
-  if(remote&&data.error==='Administration unavailable')return `${name} is unreachable.${data.detail?` ${data.detail}`:''}`;
+  if(data.status&&data.error&&data.detail)return `${data.error}. ${data.detail}`;
   return data.error||`Request failed (${status})`;
  }
  async function api(path,options={}){

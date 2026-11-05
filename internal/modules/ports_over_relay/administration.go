@@ -32,11 +32,11 @@ func (m *Module) ServeAdministration(w http.ResponseWriter, r *http.Request) boo
 		if target.Hostname == "" {
 			code = 404
 		}
-		feature.StatusDiagnostic(w, r, code, "Administration unavailable", "Remote administration is unavailable.", e.Error())
+		feature.StatusDiagnostic(w, r, code, unreachable(target.Hostname, host), "Remote administration is unavailable.", e.Error())
 		return true
 	}
 	if !target.Available {
-		feature.Status(w, r, 503, "Administration unavailable", "The remote Zelport is disconnected or its identity cannot be verified.")
+		feature.Status(w, r, 503, unreachable(target.Hostname, host), "The remote Zelport is disconnected or its identity cannot be verified.")
 		return true
 	}
 	if r.Method != "GET" && r.Method != "HEAD" {
@@ -54,7 +54,7 @@ func (m *Module) ServeAdministration(w http.ResponseWriter, r *http.Request) boo
 	c := m.client
 	m.mu.Unlock()
 	if c == nil {
-		feature.Status(w, r, 503, "Administration unavailable", "Relay is disconnected.")
+		feature.Status(w, r, 503, unreachable(target.Hostname, host), "Relay is disconnected.")
 		return true
 	}
 	admin := &protocol.AdminOpen{Authority: r.Host, ServiceLinks: []protocol.ServiceLink{}}
@@ -64,7 +64,7 @@ func (m *Module) ServeAdministration(w http.ResponseWriter, r *http.Request) boo
 	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: target.Authority}, modulekit.ProxyOptions{PreserveHost: true, Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return c.Open(ctx, target.Import, protocol.OpenRequest{Kind: protocol.Administration, ServiceID: target.ServiceID, Authority: target.Authority, Admin: admin})
 	}, Error: func(w http.ResponseWriter, r *http.Request, e error) {
-		feature.Status(w, r, 503, "Administration unavailable", "The remote administration tunnel is unavailable.")
+		feature.Status(w, r, 503, unreachable(target.Hostname, host), "The remote administration tunnel is unavailable.")
 	}})
 	return true
 }
@@ -217,4 +217,16 @@ func (m *Module) openAdministrationAttempt(ctx context.Context, peer protocol.Pe
 	server.SetKeepAlivesEnabled(false)
 	go func() { server.Serve(&oneListener{conn: b, ctx: streamCtx}); pair.Close() }()
 	return pair, nil
+}
+
+// unreachable names the linked Zelport in the error title, which API clients of any version show.
+func unreachable(hostname, host string) string {
+	name := strings.TrimSpace(hostname)
+	if name == "" {
+		name = strings.TrimSuffix(strings.Split(host, ":")[0], ".zelport.localhost")
+	}
+	if name == "" {
+		return "Linked Zelport is unreachable"
+	}
+	return name + " is unreachable"
 }
