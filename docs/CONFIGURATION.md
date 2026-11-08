@@ -79,6 +79,11 @@ Zelport is a transparent reverse proxy. Toward a service it:
 - adds `X-Zelport-Loop` for loop detection (below). Remote HTTP targets beyond
   loopback (`localhost`, `*.localhost`, `127.0.0.0/8`, `::1`) never receive it,
   because they cannot lead back to a Zelport listener;
+- adds itself to `Via` as `<version> zelport` (RFC 9110), after any earlier hops,
+  where the version is the HTTP version the request arrived with (`1.1`, `2`);
+- sets `X-Request-Id` (below);
+- passes `traceparent` and `tracestate` (W3C Trace Context) unchanged. Zelport is
+  not a span in the trace;
 - never sends the signed relay trace (`X-Zelport-Relay-Trace`, device ID and group
   fingerprint) to a service. It only travels inside the relay tunnel, for older
   Zelports in the group.
@@ -92,7 +97,16 @@ of two requests cannot be linked. It works without relay (a local proxy that lea
 back to Zelport) and with older Zelports in the path. A proxy that drops every
 Zelport header hides a loop, which then ends only by timeouts.
 
-Responses pass unchanged and stream immediately (SSE and WebSocket work). A service
+`X-Request-Id` names one request in Zelport and service logs. Zelport keeps an ID
+the request already carries (visible ASCII, at most 128 characters), so it stays the
+same across several Zelports and other proxies. Without one it takes the trace ID
+of a valid `traceparent`, so the ID matches the trace in OpenTelemetry tools, and
+otherwise picks a random 32-digit hex ID. Nothing is stored.
+
+Responses stream immediately (SSE and WebSocket work). Zelport adds itself to their
+`Via` and adds `X-Request-Id` when the service does not answer with its own. Zelport's
+own pages (unknown address, unavailable service, loop detected) carry `X-Request-Id`
+too. Otherwise responses pass unchanged. A service
 has 5 seconds to accept the connection and 5 minutes to start its answer.
 
 ## Remote HTTP outbound connections

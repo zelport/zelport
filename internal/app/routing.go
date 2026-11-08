@@ -72,6 +72,7 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		feature.Status(w, r, 404, "Unknown address", "This administration address is not known.")
 		return
 	}
+	r = feature.AssignRequestID(w, r)
 	revision, routes := m.Snapshot()
 	for _, v := range routes {
 		if v.Domain == host {
@@ -88,6 +89,8 @@ func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Manager) dispatch(w http.ResponseWriter, r *http.Request, l *feature.Lease, release bool) {
+	// Relay imports enter here without ServeHTTP, so they get their request ID here.
+	r = feature.AssignRequestID(w, r)
 	if l.Context().Err() != nil {
 		feature.Status(w, r, 503, "Service unavailable", "The route has changed.")
 		return

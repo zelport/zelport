@@ -10,10 +10,15 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 )
+
+// ViaPseudonym names Zelport in Via (RFC 9110, section 7.6.3) without a version, so the
+// header shows that a Zelport forwarded the message but not which build.
+const ViaPseudonym = "zelport"
 
 // ResponseHeaderTimeout bounds how long a service may take to start its answer.
 const ResponseHeaderTimeout = 5 * time.Minute
@@ -106,8 +111,13 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 		}
 	}
 	defer transport.CloseIdleConnections()
+	// The request ID is already set on the answer for Zelport's own status pages. The service's
+	// answer replaces it, so a service that names the request itself is not contradicted.
+	requestID := w.Header().Get(feature.RequestIDHeader)
+	w.Header().Del(feature.RequestIDHeader)
 	proxy := httputil.ReverseProxy{Transport: transport, FlushInterval: -1, Rewrite: func(p *httputil.ProxyRequest) {
 		p.SetURL(target)
+		addVia(p.Out.Header, p.In.ProtoMajor, p.In.ProtoMinor)
 		p.Out.Header.Del("Proxy-Authorization")
 		if !o.KeepRelayTrace || o.External {
 			p.Out.Header.Del(feature.RelayTraceHeader)
@@ -126,13 +136,43 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 		}
 		p.Out.URL.RawQuery = p.In.URL.RawQuery
 		p.SetXForwarded()
-	}, ErrorHandler: o.Error}
-	if proxy.ErrorHandler == nil {
-		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, e error) {
+	}, ModifyResponse: func(res *http.Response) error {
+		addVia(res.Header, res.ProtoMajor, res.ProtoMinor)
+		if requestID != "" && res.Header.Get(feature.RequestIDHeader) == "" {
+			res.Header.Set(feature.RequestIDHeader, requestID)
+		}
+		return nil
+	}}
+	failed := o.Error
+	if failed == nil {
+		failed = func(w http.ResponseWriter, r *http.Request, e error) {
 			feature.StatusDiagnostic(w, r, 502, "Service unavailable", "The service could not be reached.", e.Error())
 		}
 	}
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, e error) {
+		if requestID != "" {
+			w.Header().Set(feature.RequestIDHeader, requestID)
+		}
+		failed(w, r, e)
+	}
 	proxy.ServeHTTP(w, r)
+}
+
+// addVia appends this hop to Via: the protocol version Zelport received the message with
+// (HTTP/1.1 as "1.1", HTTP/2 as "2") and its pseudonym. Earlier hops stay in order.
+func addVia(h http.Header, major, minor int) {
+	if major == 0 {
+		major, minor = 1, 1
+	}
+	hop := strconv.Itoa(major)
+	if major == 1 {
+		hop += "." + strconv.Itoa(minor)
+	}
+	hop += " " + ViaPseudonym
+	if prior := h.Values("Via"); len(prior) > 0 {
+		hop = strings.Join(prior, ", ") + ", " + hop
+	}
+	h.Set("Via", hop)
 }
 
 // SelfTarget catches literal listener addresses; DialContext also checks resolved IPs.

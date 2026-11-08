@@ -50,3 +50,22 @@ func TestDomainLookupMustMatchAcquiredRoute(t *testing.T) {
 		}
 	}
 }
+
+func TestEveryRoutedAnswerCarriesTheRequestID(t *testing.T) {
+	m := setup(t, &testModule{id: "x"})
+	if _, e := m.Save(context.Background(), 0, feature.Route{Module: "x", Domain: "one.localhost", Settings: json.RawMessage(`{}`)}); e != nil {
+		t.Fatal(e)
+	}
+	w := httptest.NewRecorder()
+	m.ServeHTTP(w, httptest.NewRequest("GET", "http://unknown.localhost:8080/", nil))
+	if w.Code != 404 || len(w.Header().Get(feature.RequestIDHeader)) != 32 {
+		t.Fatalf("unknown domain: code %d, request ID %q", w.Code, w.Header().Get(feature.RequestIDHeader))
+	}
+	r := httptest.NewRequest("GET", "http://one.localhost:8080/", nil)
+	r.Header.Set(feature.TraceparentHeader, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+	w = httptest.NewRecorder()
+	m.ServeHTTP(w, r)
+	if w.Code != 200 || w.Header().Get(feature.RequestIDHeader) != "4bf92f3577b34da6a3ce929d0e0e4736" {
+		t.Fatalf("routed: code %d, request ID %q", w.Code, w.Header().Get(feature.RequestIDHeader))
+	}
+}

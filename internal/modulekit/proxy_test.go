@@ -40,3 +40,57 @@ func TestProxyKeepsZelportMetadataOnlyWhereALoopIsPossible(t *testing.T) {
 		t.Fatalf("ResponseHeaderTimeout = %v, want 5m", ResponseHeaderTimeout)
 	}
 }
+
+func TestProxyAddsViaBothWaysAndKeepsTheRequestID(t *testing.T) {
+	var seen http.Header
+	answerID := ""
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = r.Header.Clone()
+		w.Header().Set("Via", "1.1 cache")
+		if answerID != "" {
+			w.Header().Set(feature.RequestIDHeader, answerID)
+		}
+	}))
+	defer backend.Close()
+	target, _ := url.Parse(backend.URL)
+	for _, external := range []bool{false, true} {
+		for _, own := range []string{"", "service-id"} {
+			answerID = own
+			r := httptest.NewRequest("GET", "http://app.localhost:7070/", nil)
+			r.Header.Set("Via", "2 edge")
+			w := httptest.NewRecorder()
+			r = feature.AssignRequestID(w, r)
+			id := r.Header.Get(feature.RequestIDHeader)
+			Proxy(w, r, target, ProxyOptions{ListenerAuthority: "localhost:1", External: external})
+			if got := seen.Get("Via"); got != "2 edge, 1.1 zelport" {
+				t.Fatalf("request Via = %q", got)
+			}
+			if got := w.Header().Get("Via"); got != "1.1 cache, 1.1 zelport" {
+				t.Fatalf("answer Via = %q", got)
+			}
+			if seen.Get(feature.RequestIDHeader) != id {
+				t.Fatalf("service got request ID %q, want %q", seen.Get(feature.RequestIDHeader), id)
+			}
+			want := id
+			if own != "" {
+				want = own
+			}
+			if got := w.Header().Values(feature.RequestIDHeader); len(got) != 1 || got[0] != want {
+				t.Fatalf("answer request ID = %q, want %q", got, want)
+			}
+		}
+	}
+}
+
+func TestProxyErrorPageCarriesTheRequestID(t *testing.T) {
+	r := httptest.NewRequest("GET", "http://app.localhost:7070/", nil)
+	w := httptest.NewRecorder()
+	r = feature.AssignRequestID(w, r)
+	Proxy(w, r, &url.URL{Scheme: "http", Host: "127.0.0.1:1"}, ProxyOptions{ListenerAuthority: "localhost:2"})
+	if w.Code != 502 || w.Header().Get(feature.RequestIDHeader) != r.Header.Get(feature.RequestIDHeader) {
+		t.Fatalf("code %d, request ID %q", w.Code, w.Header().Get(feature.RequestIDHeader))
+	}
+	if w.Header().Get("Via") != "" {
+		t.Fatal("Zelport's own answer is not forwarded and carries no Via")
+	}
+}
