@@ -66,6 +66,23 @@ host discovery and closes existing SSH pools so later connections use the saved
 contents. **Refresh hosts** also reloads aliases after external file changes.
 
 
+## What services receive
+
+Zelport is a transparent reverse proxy. Toward a service it:
+
+- keeps `Host` for Local, SSH and remote administration, and sets the target host
+  for Remote HTTP and relay imports;
+- sets `X-Forwarded-For` (the real client, never a client-supplied value),
+  `X-Forwarded-Host` and `X-Forwarded-Proto`;
+- removes `Proxy-Authorization` and hop-by-hop headers, and passes `Authorization`,
+  `Cookie` and `Origin` (rewritten only with Use target origin);
+- adds `X-Zelport-Relay-Trace` while relay is set up, for relay loop detection. It
+  carries the device ID and a group fingerprint, so Remote HTTP targets beyond
+  loopback (`localhost`, `*.localhost`, `127.0.0.0/8`, `::1`) never receive it.
+
+Responses pass unchanged and stream immediately (SSE and WebSocket work). A service
+has 5 seconds to accept the connection and 5 minutes to start its answer.
+
 ## Remote HTTP outbound connections
 
 Remote HTTP Configuration applies to all Remote HTTP services. The module stores

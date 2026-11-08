@@ -15,13 +15,19 @@ import (
 	"time"
 )
 
+// ResponseHeaderTimeout bounds how long a service may take to start its answer.
+const ResponseHeaderTimeout = 5 * time.Minute
+
 type ProxyOptions struct {
 	PreserveHost, RewriteOrigin, SkipTLSVerify bool
-	ListenerAuthority                          string
-	RootCAs                                    *x509.CertPool
-	ProxyURL                                   *url.URL
-	Dial                                       func(context.Context, string, string) (net.Conn, error)
-	Error                                      func(http.ResponseWriter, *http.Request, error)
+	// StripRelayTrace keeps relay loop metadata (device and group identifiers) from leaving for
+	// a service that cannot be another Zelport, such as a remote HTTP target beyond loopback.
+	StripRelayTrace   bool
+	ListenerAuthority string
+	RootCAs           *x509.CertPool
+	ProxyURL          *url.URL
+	Dial              func(context.Context, string, string) (net.Conn, error)
+	Error             func(http.ResponseWriter, *http.Request, error)
 }
 
 func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptions) {
@@ -32,7 +38,8 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 		transport.Proxy = http.ProxyURL(o.ProxyURL)
 	}
 	transport.DisableKeepAlives = true
-	transport.ResponseHeaderTimeout = 30 * time.Second
+	// Long polling, slow exports and builds may answer late. The browser still decides when to give up.
+	transport.ResponseHeaderTimeout = ResponseHeaderTimeout
 	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: o.SkipTLSVerify, RootCAs: o.RootCAs}
 	dial := o.Dial
 	if dial == nil {
@@ -99,6 +106,9 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 	proxy := httputil.ReverseProxy{Transport: transport, FlushInterval: -1, Rewrite: func(p *httputil.ProxyRequest) {
 		p.SetURL(target)
 		p.Out.Header.Del("Proxy-Authorization")
+		if o.StripRelayTrace {
+			p.Out.Header.Del(feature.RelayTraceHeader)
+		}
 		if o.PreserveHost {
 			p.Out.Host = p.In.Host
 		}

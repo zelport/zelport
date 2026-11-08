@@ -12,6 +12,9 @@ import (
 	"github.com/zelport/zelport/internal/diagnostic"
 )
 
+// RelayTraceHeader carries relay loop detection between Zelports. It must equal the SDK's protocol.TraceHeader.
+const RelayTraceHeader = "X-Zelport-Relay-Trace"
+
 func RequestLease(r *http.Request) *Lease { l, _ := r.Context().Value(leaseKey{}).(*Lease); return l }
 
 type leasedConn struct {
