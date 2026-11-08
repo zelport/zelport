@@ -50,6 +50,8 @@ func (m *appModule) ServeRoute(w http.ResponseWriter, r *http.Request, _ feature
 		fmt.Fprint(b, "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n")
 		b.Flush()
 		io.Copy(c, c)
+	case "/headers":
+		fmt.Fprint(w, r.Header.Get("Via")+"|"+r.Header.Get(feature.RequestIDHeader))
 	case "/stream":
 		fmt.Fprintln(w, "first")
 		w.(http.Flusher).Flush()
@@ -195,6 +197,20 @@ func testRelayHTTPWebSocketStreamingAndRevocation(t *testing.T, url, access stri
 	response.Body.Close()
 	if response.StatusCode != 403 || string(body) != "source.localhost:18090 /app?q=1 http://source.localhost:18090" {
 		t.Fatal(response.StatusCode, string(body))
+	}
+
+	// Via names the consumer's hop, and the request ID stays the same across both Zelports.
+	req, _ = http.NewRequest("GET", server.URL+"/headers", nil)
+	req.Host = "renamed.localhost:18091"
+	req.Header.Set(feature.TraceparentHeader, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+	response, e = server.Client().Do(req)
+	if e != nil {
+		t.Fatal(e)
+	}
+	body, _ = io.ReadAll(response.Body)
+	response.Body.Close()
+	if string(body) != "1.1 zelport|4bf92f3577b34da6a3ce929d0e0e4736" || response.Header.Values(feature.RequestIDHeader)[0] != "4bf92f3577b34da6a3ce929d0e0e4736" || len(response.Header.Values(feature.RequestIDHeader)) != 1 || response.Header.Get("Via") != "1.1 zelport" {
+		t.Fatal(string(body), response.Header)
 	}
 
 	for _, origin := range []string{"https://foreign.example", ""} {
