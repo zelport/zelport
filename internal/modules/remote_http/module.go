@@ -130,7 +130,7 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, v feature.Ro
 		feature.Status(w, r, 503, "Invalid remote target", "The target cannot point to the Zelport Localhost port.")
 		return
 	}
-	modulekit.Proxy(w, r, u, modulekit.ProxyOptions{RootCAs: roots, ProxyURL: proxyURL, ListenerAuthority: m.Host.ListenerAuthority("localhost"), SkipTLSVerify: s.SkipTLSVerify, RewriteOrigin: s.RewriteOrigin, StripRelayTrace: !loopbackTarget(u), Error: func(w http.ResponseWriter, r *http.Request, e error) {
+	modulekit.Proxy(w, r, u, modulekit.ProxyOptions{RootCAs: roots, ProxyURL: proxyURL, ListenerAuthority: m.Host.ListenerAuthority("localhost"), SkipTLSVerify: s.SkipTLSVerify, RewriteOrigin: s.RewriteOrigin, External: !loopbackTarget(u), Error: func(w http.ResponseWriter, r *http.Request, e error) {
 		title := "Remote service unavailable"
 		message := "The remote service could not be reached."
 		var cert *tls.CertificateVerificationError
@@ -182,8 +182,8 @@ func (m *Module) Close() error {
 	return m.Base.Close()
 }
 
-// loopbackTarget reports a target on this computer, where another Zelport may listen and relay
-// loop detection still matters. Anything else never receives relay trace metadata.
+// loopbackTarget reports a target on this computer, where another Zelport may listen and loop
+// detection matters. A target beyond loopback cannot lead back to a Zelport listener.
 func loopbackTarget(u *url.URL) bool {
 	host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
 	if host == "localhost" || strings.HasSuffix(host, ".localhost") {

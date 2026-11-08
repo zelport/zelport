@@ -20,9 +20,12 @@ const ResponseHeaderTimeout = 5 * time.Minute
 
 type ProxyOptions struct {
 	PreserveHost, RewriteOrigin, SkipTLSVerify bool
-	// StripRelayTrace keeps relay loop metadata (device and group identifiers) from leaving for
-	// a service that cannot be another Zelport, such as a remote HTTP target beyond loopback.
-	StripRelayTrace   bool
+	// KeepRelayTrace forwards the signed relay trace, which names the device and group. Only the
+	// relay leg needs it, so every other service never receives it.
+	KeepRelayTrace bool
+	// External marks a target that cannot lead back to a Zelport (a remote host beyond loopback).
+	// It receives no Zelport loop metadata at all.
+	External          bool
 	ListenerAuthority string
 	RootCAs           *x509.CertPool
 	ProxyURL          *url.URL
@@ -106,8 +109,11 @@ func Proxy(w http.ResponseWriter, r *http.Request, target *url.URL, o ProxyOptio
 	proxy := httputil.ReverseProxy{Transport: transport, FlushInterval: -1, Rewrite: func(p *httputil.ProxyRequest) {
 		p.SetURL(target)
 		p.Out.Header.Del("Proxy-Authorization")
-		if o.StripRelayTrace {
+		if !o.KeepRelayTrace || o.External {
 			p.Out.Header.Del(feature.RelayTraceHeader)
+		}
+		if o.External {
+			p.Out.Header.Del(feature.LoopHeader)
 		}
 		if o.PreserveHost {
 			p.Out.Host = p.In.Host

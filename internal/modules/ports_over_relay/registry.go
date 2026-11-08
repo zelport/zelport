@@ -249,7 +249,7 @@ func (m *Module) ServeRoute(w http.ResponseWriter, r *http.Request, route featur
 			authority, _ = v.Authority(ref.ServiceID)
 		}
 	}
-	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: authority}, modulekit.ProxyOptions{RewriteOrigin: ref.RewriteOrigin, Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+	modulekit.Proxy(w, r, &url.URL{Scheme: "http", Host: authority}, modulekit.ProxyOptions{RewriteOrigin: ref.RewriteOrigin, KeepRelayTrace: true, Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return c.Open(ctx, ref.Import, protocol.OpenRequest{Kind: protocol.Application, ServiceID: ref.ServiceID, Authority: authority, Trace: r.Header.Get(protocol.TraceHeader)})
 	}, Error: func(w http.ResponseWriter, r *http.Request, e error) {
 		feature.StatusDiagnostic(w, r, 503, "Relay service unavailable", "The relay connection could not be established.", e.Error())

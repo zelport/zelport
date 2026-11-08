@@ -300,8 +300,11 @@ func TestRelayIndirectLoopAndLostResponse(t *testing.T) {
 		req, _ := http.NewRequestWithContext(r.Context(), r.Method, server.URL+r.URL.RequestURI(), r.Body)
 		req.Host = "loop.localhost:18191"
 		req.Header = r.Header.Clone()
-		if r.URL.Path == "/stripped" {
+		if r.URL.Path == "/stripped" || r.URL.Path == "/stripped-all" {
 			req.Header.Del(protocol.TraceHeader)
+		}
+		if r.URL.Path == "/stripped-all" {
+			req.Header.Del(feature.LoopHeader)
 		}
 		response, e := server.Client().Do(req)
 		if e != nil {
@@ -323,7 +326,14 @@ func TestRelayIndirectLoopAndLostResponse(t *testing.T) {
 		path string
 		code int
 		max  int32
-	}{{"/loop", 508, 1}, {"/stripped", 503, 32}, {"/lost", 503, 1}} {
+	}{
+		{"/loop", 508, 1},
+		// The anonymous loop header survives an intermediary that drops the relay trace.
+		{"/stripped", 508, 1},
+		// No header survives an intermediary that drops every Zelport header: bounded only by timeouts.
+		{"/stripped-all", 503, 32},
+		{"/lost", 503, 1},
+	} {
 		calls.Store(0)
 		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 		req, _ := http.NewRequestWithContext(ctx, "POST", server.URL+tc.path, strings.NewReader("side effect"))

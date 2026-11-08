@@ -2,9 +2,11 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/zelport/zelport/internal/feature"
@@ -91,6 +93,27 @@ func (m *Manager) dispatch(w http.ResponseWriter, r *http.Request, l *feature.Le
 		return
 	}
 	v := l.Route()
+	// Stateless loop detection: every route a request passes adds an anonymous mark.
+	if values := r.Header.Values(feature.LoopHeader); len(values) > 1 {
+		feature.Status(w, r, 508, "Loop detected", "The request carries conflicting loop metadata.")
+		return
+	} else {
+		hostname, _ := os.Hostname()
+		next, e := feature.AdvanceLoop(r.Header.Get(feature.LoopHeader), v.ID, hostname, m.port)
+		switch {
+		case errors.Is(e, feature.ErrLoop):
+			feature.Status(w, r, 508, "Loop detected", "The request came back to a service it already passed through.")
+			return
+		case errors.Is(e, feature.ErrLoopHops):
+			feature.Status(w, r, 508, "Loop detected", "The request passed through too many services.")
+			return
+		case e != nil:
+			feature.Status(w, r, 508, "Loop detected", "The request carries invalid loop metadata.")
+			return
+		}
+		r = r.Clone(r.Context())
+		r.Header.Set(feature.LoopHeader, next)
+	}
 	rw := &feature.Writer{ResponseWriter: w, Lease: l}
 	defer func() {
 		if release && !rw.Hijacked {

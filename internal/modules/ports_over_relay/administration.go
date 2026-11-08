@@ -46,7 +46,7 @@ func (m *Module) ServeAdministration(w http.ResponseWriter, r *http.Request) boo
 			return true
 		}
 	}
-	if len(r.Header.Values(protocol.TraceHeader)) > 0 {
+	if len(r.Header.Values(protocol.TraceHeader)) > 0 || len(r.Header.Values(feature.LoopHeader)) > 0 {
 		feature.Status(w, r, 508, "Administration loop rejected", "Administration cannot be chained through a relay service.")
 		return true
 	}
@@ -202,7 +202,7 @@ func (m *Module) openAdministrationAttempt(ctx context.Context, peer protocol.Pe
 	}
 	pair.setRelease(release)
 	server := &http.Server{ReadHeaderTimeout: 5 * time.Second, MaxHeaderBytes: 32 << 10, BaseContext: func(net.Listener) context.Context { return streamCtx }, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Host != contextData.Authority || len(r.Header.Values(protocol.TraceHeader)) > 0 {
+		if r.Host != contextData.Authority || len(r.Header.Values(protocol.TraceHeader)) > 0 || len(r.Header.Values(feature.LoopHeader)) > 0 {
 			feature.Status(w, r, 403, "Forbidden", "Invalid administration request.")
 			return
 		}

@@ -76,9 +76,21 @@ Zelport is a transparent reverse proxy. Toward a service it:
   `X-Forwarded-Host` and `X-Forwarded-Proto`;
 - removes `Proxy-Authorization` and hop-by-hop headers, and passes `Authorization`,
   `Cookie` and `Origin` (rewritten only with Use target origin);
-- adds `X-Zelport-Relay-Trace` while relay is set up, for relay loop detection. It
-  carries the device ID and a group fingerprint, so Remote HTTP targets beyond
-  loopback (`localhost`, `*.localhost`, `127.0.0.0/8`, `::1`) never receive it.
+- adds `X-Zelport-Loop` for loop detection (below). Remote HTTP targets beyond
+  loopback (`localhost`, `*.localhost`, `127.0.0.0/8`, `::1`) never receive it,
+  because they cannot lead back to a Zelport listener;
+- never sends the signed relay trace (`X-Zelport-Relay-Trace`, device ID and group
+  fingerprint) to a service. It only travels inside the relay tunnel, for older
+  Zelports in the group.
+
+Loop detection is stateless. `X-Zelport-Loop` is `<nonce>.<mark>.<mark>…`: the
+first Zelport picks a random 16-byte nonce for the request, and every route the
+request passes adds an 8-byte mark, SHA-256 of the nonce, route ID, hostname and
+port. A request that comes back to a route it passed answers 508 Loop detected,
+and so does a ninth route. The header names no device, group or route, and marks
+of two requests cannot be linked. It works without relay (a local proxy that leads
+back to Zelport) and with older Zelports in the path. A proxy that drops every
+Zelport header hides a loop, which then ends only by timeouts.
 
 Responses pass unchanged and stream immediately (SSE and WebSocket work). A service
 has 5 seconds to accept the connection and 5 minutes to start its answer.
