@@ -1,6 +1,6 @@
 # Zelport
 
-[![Verify release binaries](https://github.com/zelport/zelport/actions/workflows/release.yml/badge.svg?branch=main&event=push)](https://github.com/zelport/zelport/actions/workflows/release.yml?query=branch%3Amain)
+[![Verify release binaries](https://github.com/zelport/zelport/actions/workflows/release.yml/badge.svg)](https://github.com/zelport/zelport/actions/workflows/release.yml)
 
 Open what your AI agents are building. Give every web service a stable
 localhost address whether it runs on your computer or a development server.
