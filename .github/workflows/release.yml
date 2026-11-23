@@ -131,3 +131,29 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
         run: |
           scripts/publish_release.sh release
+
+  update-homebrew:
+    if: github.ref_type == 'tag'
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Create Homebrew dispatch token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.ZELPORT_AUTOMATION_CLIENT_ID }}
+          private-key: ${{ secrets.ZELPORT_AUTOMATION_PRIVATE_KEY }}
+          owner: zelport
+          repositories: homebrew-tap
+          permission-actions: write
+      - name: Dispatch verified Homebrew formula update
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh workflow run update-formula.yml \
+            --repo zelport/homebrew-tap \
+            --ref main \
+            -f version="$GITHUB_REF_NAME"
